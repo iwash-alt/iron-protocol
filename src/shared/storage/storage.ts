@@ -3,6 +3,7 @@ import type { UserProfile } from '@/shared/types';
 import type { WorkoutLog, ExerciseHistory, PersonalRecords } from '@/shared/types';
 import type { BodyMeasurement } from '@/shared/types';
 import type { NutritionHistory } from '@/shared/types';
+import type { EntitlementStore } from '@/shared/types';
 import {
   userProfileSchema,
   workoutLogSchema,
@@ -10,6 +11,7 @@ import {
   personalRecordsSchema,
   bodyMeasurementSchema,
   nutritionHistorySchema,
+  entitlementStoreSchema,
 } from './schemas';
 
 const STORAGE_VERSION_KEY = 'ironStorageVersion';
@@ -24,6 +26,7 @@ export const StorageKeys = {
   NUTRITION: 'ironNutrition',
   WEEK_COUNT: 'ironWeekCount',
   LAST_WORKOUT_WEEK: 'ironLastWorkoutWeek',
+  ENTITLEMENTS: 'ironEntitlements',
 } as const;
 
 /** Safe JSON parse with Zod validation. Returns null on any failure. */
@@ -190,4 +193,14 @@ export function loadLastWorkoutWeek(): number | null {
 
 export function saveLastWorkoutWeek(week: number): void {
   localStorage.setItem(StorageKeys.LAST_WORKOUT_WEEK, week.toString());
+}
+
+export function loadEntitlementStore(): EntitlementStore | null {
+  // Zod schema uses string[] for features (can't enumerate the union at runtime).
+  // The resolver safely ignores unrecognized feature strings, so the cast is safe.
+  return safeLoad(StorageKeys.ENTITLEMENTS, entitlementStoreSchema) as EntitlementStore | null;
+}
+
+export function saveEntitlementStore(store: EntitlementStore): void {
+  safeSave(StorageKeys.ENTITLEMENTS, store);
 }

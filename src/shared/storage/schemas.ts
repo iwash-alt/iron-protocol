@@ -57,3 +57,36 @@ const dailyNutritionSchema = z.object({
 export const nutritionHistorySchema = z.record(z.string(), dailyNutritionSchema);
 export const personalRecordsSchema = z.record(z.string(), z.number());
 export const exerciseHistorySchema = z.record(z.string(), z.array(exerciseHistoryEntrySchema));
+
+// ── Entitlement schemas ─────────────────────────────────────
+
+const subscriptionStateSchema = z.object({
+  planId: z.enum(['free', 'pro', 'elite']),
+  billing: z.union([z.enum(['monthly', 'yearly']), z.null()]),
+  startedAt: z.string(),
+  expiresAt: z.union([z.string(), z.null()]),
+  cancelledAt: z.union([z.string(), z.null()]),
+});
+
+const trialStateSchema = z.object({
+  id: z.string(),
+  features: z.array(z.string()),
+  startedAt: z.string(),
+  expiresAt: z.string(),
+  source: z.enum(['onboarding', 'upgrade_prompt', 'retention', 'manual']),
+});
+
+const promoUnlockSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  features: z.array(z.string()),
+  grantedAt: z.string(),
+  expiresAt: z.union([z.string(), z.null()]),
+  source: z.enum(['referral', 'event', 'achievement', 'manual']),
+});
+
+export const entitlementStoreSchema = z.object({
+  subscription: subscriptionStateSchema,
+  trials: z.array(trialStateSchema),
+  promos: z.array(promoUnlockSchema),
+});

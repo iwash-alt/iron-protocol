@@ -8,5 +8,6 @@ export {
   loadNutritionHistory, saveNutritionHistory,
   loadWeekCount, saveWeekCount,
   loadLastWorkoutWeek, saveLastWorkoutWeek,
+  loadEntitlementStore, saveEntitlementStore,
   StorageKeys,
 } from './storage';

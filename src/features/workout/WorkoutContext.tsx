@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useReducer, useCallback, useState } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { RPEValue, PlanExercise, WorkoutLog, ExerciseHistory, PersonalRecords } from '@/shared/types';
 import { workoutReducer, initialWorkoutState } from './workout.reducer';
 import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
 import { usePlan } from '@/features/training-plan/PlanContext';
+import { useDemoMode } from '@/shared/demo/DemoModeContext';
 import {
   loadWorkoutHistory, saveWorkoutHistory,
   loadExerciseHistory, saveExerciseHistory,
@@ -34,15 +35,43 @@ const WorkoutContext = createContext<WorkoutContextValue | null>(null);
 
 export function WorkoutProvider({ children }: { children: ReactNode }) {
   const plan = usePlan();
+  const demo = useDemoMode();
   const [state, dispatch] = useReducer(workoutReducer, initialWorkoutState);
 
-  const [workoutHistory, setWorkoutHistory] = useState<WorkoutLog[]>(() => loadWorkoutHistory());
-  const [exerciseHistory, setExerciseHistory] = useState<ExerciseHistory>(() => loadExerciseHistory());
-  const [personalRecords, setPersonalRecords] = useState<PersonalRecords>(() => loadPersonalRecords());
-  const [weekCount, setWeekCount] = useState(() => loadWeekCount());
-  const [lastWorkoutWeek, setLastWorkoutWeek] = useState(() => loadLastWorkoutWeek());
+  const [workoutHistory, setWorkoutHistory] = useState<WorkoutLog[]>(() => (
+    demo.enabled ? (demo.demoData?.workoutHistory ?? []) : loadWorkoutHistory()
+  ));
+  const [exerciseHistory, setExerciseHistory] = useState<ExerciseHistory>(() => (
+    demo.enabled ? (demo.demoData?.exerciseHistory ?? {}) : loadExerciseHistory()
+  ));
+  const [personalRecords, setPersonalRecords] = useState<PersonalRecords>(() => (
+    demo.enabled ? (demo.demoData?.personalRecords ?? {}) : loadPersonalRecords()
+  ));
+  const [weekCount, setWeekCount] = useState(() => (
+    demo.enabled ? (demo.demoData?.weekCount ?? 0) : loadWeekCount()
+  ));
+  const [lastWorkoutWeek, setLastWorkoutWeek] = useState(() => (
+    demo.enabled ? (demo.demoData?.lastWorkoutWeek ?? null) : loadLastWorkoutWeek()
+  ));
   const [showDeloadAlert, setShowDeloadAlert] = useState(false);
   const [newPR, setNewPR] = useState<{ name: string; weight: number } | null>(null);
+
+  useEffect(() => {
+    if (demo.enabled) {
+      const data = demo.demoData;
+      setWorkoutHistory(data?.workoutHistory ?? []);
+      setExerciseHistory(data?.exerciseHistory ?? {});
+      setPersonalRecords(data?.personalRecords ?? {});
+      setWeekCount(data?.weekCount ?? 0);
+      setLastWorkoutWeek(data?.lastWorkoutWeek ?? null);
+    } else {
+      setWorkoutHistory(loadWorkoutHistory());
+      setExerciseHistory(loadExerciseHistory());
+      setPersonalRecords(loadPersonalRecords());
+      setWeekCount(loadWeekCount());
+      setLastWorkoutWeek(loadLastWorkoutWeek());
+    }
+  }, [demo.enabled, demo.demoData]);
 
   const progress = useCallback(() => {
     const dayExercises = plan.dayExercises;
@@ -79,7 +108,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       if (e1rm > (personalRecords[name] || 0)) {
         const updated = { ...personalRecords, [name]: e1rm };
         setPersonalRecords(updated);
-        savePersonalRecords(updated);
+        if (demo.enabled) {
+          demo.updateDemoData(data => ({ ...data, personalRecords: updated }));
+        } else {
+          savePersonalRecords(updated);
+        }
         setNewPR({ name, weight: e1rm });
         setTimeout(() => setNewPR(null), 3000);
       }
@@ -94,7 +127,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
             estimated1RM: e1rm,
           }],
         };
-        saveExerciseHistory(updated);
+        if (demo.enabled) {
+          demo.updateDemoData(data => ({ ...data, exerciseHistory: updated }));
+        } else {
+          saveExerciseHistory(updated);
+        }
         return updated;
       });
     }
@@ -117,7 +154,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-  }, [state.completedSets, personalRecords, plan]);
+  }, [state.completedSets, personalRecords, plan, demo]);
 
   const endWorkout = useCallback((force = false) => {
     const pct = progress();
@@ -144,7 +181,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
     setWorkoutHistory(prev => {
       const updated = [...prev, newLog];
-      saveWorkoutHistory(updated);
+      if (demo.enabled) {
+        demo.updateDemoData(data => ({ ...data, workoutHistory: updated }));
+      } else {
+        saveWorkoutHistory(updated);
+      }
       return updated;
     });
 
@@ -154,15 +195,19 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       const newWeekCount = weekCount + 1;
       setWeekCount(newWeekCount);
       setLastWorkoutWeek(currentWeek);
-      saveWeekCount(newWeekCount);
-      saveLastWorkoutWeek(currentWeek);
+      if (demo.enabled) {
+        demo.updateDemoData(data => ({ ...data, weekCount: newWeekCount, lastWorkoutWeek: currentWeek }));
+      } else {
+        saveWeekCount(newWeekCount);
+        saveLastWorkoutWeek(currentWeek);
+      }
       if (newWeekCount > 0 && newWeekCount % 4 === 0) {
         setShowDeloadAlert(true);
       }
     }
 
     dispatch({ type: 'RESET' });
-  }, [progress, plan, state, weekCount, lastWorkoutWeek]);
+  }, [progress, plan, state, weekCount, lastWorkoutWeek, demo]);
 
   const resetWorkoutState = useCallback(() => {
     dispatch({ type: 'RESET' });
@@ -175,10 +220,14 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   const dismissDeloadAlert = useCallback((reset: boolean) => {
     if (reset) {
       setWeekCount(0);
-      saveWeekCount(0);
+      if (demo.enabled) {
+        demo.updateDemoData(data => ({ ...data, weekCount: 0 }));
+      } else {
+        saveWeekCount(0);
+      }
     }
     setShowDeloadAlert(false);
-  }, []);
+  }, [demo]);
 
   const dismissPR = useCallback(() => setNewPR(null), []);
 

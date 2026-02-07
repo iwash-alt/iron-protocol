@@ -4,6 +4,7 @@ import { Icon, MiniChart, ErrorBoundary } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { getGreeting } from '@/shared/utils';
 import { loadProfile, saveProfile, runMigrations } from '@/shared/storage';
+import { DemoModeProvider, useDemoMode } from '@/shared/demo/DemoModeContext';
 import { PlanProvider } from '@/features/training-plan/PlanContext';
 import { WorkoutProvider, useWorkout } from '@/features/workout/WorkoutContext';
 import { NutritionProvider } from '@/features/nutrition/nutrition.context';
@@ -33,15 +34,17 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <PlanProvider profile={profile}>
-        <WorkoutProvider>
-          <NutritionProvider>
-            <ProgressProvider>
-              <AppShell profile={profile} />
-            </ProgressProvider>
-          </NutritionProvider>
-        </WorkoutProvider>
-      </PlanProvider>
+      <DemoModeProvider>
+        <PlanProvider profile={profile}>
+          <WorkoutProvider>
+            <NutritionProvider>
+              <ProgressProvider>
+                <AppShell profile={profile} />
+              </ProgressProvider>
+            </NutritionProvider>
+          </WorkoutProvider>
+        </PlanProvider>
+      </DemoModeProvider>
     </ErrorBoundary>
   );
 }
@@ -55,6 +58,7 @@ function AppShell({ profile }: { profile: UserProfile }) {
   const [showExerciseHistoryFromDash, setShowExerciseHistoryFromDash] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
 
+  const demoMode = useDemoMode();
   const workout = useWorkout();
   const progress = useProgress();
 
@@ -140,6 +144,8 @@ function AppShell({ profile }: { profile: UserProfile }) {
             onOpenNutrition={() => setShowNutritionFromDash(true)}
             onOpenMeasurements={() => setShowMeasurements(true)}
             onShowExerciseHistory={setShowExerciseHistoryFromDash}
+            demoMode={demoMode.enabled}
+            onToggleDemo={demoMode.setEnabled}
           />
         )}
       </main>

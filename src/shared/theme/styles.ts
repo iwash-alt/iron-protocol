@@ -270,7 +270,7 @@ export const S: Record<string, CSSProperties> = {
   dayBtnActive: { border: `2px solid ${colors.primary}`, background: 'rgba(255,59,48,0.1)' },
 
   // Dashboard
-  sumGrid: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: spacing.lg },
+  sumGrid: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: spacing.lg },
   sumCard: { background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, borderRadius: radii.xl, padding: spacing.xl - 6, textAlign: 'center' },
   sumLabel: { fontSize: '0.6rem', color: colors.textTertiary, marginBottom: 4, fontWeight: typography.weights.black, letterSpacing: '0.03em' },
   sumVal: { fontSize: typography.sizes['6xl'], fontWeight: typography.weights.black, color: colors.primary },
@@ -306,6 +306,13 @@ export const S: Record<string, CSSProperties> = {
   profileGrid: { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: spacing.md, marginTop: spacing.md },
   profileItem: { display: 'flex', justifyContent: 'space-between', fontSize: typography.sizes.lg, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' },
   profileLabel: { color: colors.textTertiary },
+  demoRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, marginTop: spacing.lg, paddingTop: spacing.md, borderTop: `1px solid ${colors.surfaceBorder}` },
+  demoLabel: { fontSize: typography.sizes.md, fontWeight: typography.weights.bold },
+  demoHint: { fontSize: typography.sizes.sm, color: colors.textSecondary, marginTop: 4 },
+  demoToggle: { width: 56, height: 30, borderRadius: 999, border: `1px solid ${colors.surfaceBorder}`, background: colors.surfaceHover, padding: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', transition: 'all 0.2s ease' },
+  demoToggleOn: { background: colors.primary, border: `1px solid ${colors.primary}` },
+  demoKnob: { width: 24, height: 24, borderRadius: '50%', background: colors.text, transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' },
+  demoKnobOn: { background: '#fff', transform: 'translateX(26px)' },
 };
 
 export const globalCss = `

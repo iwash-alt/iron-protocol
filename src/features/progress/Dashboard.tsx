@@ -13,9 +13,19 @@ interface DashboardProps {
   onOpenNutrition: () => void;
   onOpenMeasurements: () => void;
   onShowExerciseHistory: (name: string) => void;
+  demoMode: boolean;
+  onToggleDemo: (enabled: boolean) => void;
 }
 
-export function Dashboard({ profile, streak, onOpenNutrition, onOpenMeasurements, onShowExerciseHistory }: DashboardProps) {
+export function Dashboard({
+  profile,
+  streak,
+  onOpenNutrition,
+  onOpenMeasurements,
+  onShowExerciseHistory,
+  demoMode,
+  onToggleDemo,
+}: DashboardProps) {
   const workout = useWorkout();
   const nutrition = useNutrition();
   const progress = useProgress();
@@ -26,6 +36,7 @@ export function Dashboard({ profile, streak, onOpenNutrition, onOpenMeasurements
   const last7 = getLast7Days();
   const proteinData = last7.map(d => nutrition.nutritionHistory[d]?.protein || 0);
   const weightData = progress.bodyMeasurements.slice(-10).map(m => parseFloat(String(m.weight)) || 0);
+  const programsCompleted = Math.floor(workout.weekCount / 4);
 
   return (
     <div>
@@ -42,6 +53,10 @@ export function Dashboard({ profile, streak, onOpenNutrition, onOpenMeasurements
         <div style={S.sumCard}>
           <div style={S.sumLabel}>STREAK</div>
           <div style={S.sumVal}>{streak} 🔥</div>
+        </div>
+        <div style={S.sumCard}>
+          <div style={S.sumLabel}>PROGRAMS</div>
+          <div style={S.sumVal}>{programsCompleted}</div>
         </div>
       </div>
 
@@ -132,6 +147,20 @@ export function Dashboard({ profile, streak, onOpenNutrition, onOpenMeasurements
           <div style={S.profileItem}><span style={S.profileLabel}>Weight</span><span>{profile.weight}kg</span></div>
           <div style={S.profileItem}><span style={S.profileLabel}>Level</span><span style={{ textTransform: 'capitalize' }}>{profile.level}</span></div>
           <div style={S.profileItem}><span style={S.profileLabel}>Schedule</span><span>{profile.days}x/week</span></div>
+        </div>
+        <div style={S.demoRow}>
+          <div>
+            <div style={S.demoLabel}>Demo Mode</div>
+            <div style={S.demoHint}>Load 6 months of serious lifter data</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onToggleDemo(!demoMode)}
+            style={{ ...S.demoToggle, ...(demoMode ? S.demoToggleOn : {}) }}
+            aria-pressed={demoMode}
+          >
+            <span style={{ ...S.demoKnob, ...(demoMode ? S.demoKnobOn : {}) }} />
+          </button>
         </div>
       </div>
     </div>

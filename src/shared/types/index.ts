@@ -13,3 +13,10 @@ export type {
 } from './nutrition';
 
 export type { BodyMeasurement } from './measurements';
+
+export type {
+  Feature, PlanId, BillingInterval,
+  SubscriptionState, TrialState, PromoUnlock,
+  EntitlementStore, ResolvedEntitlements, FeatureSource,
+  PlanDefinition,
+} from './entitlement';

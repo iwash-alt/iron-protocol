@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { Icon, MiniChart, ErrorBoundary } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
@@ -16,18 +16,48 @@ import { MeasurementsModal } from '@/features/progress/MeasurementsModal';
 import { QuickWorkoutList } from '@/features/quick-workout/QuickWorkoutList';
 import { QuickWorkoutActive } from '@/features/quick-workout/QuickWorkoutActive';
 import type { QuickTemplate } from '@/data/quick-templates';
+// @ts-ignore — JSX homepage component
+import Homepage from '@/ui/screens/Homepage';
 
 // Run migrations before first render
 runMigrations();
 
+// ─── Hash Router ────────────────────────────────────────────────────────────
+function useHashRoute() {
+  const [hash, setHash] = useState(() => window.location.hash || '#/');
+
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash || '#/');
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  return hash;
+}
+
 export default function App() {
+  const hash = useHashRoute();
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
+
+  // Auto-redirect: if user has profile and is on homepage, go to app
+  useEffect(() => {
+    if (profile && (hash === '#/' || hash === '' || hash === '#')) {
+      window.location.hash = '#/app';
+    }
+  }, [profile, hash]);
 
   const handleProfileComplete = useCallback((p: UserProfile) => {
     saveProfile(p);
     setProfile(p);
+    window.location.hash = '#/app';
   }, []);
 
+  // Route: Homepage
+  if (hash === '#/' || hash === '' || hash === '#') {
+    return <Homepage />;
+  }
+
+  // Route: Main App (#/app)
   if (!profile) {
     return <Onboarding onComplete={handleProfileComplete} />;
   }

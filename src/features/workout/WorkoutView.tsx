@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { PlanExercise, RPEValue, Exercise } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
-import { useTimer } from '@/shared/hooks';
+import { useTimer, getAdaptiveRest } from '@/shared/hooks';
 import { Icon, MiniChart } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
@@ -11,6 +11,13 @@ import { getExercisesByMuscle, getWeightedExercises, exercises } from '@/data/ex
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
+import { useTier } from '@/hooks/useTier';
+import { calculateFatigueScore } from '@/training/fatigue';
+import { evaluateSuggestions } from '@/training/suggestions';
+import type { WorkoutSuggestion } from '@/training/suggestions';
+import { SuggestionToast } from './SuggestionToast';
+import { ReadinessCheck, getTodayReadiness } from '@/features/readiness/ReadinessCheck';
+import type { ReadinessResult } from '@/features/readiness/ReadinessCheck';
 
 interface WorkoutViewProps {
   profile: UserProfile;
@@ -21,6 +28,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const workout = useWorkout();
   const nutrition = useNutrition();
   const timer = useTimer();
+  const { canAccess } = useTier();
+  const isPro = canAccess('analytics_advanced');
 
   // Modal states
   const [showWarmup, setShowWarmup] = useState<string | null>(null);
@@ -35,6 +44,20 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
 
+  // Intelligence features (Pro only)
+  const [activeSuggestion, setActiveSuggestion] = useState<WorkoutSuggestion | null>(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
+  const [showReadinessCheck, setShowReadinessCheck] = useState<boolean>(() => {
+    if (!isPro) return false;
+    return !getTodayReadiness();
+  });
+  const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
+
+  const fatigue = useMemo(() => {
+    if (!isPro || workout.workoutHistory.length < 2) return null;
+    return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
+  }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
+
   const proteinGoal = getProteinGoal(profile.weight);
 
   const completeSet = (pe: PlanExercise) => {
@@ -48,7 +71,29 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!showRPE) return;
     const { exercise } = showRPE;
     workout.completeSet(exercise, rpe);
-    timer.start(exercise.restSeconds);
+
+    // Adaptive rest timer (Pro) or default
+    if (isPro) {
+      const adaptive = getAdaptiveRest(exercise, rpe);
+      timer.start(adaptive.seconds, adaptive.label);
+    } else {
+      timer.start(exercise.restSeconds);
+    }
+
+    // Mid-workout suggestions (Pro)
+    if (isPro) {
+      const suggestions = evaluateSuggestions(
+        workout.currentLog,
+        exercise,
+        rpe,
+        workout.exerciseHistory,
+        fatigue,
+      );
+      const newSuggestion = suggestions.find(s => !dismissedSuggestionIds.has(s.id));
+      if (newSuggestion) {
+        setActiveSuggestion(newSuggestion);
+      }
+    }
 
     const setNum = (workout.completedSets[exercise.id] || 0) + 1;
     if (setNum === exercise.sets) {
@@ -126,9 +171,20 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       {/* Rest timer */}
       {timer.isActive && (
         <div style={S.restBanner}>
-          <div><div style={S.restLabel}>REST TIME</div><div style={S.restTime}>{formatTime(timer.seconds)}</div></div>
+          <div><div style={S.restLabel}>{timer.label || 'REST TIME'}</div><div style={S.restTime}>{formatTime(timer.seconds)}</div></div>
           <button onClick={timer.skip} style={S.skipBtn}>SKIP</button>
         </div>
+      )}
+
+      {/* Mid-workout suggestion toast (Pro) */}
+      {activeSuggestion && (
+        <SuggestionToast
+          suggestion={activeSuggestion}
+          onDismiss={() => {
+            setDismissedSuggestionIds(prev => new Set([...prev, activeSuggestion.id]));
+            setActiveSuggestion(null);
+          }}
+        />
       )}
 
       {/* Exercise list */}
@@ -411,6 +467,17 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             <button onClick={() => workout.dismissDeloadAlert(false)} style={S.deloadSkip}>KEEP PUSHING</button>
           </div>
         </div>
+      )}
+
+      {/* Pre-workout readiness check (Pro) */}
+      {showReadinessCheck && (
+        <ReadinessCheck
+          onComplete={(result) => {
+            setReadinessResult(result);
+            setShowReadinessCheck(false);
+          }}
+          onSkip={() => setShowReadinessCheck(false)}
+        />
       )}
     </>
   );

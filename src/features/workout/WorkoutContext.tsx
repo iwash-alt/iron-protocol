@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { RPEValue, PlanExercise, WorkoutLog, ExerciseHistory, PersonalRecords } from '@/shared/types';
+import type { RPEValue, PlanExercise, WorkoutLog, ExerciseHistory, PersonalRecords, SetLog } from '@/shared/types';
 import { workoutReducer, initialWorkoutState } from './workout.reducer';
 import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
 import { usePlan } from '@/features/training-plan/PlanContext';
@@ -15,6 +15,7 @@ import {
 
 interface WorkoutContextValue {
   completedSets: Record<string, number>;
+  currentLog: SetLog[];
   restTimerFor: string | null;
   workoutHistory: WorkoutLog[];
   exerciseHistory: ExerciseHistory;
@@ -234,6 +235,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   return (
     <WorkoutContext.Provider value={{
       completedSets: state.completedSets,
+      currentLog: state.currentLog,
       restTimerFor: state.restTimerFor,
       workoutHistory,
       exerciseHistory,

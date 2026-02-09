@@ -1,1 +1,1 @@
-export { useTimer } from './useTimer';
+export { useTimer, getAdaptiveRest } from './useTimer';

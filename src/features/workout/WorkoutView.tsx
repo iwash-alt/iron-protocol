@@ -92,7 +92,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   return (
     <>
       {celebrate && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🏆</div><div style={S.celebTitle}>GREAT WORK!</div></div></div>}
-      {workout.newPR && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🔥</div><div style={S.celebTitle}>NEW PR!</div><div style={{ color: '#888', marginTop: 8, fontSize: '0.9rem' }}>{workout.newPR.name}</div><div style={{ color: '#FF3B30', fontSize: '1.75rem', fontWeight: 800, marginTop: 4 }}>{workout.newPR.weight}kg</div><div style={{ color: '#555', fontSize: '0.75rem' }}>Estimated 1RM</div></div></div>}
 
       {/* Nutrition bar */}
       <div style={S.nutritionBar}>

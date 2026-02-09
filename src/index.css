@@ -10,9 +10,26 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #0a0a0a;
+  /* Prevent text selection on double-tap */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in inputs */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Prevent pull-to-refresh on mobile */
 html, body {
   overscroll-behavior: none;
+  overflow-x: hidden;
+}
+
+/* Safe area padding for fixed elements */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+  }
 }

@@ -313,15 +313,469 @@ export const S: Record<string, CSSProperties> = {
   demoToggleOn: { background: colors.primary, border: `1px solid ${colors.primary}` },
   demoKnob: { width: 24, height: 24, borderRadius: '50%', background: colors.text, transition: 'all 0.2s ease', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' },
   demoKnobOn: { background: '#fff', transform: 'translateX(26px)' },
+
+  // ─── Bottom Navigation ────────────────────────────────────────────────────
+  bottomNav: {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    display: 'flex',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    background: 'rgba(10,10,10,0.92)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderTop: '1px solid rgba(255,255,255,0.08)',
+    paddingTop: 8,
+    paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+    zIndex: 50,
+  },
+  bottomNavTab: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    padding: '6px 16px',
+    background: 'none',
+    border: 'none',
+    color: 'rgba(255,255,255,0.4)',
+    cursor: 'pointer',
+    fontSize: '0.6rem',
+    fontWeight: typography.weights.bold,
+    letterSpacing: '0.02em',
+    minWidth: 64,
+    minHeight: 44,
+    transition: 'color 0.2s ease, transform 0.2s ease',
+    WebkitTapHighlightColor: 'transparent',
+  },
+  bottomNavTabActive: {
+    color: colors.primary,
+  },
+  bottomNavLabel: {
+    marginTop: 2,
+    fontSize: '0.6rem',
+    fontWeight: typography.weights.bold,
+    letterSpacing: '0.03em',
+  },
+  bottomNavSpacer: {
+    height: 'calc(68px + env(safe-area-inset-bottom, 0px))',
+  },
+
+  // ─── PR Celebration ───────────────────────────────────────────────────────
+  prCelebrate: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.95)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 200,
+  },
+  prCelebrateContent: {
+    textAlign: 'center',
+    animation: 'prBurst 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+  },
+  prCelebrateEmoji: {
+    fontSize: 72,
+    marginBottom: 16,
+  },
+  prCelebrateTitle: {
+    fontSize: '2rem',
+    fontWeight: typography.weights.black,
+    color: colors.primary,
+    marginBottom: 8,
+    animation: 'prGlow 1.5s ease-in-out infinite',
+    letterSpacing: '0.1em',
+  },
+  prParticleContainer: {
+    position: 'absolute',
+    inset: 0,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+  },
+
+  // ─── Set Complete Animation ───────────────────────────────────────────────
+  setCompleteTick: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    background: colors.successGradient,
+    color: '#fff',
+    animation: 'setComplete 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both, greenFlash 0.6s ease both',
+  },
+
+  // ─── Rest Timer Ring ──────────────────────────────────────────────────────
+  restRing: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    animation: 'restRingPulse 2s ease-in-out infinite',
+  },
+
+  // ─── Pull-to-Refresh ─────────────────────────────────────────────────────
+  pullRefresh: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    transition: 'height 0.2s ease',
+  },
+  pullRefreshSpinner: {
+    animation: 'pullRefreshSpin 0.8s linear infinite',
+    color: colors.primary,
+  },
+
+  // ─── Swipe Indicator ──────────────────────────────────────────────────────
+  swipeIndicator: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 6,
+    padding: '8px 0',
+    marginBottom: 8,
+  },
+  swipeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    transition: 'all 0.2s ease',
+  },
+
+  // ─── Profile Screen ──────────────────────────────────────────────────────
+  profileScreen: {
+    paddingTop: spacing.lg,
+  },
+  profileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    background: colors.primaryGradient,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: '0 auto 16px',
+    boxShadow: `0 8px 30px ${colors.primaryGlow}`,
+  },
+  profileName: {
+    fontSize: typography.sizes.hero,
+    fontWeight: typography.weights.black,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  profileSub: {
+    fontSize: typography.sizes.lg,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xxl,
+    textTransform: 'capitalize',
+  },
+  profileSection: {
+    marginBottom: spacing.lg,
+  },
+  profileSectionTitle: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.black,
+    color: colors.textTertiary,
+    letterSpacing: '0.1em',
+    marginBottom: spacing.sm,
+    paddingLeft: 4,
+  },
+  profileCard: {
+    background: colors.surface,
+    border: `1px solid ${colors.surfaceBorder}`,
+    borderRadius: radii.xxl,
+    overflow: 'hidden',
+  },
+  profileRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: `${spacing.lg}px ${spacing.lg}px`,
+    minHeight: 52,
+    borderBottom: `1px solid ${colors.surfaceBorder}`,
+    cursor: 'pointer',
+    transition: 'background 0.15s ease',
+  },
+  profileRowLast: {
+    borderBottom: 'none',
+  },
+  profileRowLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.medium,
+  },
+  profileRowValue: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.sm,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.lg,
+  },
+  profileRowDanger: {
+    color: colors.primary,
+  },
+
+  // ─── Upgrade Card ─────────────────────────────────────────────────────────
+  upgradeCard: {
+    background: `linear-gradient(135deg, rgba(255,59,48,0.12) 0%, rgba(255,107,71,0.08) 100%)`,
+    border: `1px solid ${colors.primaryBorder}`,
+    borderRadius: radii.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  upgradeTitle: {
+    fontSize: typography.sizes['4xl'],
+    fontWeight: typography.weights.black,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  upgradeSub: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  upgradeFeature: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.sm,
+    fontSize: typography.sizes.lg,
+    color: colors.textSecondary,
+    padding: '6px 0',
+  },
+  upgradeFeatureIcon: {
+    color: colors.primary,
+    flexShrink: 0,
+  },
+  upgradeBtn: {
+    width: '100%',
+    padding: '14px',
+    borderRadius: radii.xl,
+    border: 'none',
+    background: colors.primaryGradient,
+    color: colors.text,
+    cursor: 'pointer',
+    fontWeight: typography.weights.black,
+    fontSize: typography.sizes.xl,
+    marginTop: spacing.lg,
+    boxShadow: `0 4px 15px ${colors.primaryGlow}`,
+    minHeight: 48,
+  },
+
+  // ─── Profile Edit Modal ───────────────────────────────────────────────────
+  profileEditModal: {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: 'linear-gradient(180deg, #1a1a1a 0%, #111 100%)',
+    borderRadius: '20px 20px 0 0',
+    padding: `${spacing.xxl}px ${spacing.xl}px`,
+    paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+    zIndex: 150,
+    maxHeight: '85vh',
+    overflowY: 'auto',
+  },
+  profileEditHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    background: 'rgba(255,255,255,0.2)',
+    margin: '0 auto 20px',
+  },
+  profileEditTitle: {
+    fontSize: typography.sizes['4xl'],
+    fontWeight: typography.weights.black,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  profileEditField: {
+    marginBottom: spacing.lg,
+  },
+  profileEditLabel: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    display: 'block',
+    fontWeight: typography.weights.bold,
+  },
+  profileEditInput: {
+    width: '100%',
+    padding: spacing.lg,
+    background: 'rgba(255,255,255,0.05)',
+    border: '2px solid rgba(255,255,255,0.1)',
+    borderRadius: radii.xl,
+    color: colors.text,
+    fontSize: typography.sizes['3xl'],
+    outline: 'none',
+    minHeight: 48,
+  },
+  profileEditSave: {
+    width: '100%',
+    padding: '16px',
+    background: colors.primaryGradient,
+    border: 'none',
+    borderRadius: radii.xl,
+    color: colors.text,
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.black,
+    cursor: 'pointer',
+    marginTop: spacing.sm,
+    minHeight: 52,
+  },
+
+  // ─── Confirm Dialog (Profile reset) ───────────────────────────────────────
+  confirmOverlay: {
+    position: 'fixed',
+    inset: 0,
+    background: colors.overlay,
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    zIndex: 200,
+  },
+
+  // ─── App version ──────────────────────────────────────────────────────────
+  appVersion: {
+    textAlign: 'center',
+    color: colors.textTertiary,
+    fontSize: typography.sizes.sm,
+    padding: `${spacing.xxl}px 0`,
+  },
 };
 
 export const globalCss = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  button { font-family: inherit; }
+  button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   input { font-family: inherit; }
   input::placeholder { color: #555; }
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+  /* Remove hover-only states on mobile */
+  @media (hover: none) {
+    button:hover { transform: none !important; box-shadow: inherit !important; }
+  }
+
+  /* Active press state for all interactive elements */
+  button:active, [role="button"]:active {
+    transform: scale(0.97) !important;
+    opacity: 0.9;
+    transition: transform 0.1s ease, opacity 0.1s ease !important;
+  }
+
+  /* Animations */
   @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  @keyframes setComplete {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.3); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes greenFlash {
+    0% { box-shadow: 0 0 0 0 rgba(52,199,89,0.6); }
+    50% { box-shadow: 0 0 20px 10px rgba(52,199,89,0.3); }
+    100% { box-shadow: 0 0 0 0 rgba(52,199,89,0); }
+  }
+
+  @keyframes prBurst {
+    0% { transform: scale(0.3); opacity: 0; }
+    20% { transform: scale(1.1); opacity: 1; }
+    40% { transform: scale(0.95); }
+    60% { transform: scale(1.05); }
+    80% { transform: scale(0.98); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes prParticle {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-120px) scale(0); opacity: 0; }
+  }
+
+  @keyframes prGlow {
+    0%, 100% { box-shadow: 0 0 30px rgba(255,59,48,0.3); }
+    50% { box-shadow: 0 0 60px rgba(255,59,48,0.6), 0 0 100px rgba(255,59,48,0.2); }
+  }
+
+  @keyframes restPulse {
+    0%, 100% { stroke-dashoffset: 0; opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  @keyframes restRingPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+  }
+
+  @keyframes tabSlideLeft {
+    from { transform: translateX(30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes tabSlideRight {
+    from { transform: translateX(-30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes navBounce {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes pullRefreshSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes confettiBurst {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: translateY(-200px) rotate(720deg) scale(0); }
+  }
+
+  /* Card stagger entry animation */
+  .ex-card-enter {
+    animation: fadeInUp 0.35s ease both;
+  }
+
+  /* Modal sheet pattern */
+  .modal-sheet {
+    animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .modal-sheet-exit {
+    animation: slideDown 0.25s ease-in both;
+  }
+
+  /* Tab transition classes */
+  .tab-enter-right { animation: tabSlideLeft 0.25s ease both; }
+  .tab-enter-left { animation: tabSlideRight 0.25s ease both; }
 `;

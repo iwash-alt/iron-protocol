@@ -20,9 +20,19 @@ import { Profile } from '@/features/profile/Profile';
 import type { QuickTemplate } from '@/data/quick-templates';
 // @ts-ignore — JSX homepage component
 import Homepage from '@/ui/screens/Homepage';
+import { InstallBanner } from '@/features/pwa/InstallBanner';
 
 // Run migrations before first render
 runMigrations();
+
+// Dismiss splash screen once React is hydrated
+function dismissSplash() {
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.classList.add('hide');
+    setTimeout(() => splash.remove(), 500);
+  }
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type TabId = 'workout' | 'dashboard' | 'quick' | 'profile';
@@ -62,6 +72,11 @@ export default function App() {
   const hash = useHashRoute();
   const [profile, setProfile] = useState<UserProfile | null>(() => loadProfile());
 
+  // Dismiss splash screen on mount
+  useEffect(() => {
+    dismissSplash();
+  }, []);
+
   // Auto-redirect: if user has profile and is on homepage, go to app
   useEffect(() => {
     if (profile && (hash === '#/' || hash === '' || hash === '#')) {
@@ -93,6 +108,7 @@ export default function App() {
             <NutritionProvider>
               <ProgressProvider>
                 <AppShell profile={profile} onProfileUpdate={setProfile} />
+                <InstallBanner />
               </ProgressProvider>
             </NutritionProvider>
           </WorkoutProvider>

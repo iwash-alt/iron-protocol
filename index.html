@@ -2,29 +2,141 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
+
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+
+    <!-- Viewport & Mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0a0a0a" />
-    <meta name="description" content="Progressive overload fitness tracker with smart auto-regulation" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Progressive overload fitness tracker with smart auto-regulation. Track workouts, hit PRs, and build strength with intelligent programming." />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- PWA / Mobile Web App -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Iron Protocol" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="format-detection" content="telephone=no" />
+    <meta name="application-name" content="Iron Protocol" />
+    <meta name="msapplication-TileColor" content="#0a0a0a" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Iron Protocol — Smart Strength Training" />
+    <meta property="og:description" content="Progressive overload fitness tracker with smart auto-regulation. Track workouts, hit PRs, and build strength." />
+    <meta property="og:image" content="/icons/icon-512.svg" />
+    <meta property="og:site_name" content="Iron Protocol" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Iron Protocol — Smart Strength Training" />
+    <meta name="twitter:description" content="Progressive overload fitness tracker with smart auto-regulation. Track workouts, hit PRs, and build strength." />
+    <meta name="twitter:image" content="/icons/icon-512.svg" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
     <title>Iron Protocol</title>
+
     <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
         margin: 0;
         background: #0a0a0a;
         -webkit-tap-highlight-color: transparent;
         -webkit-touch-callout: none;
       }
+
+      /* ─── Splash Screen ──────────────────────────────────────────────── */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: #0a0a0a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.4s ease, visibility 0.4s ease;
+      }
+      #splash.hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      /* Dumbbell icon */
+      .splash-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 24px;
+        animation: splashPulse 2s ease-in-out infinite;
+      }
+
+      /* Wordmark */
+      .splash-wordmark {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: 6px;
+        color: #fff;
+        text-transform: uppercase;
+        animation: splashPulse 2s ease-in-out infinite;
+      }
+
+      /* Loading bar */
+      .splash-loader {
+        margin-top: 32px;
+        width: 120px;
+        height: 3px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .splash-loader-bar {
+        width: 40%;
+        height: 100%;
+        background: #FF3B30;
+        border-radius: 2px;
+        animation: splashLoad 1.2s ease-in-out infinite;
+      }
+
+      @keyframes splashPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+      }
+      @keyframes splashLoad {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+      }
     </style>
   </head>
   <body>
+    <!-- Splash Screen (visible while JS loads) -->
+    <div id="splash">
+      <svg class="splash-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(32,32)">
+          <rect x="-24" y="-14" width="6" height="28" rx="2" fill="#FF3B30"/>
+          <rect x="18" y="-14" width="6" height="28" rx="2" fill="#FF3B30"/>
+          <rect x="-18" y="-10" width="5" height="20" rx="2" fill="#FF3B30" opacity="0.75"/>
+          <rect x="13" y="-10" width="5" height="20" rx="2" fill="#FF3B30" opacity="0.75"/>
+          <rect x="-13" y="-2" width="26" height="4" rx="2" fill="#fff" opacity="0.9"/>
+          <rect x="-27" y="-2" width="3" height="4" rx="1.5" fill="#fff" opacity="0.5"/>
+          <rect x="24" y="-2" width="3" height="4" rx="1.5" fill="#fff" opacity="0.5"/>
+        </g>
+      </svg>
+      <div class="splash-wordmark">Iron Protocol</div>
+      <div class="splash-loader">
+        <div class="splash-loader-bar"></div>
+      </div>
+    </div>
+
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

@@ -83,7 +83,13 @@ describe('LocalStorageAdapter', () => {
   describe('clear', () => {
     it('removes all app data', async () => {
       await adapter.save('weekCount', 10);
-      await adapter.save('personalRecords', { 'Bench Press': 100 });
+      await adapter.save('personalRecords', {
+        'Bench Press': {
+          heaviestWeight: { weightKg: 100, reps: 1, date: '2025-01-01' },
+          bestEstimated1RM: { value: 100, weightKg: 100, reps: 1, date: '2025-01-01' },
+          bestSetVolume: null, bestSessionVolume: null, mostRepsAtWeight: null,
+        },
+      });
 
       await adapter.clear();
 

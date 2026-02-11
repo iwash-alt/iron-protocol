@@ -4,6 +4,7 @@ export {
   loadWorkoutHistory, saveWorkoutHistory,
   loadExerciseHistory, saveExerciseHistory,
   loadPersonalRecords, savePersonalRecords,
+  loadGlobalPRs, saveGlobalPRs,
   loadBodyMeasurements, saveBodyMeasurements,
   loadNutritionHistory, saveNutritionHistory,
   loadWeekCount, saveWeekCount,

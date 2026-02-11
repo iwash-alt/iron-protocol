@@ -43,6 +43,37 @@ export interface ExerciseHistoryEntry {
   estimated1RM: number;
 }
 
-export type PersonalRecords = Record<string, number>;
+/** Legacy PR format: exerciseName -> estimated1RM */
+export type PersonalRecordsLegacy = Record<string, number>;
+
+/** Enhanced PR entry for a single exercise */
+export interface ExercisePR {
+  /** Heaviest weight lifted (and the reps it was done at) */
+  heaviestWeight: { weightKg: number; reps: number; date: string } | null;
+  /** Best estimated 1RM via Epley */
+  bestEstimated1RM: { value: number; weightKg: number; reps: number; date: string } | null;
+  /** Best single-set volume (weight x reps) */
+  bestSetVolume: { value: number; weightKg: number; reps: number; date: string } | null;
+  /** Best total session volume for this exercise */
+  bestSessionVolume: { value: number; date: string } | null;
+  /** Most reps at a given weight */
+  mostRepsAtWeight: { weightKg: number; reps: number; date: string } | null;
+}
+
+/** Global PRs across all exercises */
+export interface GlobalPRs {
+  /** Highest total session volume (all exercises combined) */
+  highestSessionVolume: { value: number; date: string; dayName: string } | null;
+  /** Longest consecutive training streak (days) */
+  longestStreak: { days: number; endDate: string } | null;
+  /** Most sets completed in a single workout */
+  mostSetsInWorkout: { count: number; date: string; dayName: string } | null;
+  /** Highest average RPE survived */
+  highestAvgRPE: { value: number; date: string; dayName: string } | null;
+}
+
+/** Enhanced PR structure: exerciseName -> ExercisePR */
+export type PersonalRecords = Record<string, ExercisePR>;
+
 export type ExerciseHistory = Record<string, ExerciseHistoryEntry[]>;
 export type CompletedSets = Record<string, number>;

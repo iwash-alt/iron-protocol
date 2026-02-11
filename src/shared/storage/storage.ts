@@ -1,6 +1,6 @@
 import type { z } from 'zod/v4';
 import type { UserProfile } from '@/shared/types';
-import type { WorkoutLog, ExerciseHistory, PersonalRecords } from '@/shared/types';
+import type { WorkoutLog, ExerciseHistory, PersonalRecords, GlobalPRs } from '@/shared/types';
 import type { BodyMeasurement } from '@/shared/types';
 import type { NutritionHistory } from '@/shared/types';
 import type { EntitlementStore } from '@/shared/types';
@@ -9,17 +9,20 @@ import {
   workoutLogSchema,
   exerciseHistorySchema,
   personalRecordsSchema,
+  personalRecordsLegacySchema,
+  globalPRsSchema,
   bodyMeasurementSchema,
   nutritionHistorySchema,
   entitlementStoreSchema,
 } from './schemas';
 
 const STORAGE_VERSION_KEY = 'ironStorageVersion';
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 export const StorageKeys = {
   PROFILE: 'ironProfile',
   PRS: 'ironPRs',
+  GLOBAL_PRS: 'ironGlobalPRs',
   WORKOUT_HISTORY: 'ironWorkoutHistory',
   EXERCISE_HISTORY: 'ironExerciseHistory',
   BODY_MEASUREMENTS: 'ironBodyMeasurements',
@@ -100,12 +103,41 @@ function migrateV1toV2(): void {
   }
 }
 
+/**
+ * Migrate v2 PRs (Record<string, number>) to v3 enhanced PR format.
+ */
+function migrateV2toV3(): void {
+  const rawPRs = localStorage.getItem(StorageKeys.PRS);
+  if (!rawPRs) return;
+  try {
+    const data = JSON.parse(rawPRs);
+    // Check if it's the old format (values are plain numbers)
+    const firstVal = Object.values(data)[0];
+    if (typeof firstVal === 'number') {
+      const migrated: Record<string, unknown> = {};
+      for (const [name, value] of Object.entries(data)) {
+        migrated[name] = {
+          heaviestWeight: null,
+          bestEstimated1RM: { value: value as number, weightKg: 0, reps: 0, date: '' },
+          bestSetVolume: null,
+          bestSessionVolume: null,
+          mostRepsAtWeight: null,
+        };
+      }
+      localStorage.setItem(StorageKeys.PRS, JSON.stringify(migrated));
+    }
+  } catch { /* keep existing data */ }
+}
+
 export function runMigrations(): void {
   const raw = localStorage.getItem(STORAGE_VERSION_KEY);
   const version = raw ? parseInt(raw, 10) : 1;
 
   if (version < 2) {
     migrateV1toV2();
+  }
+  if (version < 3) {
+    migrateV2toV3();
   }
 
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION.toString());
@@ -151,6 +183,21 @@ export function loadPersonalRecords(): PersonalRecords {
 
 export function savePersonalRecords(records: PersonalRecords): void {
   safeSave(StorageKeys.PRS, records);
+}
+
+const DEFAULT_GLOBAL_PRS: GlobalPRs = {
+  highestSessionVolume: null,
+  longestStreak: null,
+  mostSetsInWorkout: null,
+  highestAvgRPE: null,
+};
+
+export function loadGlobalPRs(): GlobalPRs {
+  return safeLoad(StorageKeys.GLOBAL_PRS, globalPRsSchema) ?? DEFAULT_GLOBAL_PRS;
+}
+
+export function saveGlobalPRs(prs: GlobalPRs): void {
+  safeSave(StorageKeys.GLOBAL_PRS, prs);
 }
 
 export function loadBodyMeasurements(): BodyMeasurement[] {

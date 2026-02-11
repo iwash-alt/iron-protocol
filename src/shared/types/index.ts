@@ -3,7 +3,8 @@ export { MUSCLE_GROUPS, EQUIPMENT_TYPES, LOWER_BODY_MUSCLES, isLowerBody } from 
 
 export type {
   RPEValue, PlanExercise, WorkoutDay, SetLog, WorkoutLog,
-  ExerciseHistoryEntry, PersonalRecords, ExerciseHistory, CompletedSets,
+  ExerciseHistoryEntry, PersonalRecords, PersonalRecordsLegacy,
+  ExercisePR, GlobalPRs, ExerciseHistory, CompletedSets,
 } from './workout';
 
 export type { UserProfile, ExperienceLevel, TrainingDays } from './profile';

@@ -216,10 +216,13 @@ export function generateWeeklyInsights(
       return entryWeek === weekStart;
     });
 
+    const prEntry = personalRecords[exName];
+    const best1RM = prEntry?.bestEstimated1RM?.value ?? 0;
+
     for (const entry of weekEntries) {
       if (
-        personalRecords[exName] !== undefined &&
-        entry.estimated1RM >= personalRecords[exName] &&
+        best1RM > 0 &&
+        entry.estimated1RM >= best1RM &&
         (!topPR || entry.estimated1RM > topPR.weight)
       ) {
         topPR = { exercise: exName, weight: entry.estimated1RM };

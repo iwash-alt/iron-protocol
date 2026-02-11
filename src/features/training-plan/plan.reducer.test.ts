@@ -180,9 +180,12 @@ describe('planReducer', () => {
         id: 'new-ex',
         name: 'Bicep Curl',
         muscle: 'Biceps',
-        equipment: 'Dumbbells',
-        youtubeId: '',
+        secondaryMuscles: ['Brachialis', 'Forearms'],
+        equipment: 'Dumbbell',
+        type: 'accessory',
         isBodyweight: false,
+        formCues: ['Pin elbows to sides', 'Squeeze at the top'],
+        commonMistakes: ['Swinging torso'],
       };
 
       const state = planReducer(initialState, {
@@ -222,9 +225,12 @@ describe('planReducer', () => {
         id: 'swap-ex',
         name: 'Incline Press',
         muscle: 'Chest',
+        secondaryMuscles: ['Front Delts', 'Triceps'],
         equipment: 'Barbell',
-        youtubeId: '',
+        type: 'compound',
         isBodyweight: false,
+        formCues: ['Retract scapulae', 'Lower to upper chest'],
+        commonMistakes: ['Flaring elbows'],
       };
 
       const state = planReducer(initialState, {

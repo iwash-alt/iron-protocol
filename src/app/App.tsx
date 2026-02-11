@@ -21,6 +21,7 @@ import type { QuickTemplate } from '@/data/quick-templates';
 // @ts-ignore — JSX homepage component
 import Homepage from '@/ui/screens/Homepage';
 import { InstallBanner } from '@/features/pwa/InstallBanner';
+import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
 
 // Run migrations before first render
 runMigrations();
@@ -102,18 +103,20 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <DemoModeProvider>
-        <PlanProvider profile={profile}>
-          <WorkoutProvider>
-            <NutritionProvider>
-              <ProgressProvider>
-                <AppShell profile={profile} onProfileUpdate={setProfile} />
-                <InstallBanner />
-              </ProgressProvider>
-            </NutritionProvider>
-          </WorkoutProvider>
-        </PlanProvider>
-      </DemoModeProvider>
+      <EntitlementProvider>
+        <DemoModeProvider>
+          <PlanProvider profile={profile}>
+            <WorkoutProvider>
+              <NutritionProvider>
+                <ProgressProvider>
+                  <AppShell profile={profile} onProfileUpdate={setProfile} />
+                  <InstallBanner />
+                </ProgressProvider>
+              </NutritionProvider>
+            </WorkoutProvider>
+          </PlanProvider>
+        </DemoModeProvider>
+      </EntitlementProvider>
     </ErrorBoundary>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
@@ -6,6 +6,12 @@ import { useProgress } from './progress.context';
 import { MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { getProteinGoal, WATER_GOAL, getLast7Days } from '@/shared/utils';
+import { useTier } from '@/hooks/useTier';
+import { calculateFatigueScore } from '@/training/fatigue';
+import { generateWeeklyInsights } from '@/analytics/insights';
+import { FatigueCard } from './FatigueCard';
+import { InsightsCard } from './InsightsCard';
+import { colors, radii, typography, spacing } from '@/shared/theme/tokens';
 
 interface DashboardProps {
   profile: UserProfile;
@@ -29,6 +35,8 @@ export function Dashboard({
   const workout = useWorkout();
   const nutrition = useNutrition();
   const progress = useProgress();
+  const { canAccess } = useTier();
+  const isPro = canAccess('analytics_advanced');
 
   const proteinGoal = getProteinGoal(profile.weight);
   const totalVol = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
@@ -37,6 +45,22 @@ export function Dashboard({
   const proteinData = last7.map(d => nutrition.nutritionHistory[d]?.protein || 0);
   const weightData = progress.bodyMeasurements.slice(-10).map(m => parseFloat(String(m.weight)) || 0);
   const programsCompleted = Math.floor(workout.weekCount / 4);
+
+  // Intelligence features (Pro only)
+  const fatigue = useMemo(() => {
+    if (!isPro || workout.workoutHistory.length < 2) return null;
+    return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
+  }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
+
+  const insights = useMemo(() => {
+    if (!isPro || workout.workoutHistory.length < 1) return null;
+    return generateWeeklyInsights(
+      workout.workoutHistory,
+      workout.personalRecords,
+      workout.exerciseHistory,
+      profile.days,
+    );
+  }, [isPro, workout.workoutHistory, workout.personalRecords, workout.exerciseHistory, profile.days]);
 
   return (
     <div>
@@ -64,6 +88,23 @@ export function Dashboard({
         <div style={S.weekCard}>
           📅 Training Week {workout.weekCount}
           {workout.weekCount >= 4 && <span style={S.weekWarning}> · Deload recommended</span>}
+        </div>
+      )}
+
+      {/* Intelligence cards (Pro) or upgrade prompt (Free) */}
+      {isPro ? (
+        <>
+          {fatigue && <FatigueCard fatigue={fatigue} />}
+          {insights && <InsightsCard insight={insights} />}
+        </>
+      ) : (
+        <div style={lockedCardStyles.card}>
+          <div style={lockedCardStyles.icon}>🔒</div>
+          <div style={lockedCardStyles.title}>Smart Training Intelligence</div>
+          <div style={lockedCardStyles.desc}>
+            Fatigue tracking, weekly insights, adaptive rest, and mid-workout suggestions.
+          </div>
+          <div style={lockedCardStyles.price}>Unlock smart training — $2/mo</div>
         </div>
       )}
 
@@ -166,3 +207,37 @@ export function Dashboard({
     </div>
   );
 }
+
+const lockedCardStyles: Record<string, React.CSSProperties> = {
+  card: {
+    padding: spacing.xl,
+    borderRadius: 18,
+    background: colors.surface,
+    border: `1px solid ${colors.surfaceBorder}`,
+    marginBottom: spacing.md,
+    textAlign: 'center' as const,
+  },
+  icon: { fontSize: 32, marginBottom: spacing.sm },
+  title: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.black,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  desc: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    lineHeight: 1.4,
+    marginBottom: spacing.md,
+  },
+  price: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
+    padding: `${spacing.sm}px ${spacing.lg}px`,
+    background: colors.primarySurface,
+    borderRadius: radii.pill,
+    display: 'inline-block',
+    border: `1px solid ${colors.primaryBorder}`,
+  },
+};

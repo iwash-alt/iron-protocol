@@ -1,30 +1,185 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { PlanExercise, RPEValue, Exercise } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
-import { useTimer } from '@/shared/hooks';
+import { useTimer, getAdaptiveRest } from '@/shared/hooks';
 import { Icon, MiniChart } from '@/shared/components';
-import { S, globalCss } from '@/shared/theme/styles';
+import { S } from '@/shared/theme/styles';
+import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
-import { getExercisesByMuscle, getWeightedExercises, exercises } from '@/data/exercises';
+import { getExercisesByMuscle, getWeightedExercises } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
+import { useTier } from '@/hooks/useTier';
+import { calculateFatigueScore } from '@/training/fatigue';
+import { evaluateSuggestions } from '@/training/suggestions';
+import type { WorkoutSuggestion } from '@/training/suggestions';
+import { SuggestionToast } from './SuggestionToast';
+import { ReadinessCheck, getTodayReadiness } from '@/features/readiness/ReadinessCheck';
+import type { ReadinessResult } from '@/features/readiness/ReadinessCheck';
+import { HowToSheet } from './HowToSheet';
+import { WorkoutSummary, buildWorkoutSummary } from './WorkoutSummary';
+import type { WorkoutSummaryData } from './WorkoutSummary';
 
 interface WorkoutViewProps {
   profile: UserProfile;
 }
+
+// ── Inline Editable Field ─────────────────────────────────────────────────────
+// Tappable number field with +/- buttons for gym use (large touch targets).
+
+interface InlineEditProps {
+  value: number;
+  step: number;
+  min: number;
+  max: number;
+  /** 'decimal' for weight, 'numeric' for reps */
+  inputMode: 'decimal' | 'numeric';
+  color: string;
+  suffix?: string;
+  onChange: (val: number) => void;
+}
+
+function InlineEdit({ value, step, min, max, inputMode, color, suffix = '', onChange }: InlineEditProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  // Sync draft when value changes externally
+  useEffect(() => {
+    if (!editing) setDraft(String(value));
+  }, [value, editing]);
+
+  const commit = useCallback(() => {
+    const parsed = parseFloat(draft);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(min, Math.min(max, parsed));
+      // Round to step precision
+      const rounded = Math.round(clamped / step) * step;
+      // Fix floating point: round to 1 decimal
+      const fixed = Math.round(rounded * 10) / 10;
+      onChange(fixed);
+    }
+    setEditing(false);
+  }, [draft, min, max, step, onChange]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div style={ie.editRow}>
+        <button
+          onClick={() => {
+            const next = Math.max(min, value - step);
+            const fixed = Math.round(next * 10) / 10;
+            onChange(fixed);
+            setDraft(String(fixed));
+          }}
+          style={ie.stepBtn}
+        >
+          -
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode={inputMode}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          style={{ ...ie.input, color }}
+        />
+        <button
+          onClick={() => {
+            const next = Math.min(max, value + step);
+            const fixed = Math.round(next * 10) / 10;
+            onChange(fixed);
+            setDraft(String(fixed));
+          }}
+          style={ie.stepBtn}
+        >
+          +
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={() => setEditing(true)}
+      style={{ ...ie.display, color, cursor: 'pointer' }}
+      role="button"
+      tabIndex={0}
+    >
+      {value}{suffix}
+    </div>
+  );
+}
+
+const ie: Record<string, React.CSSProperties> = {
+  editRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  stepBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.md,
+    border: 'none',
+    background: colors.surfaceHover,
+    color: colors.text,
+    cursor: 'pointer',
+    fontWeight: typography.weights.black,
+    fontSize: '1.1rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  input: {
+    width: 52,
+    textAlign: 'center' as const,
+    background: 'rgba(255,255,255,0.08)',
+    border: `1px solid ${colors.primaryBorder}`,
+    borderRadius: radii.sm,
+    color: colors.text,
+    fontWeight: typography.weights.black,
+    fontSize: typography.sizes.xl,
+    padding: '4px 2px',
+    outline: 'none',
+  },
+  display: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.black,
+  },
+};
+
+// ── WorkoutView ───────────────────────────────────────────────────────────────
 
 export function WorkoutView({ profile }: WorkoutViewProps) {
   const plan = usePlan();
   const workout = useWorkout();
   const nutrition = useNutrition();
   const timer = useTimer();
+  const { canAccess } = useTier();
+  const isPro = canAccess('analytics_advanced');
 
   // Modal states
   const [showWarmup, setShowWarmup] = useState<string | null>(null);
-  const [showVideo, setShowVideo] = useState<{ name: string; youtubeId: string } | null>(null);
+  const [showHowTo, setShowHowTo] = useState<Exercise | null>(null);
   const [showSwap, setShowSwap] = useState<PlanExercise | null>(null);
   const [editingExercise, setEditingExercise] = useState<PlanExercise | null>(null);
   const [showRPE, setShowRPE] = useState<{ exerciseId: string; setNum: number; exercise: PlanExercise } | null>(null);
@@ -34,6 +189,24 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+
+  // Intelligence features (Pro only)
+  const [activeSuggestion, setActiveSuggestion] = useState<WorkoutSuggestion | null>(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
+  const [showReadinessCheck, setShowReadinessCheck] = useState<boolean>(() => {
+    if (!isPro) return false;
+    return !getTodayReadiness();
+  });
+  const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
+
+  // Workout summary (Change 3)
+  const [summaryData, setSummaryData] = useState<WorkoutSummaryData | null>(null);
+  const workoutStartedAt = useRef<number | null>(null);
+
+  const fatigue = useMemo(() => {
+    if (!isPro || workout.workoutHistory.length < 2) return null;
+    return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
+  }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
 
   const proteinGoal = getProteinGoal(profile.weight);
 
@@ -47,8 +220,36 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const confirmRPE = (rpe: RPEValue) => {
     if (!showRPE) return;
     const { exercise } = showRPE;
+
+    // Start tracking workout duration on first set
+    if (!workoutStartedAt.current) {
+      workoutStartedAt.current = Date.now();
+    }
+
     workout.completeSet(exercise, rpe);
-    timer.start(exercise.restSeconds);
+
+    // Adaptive rest timer (Pro) or default
+    if (isPro) {
+      const adaptive = getAdaptiveRest(exercise, rpe);
+      timer.start(adaptive.seconds, adaptive.label);
+    } else {
+      timer.start(exercise.restSeconds);
+    }
+
+    // Mid-workout suggestions (Pro)
+    if (isPro) {
+      const suggestions = evaluateSuggestions(
+        workout.currentLog,
+        exercise,
+        rpe,
+        workout.exerciseHistory,
+        fatigue,
+      );
+      const newSuggestion = suggestions.find(s => !dismissedSuggestionIds.has(s.id));
+      if (newSuggestion) {
+        setActiveSuggestion(newSuggestion);
+      }
+    }
 
     const setNum = (workout.completedSets[exercise.id] || 0) + 1;
     if (setNum === exercise.sets) {
@@ -63,10 +264,27 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       setShowEndConfirm(true);
       return;
     }
+
+    // Capture summary BEFORE endWorkout resets state
+    const summary = buildWorkoutSummary(
+      plan.currentDay?.name || '',
+      plan.dayExercises,
+      workout.completedSets,
+      workout.currentLog,
+      workoutStartedAt.current,
+      workout.progress(),
+    );
+
     workout.endWorkout(force);
     setShowEndConfirm(false);
-    setCelebrate(true);
-    setTimeout(() => setCelebrate(false), 2000);
+    workoutStartedAt.current = null;
+
+    // Show summary instead of celebrate animation
+    setSummaryData(summary);
+  };
+
+  const handleSummaryDone = () => {
+    setSummaryData(null);
   };
 
   const updateExerciseField = (id: string, field: string, value: number) => {
@@ -88,6 +306,11 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   };
 
   const prog = workout.progress();
+
+  // Show workout summary overlay (Change 3)
+  if (summaryData) {
+    return <WorkoutSummary summary={summaryData} onDone={handleSummaryDone} />;
+  }
 
   return (
     <>
@@ -126,9 +349,20 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       {/* Rest timer */}
       {timer.isActive && (
         <div style={S.restBanner}>
-          <div><div style={S.restLabel}>REST TIME</div><div style={S.restTime}>{formatTime(timer.seconds)}</div></div>
+          <div><div style={S.restLabel}>{timer.label || 'REST TIME'}</div><div style={S.restTime}>{formatTime(timer.seconds)}</div></div>
           <button onClick={timer.skip} style={S.skipBtn}>SKIP</button>
         </div>
+      )}
+
+      {/* Mid-workout suggestion toast (Pro) */}
+      {activeSuggestion && (
+        <SuggestionToast
+          suggestion={activeSuggestion}
+          onDismiss={() => {
+            setDismissedSuggestionIds(prev => new Set([...prev, activeSuggestion.id]));
+            setActiveSuggestion(null);
+          }}
+        />
       )}
 
       {/* Exercise list */}
@@ -155,7 +389,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                   {!pe.exercise.isBodyweight && <button onClick={() => setShowWarmup(isWarmupOpen ? null : pe.id)} style={isWarmupOpen ? S.warmupBtnActive : S.warmupBtn}><Icon name="fire" size={16} /></button>}
                   <button onClick={() => setEditingExercise(pe)} style={S.editBtn}><Icon name="edit" size={16} /></button>
                   <button onClick={() => setShowSwap(pe)} style={S.swapBtn}><Icon name="swap" size={16} /></button>
-                  <button onClick={() => setShowVideo(pe.exercise)} style={S.playBtn}><Icon name="play" size={16} /></button>
+                  <button onClick={() => setShowHowTo(pe.exercise)} style={howToBtn}>?</button>
                 </div>
               </div>
 
@@ -174,11 +408,45 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </div>
               )}
 
+              {/* Stats grid with inline editable weight + reps (Change 1) */}
               <div style={S.stats}>
-                <div style={S.stat}><div style={S.statLabel}>SETS</div><div style={S.statVal}>{done}/{pe.sets}</div></div>
-                <div style={S.stat}><div style={S.statLabel}>REPS</div><div style={S.statVal}>{pe.reps}<span style={{ color: '#666', fontSize: '0.65rem' }}> ({pe.repsMin}-{pe.repsMax})</span></div></div>
-                <div style={S.stat}><div style={S.statLabel}>WEIGHT</div><div style={S.statValRed}>{pe.weightKg}kg</div></div>
-                <div style={S.stat}><div style={S.statLabel}>NEXT</div><div style={S.statValGreen}>+{pe.progressionKg}</div></div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>SETS</div>
+                  <div style={S.statVal}>{done}/{pe.sets}</div>
+                </div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>REPS</div>
+                  <InlineEdit
+                    value={pe.reps}
+                    step={1}
+                    min={pe.repsMin ?? 1}
+                    max={pe.repsMax ?? 30}
+                    inputMode="numeric"
+                    color={colors.text}
+                    onChange={val => plan.updateExercise(pe.id, { reps: val })}
+                  />
+                </div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>WEIGHT</div>
+                  {pe.exercise.isBodyweight ? (
+                    <div style={S.statVal}>BW</div>
+                  ) : (
+                    <InlineEdit
+                      value={pe.weightKg}
+                      step={2.5}
+                      min={0}
+                      max={500}
+                      inputMode="decimal"
+                      color={colors.primary}
+                      suffix="kg"
+                      onChange={val => plan.updateExercise(pe.id, { weightKg: val })}
+                    />
+                  )}
+                </div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>NEXT</div>
+                  <div style={S.statValGreen}>+{pe.progressionKg}</div>
+                </div>
               </div>
 
               {!isDone && (
@@ -329,15 +597,9 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         </div>
       )}
 
-      {/* Video modal */}
-      {showVideo && (
-        <div style={S.overlay} onClick={() => setShowVideo(null)}>
-          <div style={S.videoBox} onClick={e => e.stopPropagation()}>
-            <img src={`https://img.youtube.com/vi/${showVideo.youtubeId}/mqdefault.jpg`} alt="" style={S.thumb} />
-            <h3 style={S.videoTitle}>{showVideo.name}</h3>
-            <a href={`https://youtube.com/watch?v=${showVideo.youtubeId}`} target="_blank" rel="noreferrer" style={S.ytBtn}>WATCH ON YOUTUBE</a>
-          </div>
-        </div>
+      {/* How-To bottom sheet (Change 2) */}
+      {showHowTo && (
+        <HowToSheet exercise={showHowTo} onClose={() => setShowHowTo(null)} />
       )}
 
       {/* Swap exercise modal */}
@@ -412,6 +674,34 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
           </div>
         </div>
       )}
+
+      {/* Pre-workout readiness check (Pro) */}
+      {showReadinessCheck && (
+        <ReadinessCheck
+          onComplete={(result) => {
+            setReadinessResult(result);
+            setShowReadinessCheck(false);
+          }}
+          onSkip={() => setShowReadinessCheck(false)}
+        />
+      )}
     </>
   );
 }
+
+/** How-To button style (replaces play/video button) */
+const howToBtn: React.CSSProperties = {
+  width: 32,
+  height: 32,
+  borderRadius: radii.md,
+  border: `1px solid rgba(255,149,0,0.3)`,
+  background: 'rgba(255,149,0,0.08)',
+  color: colors.warning,
+  cursor: 'pointer',
+  fontWeight: typography.weights.black,
+  fontSize: typography.sizes.lg,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+};

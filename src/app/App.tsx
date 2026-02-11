@@ -164,7 +164,7 @@ function BottomNav({ active, onSelect }: { active: TabId; onSelect: (tab: TabId)
 }
 
 // ─── PR Celebration Overlay ─────────────────────────────────────────────────
-function PRCelebration({ name, weight, onDismiss }: { name: string; weight: number; onDismiss: () => void }) {
+function PRCelebration({ name, category, value, onDismiss }: { name: string; category: string; value: string; onDismiss: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDismiss, 3500);
     return () => clearTimeout(t);
@@ -172,7 +172,7 @@ function PRCelebration({ name, weight, onDismiss }: { name: string; weight: numb
 
   // Generate particles for burst effect
   const particles = useMemo(() => {
-    const emojis = ['🔥', '💪', '⚡', '🏆', '✨', '🎯', '💥', '🚀'];
+    const emojis = ['\u{1F525}', '\u{1F4AA}', '\u26A1', '\u{1F3C6}', '\u2728', '\u{1F3AF}', '\u{1F4A5}', '\u{1F680}'];
     return Array.from({ length: 16 }, (_, i) => ({
       emoji: emojis[i % emojis.length],
       left: `${10 + Math.random() * 80}%`,
@@ -203,11 +203,11 @@ function PRCelebration({ name, weight, onDismiss }: { name: string; weight: numb
       </div>
 
       <div style={S.prCelebrateContent}>
-        <div style={S.prCelebrateEmoji}>🔥</div>
+        <div style={S.prCelebrateEmoji}>{'\u{1F525}'}</div>
         <div style={S.prCelebrateTitle}>NEW PR!</div>
         <div style={{ color: '#888', marginTop: 8, fontSize: '1rem' }}>{name}</div>
-        <div style={{ color: colors.primary, fontSize: '2.5rem', fontWeight: 800, marginTop: 8 }}>{weight}kg</div>
-        <div style={{ color: '#555', fontSize: '0.8rem', marginTop: 4 }}>Estimated 1RM</div>
+        <div style={{ color: colors.primary, fontSize: '2.5rem', fontWeight: 800, marginTop: 8 }}>{value}</div>
+        <div style={{ color: '#555', fontSize: '0.8rem', marginTop: 4 }}>{category}</div>
       </div>
     </div>
   );
@@ -426,7 +426,8 @@ function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; onProfil
       {workout.newPR && (
         <PRCelebration
           name={workout.newPR.name}
-          weight={workout.newPR.weight}
+          category={workout.newPR.category}
+          value={workout.newPR.value}
           onDismiss={workout.dismissPR}
         />
       )}

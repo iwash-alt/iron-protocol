@@ -55,7 +55,26 @@ const dailyNutritionSchema = z.object({
 });
 
 export const nutritionHistorySchema = z.record(z.string(), dailyNutritionSchema);
-export const personalRecordsSchema = z.record(z.string(), z.number());
+/** Legacy PR schema: exerciseName -> number (estimated 1RM) */
+export const personalRecordsLegacySchema = z.record(z.string(), z.number());
+
+const exercisePRSchema = z.object({
+  heaviestWeight: z.union([z.object({ weightKg: z.number(), reps: z.number(), date: z.string() }), z.null()]),
+  bestEstimated1RM: z.union([z.object({ value: z.number(), weightKg: z.number(), reps: z.number(), date: z.string() }), z.null()]),
+  bestSetVolume: z.union([z.object({ value: z.number(), weightKg: z.number(), reps: z.number(), date: z.string() }), z.null()]),
+  bestSessionVolume: z.union([z.object({ value: z.number(), date: z.string() }), z.null()]),
+  mostRepsAtWeight: z.union([z.object({ weightKg: z.number(), reps: z.number(), date: z.string() }), z.null()]),
+});
+
+export const personalRecordsSchema = z.record(z.string(), exercisePRSchema);
+
+export const globalPRsSchema = z.object({
+  highestSessionVolume: z.union([z.object({ value: z.number(), date: z.string(), dayName: z.string() }), z.null()]),
+  longestStreak: z.union([z.object({ days: z.number(), endDate: z.string() }), z.null()]),
+  mostSetsInWorkout: z.union([z.object({ count: z.number(), date: z.string(), dayName: z.string() }), z.null()]),
+  highestAvgRPE: z.union([z.object({ value: z.number(), date: z.string(), dayName: z.string() }), z.null()]),
+});
+
 export const exerciseHistorySchema = z.record(z.string(), z.array(exerciseHistoryEntrySchema));
 
 // ── Entitlement schemas ─────────────────────────────────────

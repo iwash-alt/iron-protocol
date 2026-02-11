@@ -8,6 +8,7 @@ export type MuscleGroup = typeof MUSCLE_GROUPS[number];
 
 export const EQUIPMENT_TYPES = [
   'Barbell', 'Dumbbells', 'Cable', 'Machine', 'Bar', 'None',
+  'Smith Machine', 'EZ Bar', 'Kettlebell', 'Band',
 ] as const;
 
 export type Equipment = typeof EQUIPMENT_TYPES[number];

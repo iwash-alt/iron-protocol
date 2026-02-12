@@ -74,7 +74,8 @@ describe('getWarmupSets', () => {
     // 63kg working weight: 50% = 31.5 → 32.5
     const sets = getWarmupSets(63);
     const set50 = sets.find(s => s.label === '50%');
-    expect(set50?.weightKg! % 2.5).toBe(0);
+    expect(set50).toBeDefined();
+    expect(set50!.weightKg % 2.5).toBe(0);
   });
 });
 

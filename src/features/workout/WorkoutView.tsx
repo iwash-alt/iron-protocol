@@ -9,7 +9,7 @@ import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
-import { getExercisesByMuscle, getWeightedExercises, filterExercises } from '@/data/exercises';
+import { filterExercises } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
@@ -208,7 +208,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!isPro) return false;
     return !getTodayReadiness();
   });
-  const [readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
+  const [_readinessResult, setReadinessResult] = useState<ReadinessResult | null>(null);
 
   // Workout summary (Change 3)
   const [summaryData, setSummaryData] = useState<WorkoutSummaryData | null>(null);

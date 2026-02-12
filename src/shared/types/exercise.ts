@@ -6,19 +6,16 @@ export const MUSCLE_GROUPS = [
 
 export type MuscleGroup = typeof MUSCLE_GROUPS[number];
 
-export type ExerciseType = 'compound' | 'accessory' | 'bodyweight';
-
 export const EQUIPMENT_TYPES = [
   'Barbell', 'Dumbbell', 'Smith Machine', 'Cable',
   'Machine (plate-loaded)', 'Machine (pin/stack)',
   'Bodyweight', 'Resistance Band', 'Kettlebell', 'EZ Bar',
-  'Barbell', 'Dumbbells', 'Cable', 'Machine', 'Bar', 'None',
-  'Smith Machine', 'EZ Bar', 'Kettlebell', 'Band',
+  'Dumbbells', 'Machine', 'Bar', 'None', 'Band',
 ] as const;
 
 export type Equipment = typeof EQUIPMENT_TYPES[number];
 
-export const EXERCISE_TYPES = ['compound', 'isolation', 'bodyweight', 'cardio'] as const;
+export const EXERCISE_TYPES = ['compound', 'isolation', 'accessory', 'bodyweight', 'cardio'] as const;
 export type ExerciseType = typeof EXERCISE_TYPES[number];
 
 export interface Exercise {
@@ -32,10 +29,6 @@ export interface Exercise {
   formCues: string[];
   commonMistakes: string[];
   youtubeId?: string;
-  secondaryMuscles: string[];
-  type: ExerciseType;
-  formCues: string[];
-  commonMistakes: string[];
 }
 
 export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [

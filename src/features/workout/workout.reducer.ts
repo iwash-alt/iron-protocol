@@ -1,4 +1,4 @@
-import type { SetLog, CompletedSets, RPEValue } from '@/shared/types';
+import type { SetLog, CompletedSets } from '@/shared/types';
 
 export interface WorkoutState {
   completedSets: CompletedSets;

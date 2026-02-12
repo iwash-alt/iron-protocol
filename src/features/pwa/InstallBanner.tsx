@@ -24,7 +24,7 @@ function isAlreadyInstalled(): boolean {
   // Check display-mode media query
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
   // iOS standalone mode
-  if ((navigator as any).standalone === true) return true;
+  if ((navigator as unknown as { standalone?: boolean }).standalone === true) return true;
   // Previously recorded install
   if (localStorage.getItem(INSTALL_STATE_KEY) === 'installed') return true;
   return false;

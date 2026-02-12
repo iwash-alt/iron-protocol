@@ -68,7 +68,6 @@ export default function IronProtocol() {
   // --- Initialize plan on profile load ---
   useEffect(() => {
     if (profile) workout.initializePlan(profile);
-  // eslint-disable-next-line
   }, [profile]);
 
   // --- Derived values ---

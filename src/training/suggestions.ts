@@ -11,7 +11,7 @@
  *   - Fatigue score > 60 → suggest dropping last sets
  */
 
-import type { WorkoutLog, SetLog, PlanExercise, RPEValue, ExerciseHistory } from '@/shared/types';
+import type { SetLog, PlanExercise, RPEValue, ExerciseHistory } from '@/shared/types';
 import type { FatigueResult } from './fatigue';
 
 // ── Types ───────────────────────────────────────────────────────────────────

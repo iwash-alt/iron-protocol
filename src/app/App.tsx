@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { Icon, MiniChart, ErrorBoundary } from '@/shared/components';
+import { Icon, ErrorBoundary } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { colors } from '@/shared/theme/tokens';
 import { getGreeting } from '@/shared/utils';
@@ -18,7 +18,7 @@ import { QuickWorkoutList } from '@/features/quick-workout/QuickWorkoutList';
 import { QuickWorkoutActive } from '@/features/quick-workout/QuickWorkoutActive';
 import { Profile } from '@/features/profile/Profile';
 import type { QuickTemplate } from '@/data/quick-templates';
-// @ts-ignore — JSX homepage component
+// @ts-expect-error — JSX homepage component without type declarations
 import Homepage from '@/ui/screens/Homepage';
 import { InstallBanner } from '@/features/pwa/InstallBanner';
 import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
@@ -255,12 +255,12 @@ function PullRefreshIndicator({ pullDistance, isRefreshing }: { pullDistance: nu
 // ─── AppShell (Main App with Bottom Nav) ────────────────────────────────────
 function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; onProfileUpdate: (p: UserProfile) => void }) {
   const [activeTab, setActiveTab] = useState<TabId>('workout');
-  const [prevTab, setPrevTab] = useState<TabId>('workout');
-  const [showQuick, setShowQuick] = useState(false);
+  const [_prevTab, setPrevTab] = useState<TabId>('workout');
+  const [_showQuick, _setShowQuick] = useState(false);
   const [quickWorkout, setQuickWorkout] = useState<QuickTemplate | null>(null);
   const [showMeasurements, setShowMeasurements] = useState(false);
-  const [showNutritionFromDash, setShowNutritionFromDash] = useState(false);
-  const [showExerciseHistoryFromDash, setShowExerciseHistoryFromDash] = useState<string | null>(null);
+  const [_showNutritionFromDash, setShowNutritionFromDash] = useState(false);
+  const [_showExerciseHistoryFromDash, setShowExerciseHistoryFromDash] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [tabTransition, setTabTransition] = useState<'left' | 'right' | null>(null);
 

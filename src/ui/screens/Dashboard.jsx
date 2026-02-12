@@ -3,7 +3,7 @@ import { S } from '../styles';
 import MiniChart from '../components/MiniChart';
 
 export default function Dashboard({
-  profile, workoutHistory, exerciseHistory,
+  profile, workoutHistory,
   todayWater, todayProtein, proteinGoal, waterGoal,
   nutritionHistory, personalRecords, bodyMeasurements,
   streak, weekCount,

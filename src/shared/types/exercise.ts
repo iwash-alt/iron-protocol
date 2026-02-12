@@ -6,7 +6,12 @@ export const MUSCLE_GROUPS = [
 
 export type MuscleGroup = typeof MUSCLE_GROUPS[number];
 
+export type ExerciseType = 'compound' | 'accessory' | 'bodyweight';
+
 export const EQUIPMENT_TYPES = [
+  'Barbell', 'Dumbbell', 'Smith Machine', 'Cable',
+  'Machine (plate-loaded)', 'Machine (pin/stack)',
+  'Bodyweight', 'Resistance Band', 'Kettlebell', 'EZ Bar',
   'Barbell', 'Dumbbells', 'Cable', 'Machine', 'Bar', 'None',
   'Smith Machine', 'EZ Bar', 'Kettlebell', 'Band',
 ] as const;
@@ -20,9 +25,13 @@ export interface Exercise {
   id: string;
   name: string;
   muscle: MuscleGroup;
+  secondaryMuscles: string[];
   equipment: Equipment;
-  youtubeId: string;
+  type: ExerciseType;
   isBodyweight: boolean;
+  formCues: string[];
+  commonMistakes: string[];
+  youtubeId?: string;
   secondaryMuscles: string[];
   type: ExerciseType;
   formCues: string[];

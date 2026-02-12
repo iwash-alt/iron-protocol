@@ -183,6 +183,10 @@ describe('planReducer', () => {
         equipment: 'Dumbbells',
         youtubeId: '',
         isBodyweight: false,
+        secondaryMuscles: ['Forearms'],
+        type: 'isolation',
+        formCues: [],
+        commonMistakes: [],
       };
 
       const state = planReducer(initialState, {
@@ -225,6 +229,10 @@ describe('planReducer', () => {
         equipment: 'Barbell',
         youtubeId: '',
         isBodyweight: false,
+        secondaryMuscles: ['Front Delts', 'Triceps'],
+        type: 'compound',
+        formCues: [],
+        commonMistakes: [],
       };
 
       const state = planReducer(initialState, {

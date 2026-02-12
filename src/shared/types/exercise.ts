@@ -13,6 +13,9 @@ export const EQUIPMENT_TYPES = [
 
 export type Equipment = typeof EQUIPMENT_TYPES[number];
 
+export const EXERCISE_TYPES = ['compound', 'isolation', 'bodyweight', 'cardio'] as const;
+export type ExerciseType = typeof EXERCISE_TYPES[number];
+
 export interface Exercise {
   id: string;
   name: string;
@@ -20,6 +23,10 @@ export interface Exercise {
   equipment: Equipment;
   youtubeId: string;
   isBodyweight: boolean;
+  secondaryMuscles: string[];
+  type: ExerciseType;
+  formCues: string[];
+  commonMistakes: string[];
 }
 
 export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [

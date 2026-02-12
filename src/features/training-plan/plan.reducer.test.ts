@@ -186,6 +186,10 @@ describe('planReducer', () => {
         isBodyweight: false,
         formCues: ['Pin elbows to sides', 'Squeeze at the top'],
         commonMistakes: ['Swinging torso'],
+        secondaryMuscles: ['Forearms'],
+        type: 'isolation',
+        formCues: [],
+        commonMistakes: [],
       };
 
       const state = planReducer(initialState, {
@@ -231,6 +235,10 @@ describe('planReducer', () => {
         isBodyweight: false,
         formCues: ['Retract scapulae', 'Lower to upper chest'],
         commonMistakes: ['Flaring elbows'],
+        secondaryMuscles: ['Front Delts', 'Triceps'],
+        type: 'compound',
+        formCues: [],
+        commonMistakes: [],
       };
 
       const state = planReducer(initialState, {

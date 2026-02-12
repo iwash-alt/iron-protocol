@@ -235,7 +235,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     }
   }, [state.completedSets, personalRecords, plan, demo, persistPRs]);
 
-  const endWorkout = useCallback((force = false) => {
+  const endWorkout = useCallback((_force = false) => {
     const pct = progress();
 
     // Reduce weight for incomplete exercises

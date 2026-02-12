@@ -66,8 +66,8 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
       <div style={S.profileAvatar}>
         <Icon name="user" size={36} />
       </div>
-      <div style={S.profileName as any}>{profile.name}</div>
-      <div style={S.profileSub as any}>{profile.level} lifter</div>
+      <div style={S.profileName as React.CSSProperties}>{profile.name}</div>
+      <div style={S.profileSub as React.CSSProperties}>{profile.level} lifter</div>
 
       {/* Stats Summary */}
       <div style={{ ...S.sumGrid, gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
@@ -114,7 +114,7 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
         <div style={S.profileCard}>
           <div style={S.profileRow} onClick={() => setShowPrefs(true)}>
             <span style={S.profileRowLabel}><Icon name="dumbbell" size={18} /> Experience</span>
-            <span style={{ ...S.profileRowValue, textTransform: 'capitalize' } as any}>{profile.level} <Icon name="chevron-right" size={14} /></span>
+            <span style={{ ...S.profileRowValue, textTransform: 'capitalize' } as React.CSSProperties}>{profile.level} <Icon name="chevron-right" size={14} /></span>
           </div>
           <div style={{ ...S.profileRow, ...S.profileRowLast }} onClick={() => setShowPrefs(true)}>
             <span style={S.profileRowLabel}><Icon name="flame" size={18} /> Training Days</span>
@@ -160,7 +160,7 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 140 }} onClick={() => setEditing(false)} />
           <div style={S.profileEditModal} className="modal-sheet">
             <div style={S.profileEditHandle} />
-            <div style={S.profileEditTitle as any}>Edit Profile</div>
+            <div style={S.profileEditTitle as React.CSSProperties}>Edit Profile</div>
 
             <div style={S.profileEditField}>
               <label style={S.profileEditLabel}>Name</label>
@@ -265,7 +265,7 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 140 }} onClick={() => setShowPrefs(false)} />
           <div style={S.profileEditModal} className="modal-sheet">
             <div style={S.profileEditHandle} />
-            <div style={S.profileEditTitle as any}>Training Preferences</div>
+            <div style={S.profileEditTitle as React.CSSProperties}>Training Preferences</div>
 
             <div style={S.profileEditField}>
               <label style={S.profileEditLabel}>Experience Level</label>

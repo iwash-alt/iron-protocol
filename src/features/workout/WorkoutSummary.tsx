@@ -6,7 +6,6 @@
 
 import React from 'react';
 import type { PlanExercise, SetLog } from '@/shared/types';
-import { formatTime } from '@/shared/utils';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 
 export interface WorkoutSummaryData {

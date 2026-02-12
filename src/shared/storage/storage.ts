@@ -9,7 +9,6 @@ import {
   workoutLogSchema,
   exerciseHistorySchema,
   personalRecordsSchema,
-  personalRecordsLegacySchema,
   globalPRsSchema,
   bodyMeasurementSchema,
   nutritionHistorySchema,
@@ -69,7 +68,7 @@ function migrateV1toV2(): void {
       const data = JSON.parse(rawEH);
       const migrated: Record<string, unknown[]> = {};
       for (const [name, entries] of Object.entries(data)) {
-        migrated[name] = (entries as any[]).map(entry => ({
+        migrated[name] = (entries as Record<string, unknown>[]).map(entry => ({
           date: entry.date,
           weightKg: entry.weight ?? entry.weightKg,
           reps: entry.reps,
@@ -85,10 +84,10 @@ function migrateV1toV2(): void {
   if (rawWH) {
     try {
       const data = JSON.parse(rawWH);
-      const migrated = (data as any[]).map(entry => ({
+      const migrated = (data as Record<string, unknown>[]).map(entry => ({
         date: entry.date,
         dayName: entry.dayName,
-        sets: (entry.exercises ?? entry.sets ?? []).map((s: any) => ({
+        sets: (((entry.exercises ?? entry.sets) as Record<string, unknown>[]) ?? []).map((s: Record<string, unknown>) => ({
           exerciseName: s.exerciseName,
           weightKg: s.weight ?? s.weightKg,
           reps: s.reps,

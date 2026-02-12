@@ -103,6 +103,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async save<K extends StorageKey>(key: K, value: StorageDataMap[K]): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- union variance requires widening here
     const savers: Record<StorageKey, (v: any) => void> = {
       profile: saveProfile,
       workoutHistory: saveWorkoutHistory,

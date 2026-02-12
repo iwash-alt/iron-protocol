@@ -57,16 +57,18 @@ export function NutritionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (todayWater > 0 || todayProtein > 0 || proteinLog.length > 0) {
       const today = getTodayKey();
-      const updated = {
-        ...nutritionHistory,
-        [today]: { water: todayWater, protein: todayProtein, proteinLog },
-      };
-      setNutritionHistory(updated);
-      if (demo.enabled) {
-        demo.updateDemoData(data => ({ ...data, nutritionHistory: updated }));
-      } else {
-        saveNutritionHistory(updated);
-      }
+      setNutritionHistory(prev => {
+        const updated = {
+          ...prev,
+          [today]: { water: todayWater, protein: todayProtein, proteinLog },
+        };
+        if (demo.enabled) {
+          demo.updateDemoData(data => ({ ...data, nutritionHistory: updated }));
+        } else {
+          saveNutritionHistory(updated);
+        }
+        return updated;
+      });
     }
   }, [todayWater, todayProtein, proteinLog, demo]);
 

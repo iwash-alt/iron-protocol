@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { workoutReducer, initialWorkoutState } from './workout.reducer';
 import type { WorkoutState, WorkoutAction } from './workout.reducer';
-import type { SetLog } from '@/shared/types';
+import type { SetLog, RPEValue } from '@/shared/types';
 
 const makeLog = (overrides: Partial<SetLog> = {}): SetLog => ({
   exerciseName: 'Bench Press',
@@ -86,7 +86,7 @@ describe('workoutReducer', () => {
           type: 'COMPLETE_SET',
           exerciseId: 'ex1',
           setNumber: i,
-          log: makeLog({ setNumber: i, rpe: (i + 6) as any }),
+          log: makeLog({ setNumber: i, rpe: (i + 6) as RPEValue }),
         });
       }
 
@@ -150,7 +150,7 @@ describe('workoutReducer', () => {
 
   describe('unknown action', () => {
     it('returns current state for unrecognized actions', () => {
-      const state = workoutReducer(initialWorkoutState, { type: 'UNKNOWN' } as any);
+      const state = workoutReducer(initialWorkoutState, { type: 'UNKNOWN' } as unknown as WorkoutAction);
       expect(state).toBe(initialWorkoutState);
     });
   });

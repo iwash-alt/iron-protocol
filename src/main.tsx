@@ -24,7 +24,7 @@ if ('serviceWorker' in navigator) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated') {
                 // New service worker activated - could notify user to refresh
-                console.log('[SW] New version available');
+                // SW update logging intentionally silent in production
               }
             });
           }
@@ -37,7 +37,7 @@ if ('serviceWorker' in navigator) {
     // Listen for background sync messages from SW
     navigator.serviceWorker.addEventListener('message', (event) => {
       if (event.data?.type === 'SYNC_COMPLETE') {
-        console.log('[SW] Background sync complete');
+        // Background sync complete - could trigger UI refresh
       }
     });
   });

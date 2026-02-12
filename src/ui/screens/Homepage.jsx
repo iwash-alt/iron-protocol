@@ -1083,7 +1083,7 @@ export default function Homepage() {
     try {
       const p = localStorage.getItem('iron-profile') || localStorage.getItem('ironProtocolProfile');
       if (p) setHasProfile(true);
-    } catch (e) { /* noop */ }
+    } catch { /* noop */ }
   }, []);
 
   const ctaText = hasProfile ? 'Continue Training' : 'Start Training -- Free';

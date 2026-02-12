@@ -1,10 +1,11 @@
-import type { BodyMeasurement, ExerciseHistory, NutritionHistory, PersonalRecords, WorkoutLog } from '@/shared/types';
+import type { BodyMeasurement, ExerciseHistory, NutritionHistory, PersonalRecords, GlobalPRs, ExercisePR, WorkoutLog } from '@/shared/types';
 import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
 
 export interface DemoData {
   workoutHistory: WorkoutLog[];
   exerciseHistory: ExerciseHistory;
   personalRecords: PersonalRecords;
+  globalPRs: GlobalPRs;
   bodyMeasurements: BodyMeasurement[];
   nutritionHistory: NutritionHistory;
   weekCount: number;
@@ -36,10 +37,21 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+function emptyExercisePR(): ExercisePR {
+  return {
+    heaviestWeight: null,
+    bestEstimated1RM: null,
+    bestSetVolume: null,
+    bestSessionVolume: null,
+    mostRepsAtWeight: null,
+  };
+}
+
 function generateWorkoutHistory(): {
   workoutHistory: WorkoutLog[];
   exerciseHistory: ExerciseHistory;
   personalRecords: PersonalRecords;
+  globalPRs: GlobalPRs;
 } {
   const rand = lcg(202410);
   const today = new Date();
@@ -55,6 +67,15 @@ function generateWorkoutHistory(): {
   const workoutHistory: WorkoutLog[] = [];
   const exerciseHistory: ExerciseHistory = {};
   const personalRecords: PersonalRecords = {};
+  const globalPRs: GlobalPRs = {
+    highestSessionVolume: null,
+    longestStreak: null,
+    mostSetsInWorkout: null,
+    highestAvgRPE: null,
+  };
+
+  // Track session volumes per exercise per date
+  const sessionVolumes: Record<string, Record<string, number>> = {};
 
   const totalDays = Math.floor((today.getTime() - start.getTime()) / 86400000);
 
@@ -87,6 +108,8 @@ function generateWorkoutHistory(): {
         };
 
         const estimated1RM = calculate1RM(entry.weightKg, entry.reps);
+        const setVol = entry.weightKg * entry.reps;
+
         if (!exerciseHistory[name]) exerciseHistory[name] = [];
         exerciseHistory[name].push({
           date: key,
@@ -94,7 +117,28 @@ function generateWorkoutHistory(): {
           reps: entry.reps,
           estimated1RM,
         });
-        personalRecords[name] = Math.max(personalRecords[name] || 0, estimated1RM);
+
+        // Track session volumes
+        if (!sessionVolumes[name]) sessionVolumes[name] = {};
+        sessionVolumes[name][key] = (sessionVolumes[name][key] || 0) + setVol;
+
+        // Update enhanced PRs
+        if (!personalRecords[name]) personalRecords[name] = emptyExercisePR();
+        const pr = personalRecords[name];
+
+        if (!pr.heaviestWeight || entry.weightKg > pr.heaviestWeight.weightKg) {
+          pr.heaviestWeight = { weightKg: entry.weightKg, reps: entry.reps, date: key };
+        }
+        if (!pr.bestEstimated1RM || estimated1RM > pr.bestEstimated1RM.value) {
+          pr.bestEstimated1RM = { value: estimated1RM, weightKg: entry.weightKg, reps: entry.reps, date: key };
+        }
+        if (!pr.bestSetVolume || setVol > pr.bestSetVolume.value) {
+          pr.bestSetVolume = { value: setVol, weightKg: entry.weightKg, reps: entry.reps, date: key };
+        }
+        if (!pr.mostRepsAtWeight || entry.reps > pr.mostRepsAtWeight.reps) {
+          pr.mostRepsAtWeight = { weightKg: entry.weightKg, reps: entry.reps, date: key };
+        }
+
         return entry;
       });
     });
@@ -109,9 +153,53 @@ function generateWorkoutHistory(): {
       totalVolumeKg,
       completionPercent,
     });
+
+    // Update global PRs
+    if (!globalPRs.highestSessionVolume || totalVolumeKg > globalPRs.highestSessionVolume.value) {
+      globalPRs.highestSessionVolume = { value: totalVolumeKg, date: key, dayName };
+    }
+    if (!globalPRs.mostSetsInWorkout || sets.length > globalPRs.mostSetsInWorkout.count) {
+      globalPRs.mostSetsInWorkout = { count: sets.length, date: key, dayName };
+    }
+    const avgRPE = Math.round((sets.reduce((a, s) => a + s.rpe, 0) / sets.length) * 10) / 10;
+    if (!globalPRs.highestAvgRPE || avgRPE > globalPRs.highestAvgRPE.value) {
+      globalPRs.highestAvgRPE = { value: avgRPE, date: key, dayName };
+    }
   }
 
-  return { workoutHistory, exerciseHistory, personalRecords };
+  // Update best session volumes per exercise
+  for (const [exName, dateVols] of Object.entries(sessionVolumes)) {
+    const pr = personalRecords[exName];
+    if (!pr) continue;
+    for (const [date, vol] of Object.entries(dateVols)) {
+      if (!pr.bestSessionVolume || vol > pr.bestSessionVolume.value) {
+        pr.bestSessionVolume = { value: vol, date };
+      }
+    }
+  }
+
+  // Compute longest streak
+  const allDates = [...new Set(workoutHistory.map(w => w.date))].sort();
+  let maxStreak = 1;
+  let currentStreak = 1;
+  let bestEnd = allDates[0] || '';
+  for (let i = 1; i < allDates.length; i++) {
+    const prev = new Date(allDates[i - 1]);
+    const curr = new Date(allDates[i]);
+    const diff = (curr.getTime() - prev.getTime()) / 86400000;
+    if (diff <= 2) {
+      currentStreak++;
+      if (currentStreak > maxStreak) {
+        maxStreak = currentStreak;
+        bestEnd = allDates[i];
+      }
+    } else {
+      currentStreak = 1;
+    }
+  }
+  globalPRs.longestStreak = { days: maxStreak, endDate: bestEnd };
+
+  return { workoutHistory, exerciseHistory, personalRecords, globalPRs };
 }
 
 function generateBodyMeasurements(): BodyMeasurement[] {
@@ -148,9 +236,9 @@ function generateNutritionHistory(): NutritionHistory {
       water: Math.floor(randomBetween(rand, 8, 13)),
       protein: Math.floor(randomBetween(rand, 140, 210)),
       proteinLog: [
-        { name: 'Whey Shake', protein: 28, icon: '🥤', time: '08:15' },
-        { name: 'Chicken Breast', protein: 45, icon: '🍗', time: '12:30' },
-        { name: 'Greek Yogurt', protein: 20, icon: '🥣', time: '16:00' },
+        { name: 'Whey Shake', protein: 28, icon: '\u{1F964}', time: '08:15' },
+        { name: 'Chicken Breast', protein: 45, icon: '\u{1F357}', time: '12:30' },
+        { name: 'Greek Yogurt', protein: 20, icon: '\u{1F963}', time: '16:00' },
       ],
     };
   }
@@ -158,7 +246,7 @@ function generateNutritionHistory(): NutritionHistory {
 }
 
 export function generateDemoData(): DemoData {
-  const { workoutHistory, exerciseHistory, personalRecords } = generateWorkoutHistory();
+  const { workoutHistory, exerciseHistory, personalRecords, globalPRs } = generateWorkoutHistory();
   const bodyMeasurements = generateBodyMeasurements();
   const nutritionHistory = generateNutritionHistory();
   const weekCount = 24;
@@ -174,6 +262,7 @@ export function generateDemoData(): DemoData {
     workoutHistory,
     exerciseHistory,
     personalRecords,
+    globalPRs,
     bodyMeasurements,
     nutritionHistory,
     weekCount,

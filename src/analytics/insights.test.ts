@@ -207,8 +207,14 @@ describe('generateWeeklyInsights', () => {
     const history = [makeWorkout({ date: '2025-03-17' })];
 
     const personalRecords: PersonalRecords = {
-      'Bench Press': 105,
-      'Squat': 140,
+      'Bench Press': {
+        heaviestWeight: null, bestEstimated1RM: { value: 105, weightKg: 100, reps: 3, date: '2025-03-17' },
+        bestSetVolume: null, bestSessionVolume: null, mostRepsAtWeight: null,
+      },
+      'Squat': {
+        heaviestWeight: null, bestEstimated1RM: { value: 140, weightKg: 130, reps: 5, date: '2025-03-17' },
+        bestSetVolume: null, bestSessionVolume: null, mostRepsAtWeight: null,
+      },
     };
     const exerciseHistory: ExerciseHistory = {
       'Bench Press': [

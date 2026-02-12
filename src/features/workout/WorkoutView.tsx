@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import type { PlanExercise, RPEValue, Exercise } from '@/shared/types';
+import type { PlanExercise, RPEValue, Exercise, Equipment, MuscleGroup } from '@/shared/types';
+import { EQUIPMENT_TYPES, MUSCLE_GROUPS } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
@@ -8,7 +9,7 @@ import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
-import { getExercisesByMuscle, getWeightedExercises } from '@/data/exercises';
+import { getExercisesByMuscle, getWeightedExercises, filterExercises } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
@@ -189,6 +190,16 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+
+  // Exercise browser filter states (shared between Add and Swap modals)
+  const [exSearch, setExSearch] = useState('');
+  const [exEquipment, setExEquipment] = useState<Equipment | 'All'>('All');
+  const [exMuscle, setExMuscle] = useState<MuscleGroup | 'All'>('All');
+
+  // Filtered exercise list for dual-filter
+  const filteredExercises = useMemo(() => {
+    return filterExercises({ search: exSearch, equipment: exEquipment, muscle: exMuscle });
+  }, [exSearch, exEquipment, exMuscle]);
 
   // Intelligence features (Pro only)
   const [activeSuggestion, setActiveSuggestion] = useState<WorkoutSuggestion | null>(null);
@@ -555,32 +566,87 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         </div>
       )}
 
-      {/* Exercise History Modal */}
-      {showExerciseHistory && (
-        <div style={S.overlay} onClick={() => setShowExerciseHistory(null)}>
-          <div style={S.historyModal} onClick={e => e.stopPropagation()}>
-            <h3 style={S.historyTitle}>{showExerciseHistory}</h3>
-            <p style={S.historySub}>Weight Progression</p>
-            {workout.exerciseHistory[showExerciseHistory]?.length ? (
-              <>
-                <MiniChart data={workout.exerciseHistory[showExerciseHistory].slice(-10).map(h => h.weightKg)} color="#FF3B30" height={80} />
-                <div style={S.historyList}>
-                  {workout.exerciseHistory[showExerciseHistory].slice(-10).reverse().map((h, i) => (
-                    <div key={i} style={S.historyItem}>
-                      <span style={{ color: '#888' }}>{h.date}</span>
-                      <span style={S.historyWeight}>{h.weightKg}kg x {h.reps}</span>
-                      <span style={S.historyE1rm}>~{h.estimated1RM}kg</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <p style={{ color: '#666', textAlign: 'center', padding: '2rem 0' }}>No history yet</p>
-            )}
-            <button onClick={() => setShowExerciseHistory(null)} style={S.historyClose}>CLOSE</button>
+      {/* Exercise History Modal (Overhauled) */}
+      {showExerciseHistory && (() => {
+        const entries = workout.exerciseHistory[showExerciseHistory] || [];
+        // Group entries by date for per-session display
+        const sessionMap = new Map<string, typeof entries>();
+        entries.forEach(e => {
+          const existing = sessionMap.get(e.date) ?? [];
+          existing.push(e);
+          sessionMap.set(e.date, existing);
+        });
+        const sessions = [...sessionMap.entries()].sort(([a], [b]) => b.localeCompare(a));
+
+        // Chart data (use per-session aggregates, last 20 sessions)
+        const chartSessions = [...sessionMap.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-20);
+        const weightData = chartSessions.map(([, es]) => Math.max(...es.map(e => e.weightKg)));
+        const volumeData = chartSessions.map(([, es]) => es.reduce((a, e) => a + e.weightKg * e.reps, 0));
+        const repsData = chartSessions.map(([, es]) => es.reduce((a, e) => a + e.reps, 0));
+
+        // Also look up RPE from currentLog / workoutHistory
+        const rpeByDateSet: Record<string, Record<number, number>> = {};
+        workout.workoutHistory.forEach(w => {
+          w.sets.filter(s => s.exerciseName === showExerciseHistory).forEach(s => {
+            if (!rpeByDateSet[w.date]) rpeByDateSet[w.date] = {};
+            rpeByDateSet[w.date][s.setNumber] = s.rpe;
+          });
+        });
+
+        return (
+          <div style={S.overlay} onClick={() => setShowExerciseHistory(null)}>
+            <div style={{ ...S.historyModal, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={S.historyTitle}>{showExerciseHistory} History</h3>
+              {entries.length > 0 ? (
+                <>
+                  {/* Charts */}
+                  <div style={ehStyles.chartSection}>
+                    <div style={ehStyles.chartLabel}>Weight Over Time</div>
+                    <MiniChart data={weightData.length ? weightData : [0]} color="#FF3B30" height={70} />
+                  </div>
+                  <div style={ehStyles.chartSection}>
+                    <div style={ehStyles.chartLabel}>Volume Over Time</div>
+                    <MiniChart data={volumeData.length ? volumeData : [0]} color="#3B82F6" type="bar" height={70} />
+                  </div>
+                  <div style={ehStyles.chartSection}>
+                    <div style={ehStyles.chartLabel}>Total Reps Over Time</div>
+                    <MiniChart data={repsData.length ? repsData : [0]} color="#34C759" height={70} />
+                  </div>
+
+                  {/* Session log */}
+                  <div style={ehStyles.sessionLogTitle}>SESSION LOG</div>
+                  <div style={ehStyles.sessionList}>
+                    {sessions.map(([date, sets]) => {
+                      const sessionVol = sets.reduce((a, s) => a + s.weightKg * s.reps, 0);
+                      const dateRPE = rpeByDateSet[date] || {};
+                      return (
+                        <div key={date} style={ehStyles.sessionBlock}>
+                          <div style={ehStyles.sessionDate}>{date}</div>
+                          {sets.map((s, i) => (
+                            <div key={i} style={ehStyles.setRow}>
+                              <span style={ehStyles.setLabel}>Set {i + 1}:</span>
+                              <span style={ehStyles.setDetail}>
+                                {s.weightKg}kg x {s.reps}
+                                {dateRPE[i + 1] != null && (
+                                  <span style={ehStyles.rpeTag}> @ RPE {dateRPE[i + 1]}</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                          <div style={ehStyles.sessionVolume}>Volume: {sessionVol >= 1000 ? `${(sessionVol / 1000).toFixed(1)}t` : `${Math.round(sessionVol)}kg`}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <p style={{ color: '#666', textAlign: 'center', padding: '2rem 0' }}>No history yet</p>
+              )}
+              <button onClick={() => setShowExerciseHistory(null)} style={S.historyClose}>CLOSE</button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* End workout confirm */}
       {showEndConfirm && (
@@ -602,38 +668,148 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         <HowToSheet exercise={showHowTo} onClose={() => setShowHowTo(null)} />
       )}
 
-      {/* Swap exercise modal */}
-      {showSwap && (
-        <div style={S.overlay} onClick={() => setShowSwap(null)}>
-          <div style={S.swapBox} onClick={e => e.stopPropagation()}>
-            <h3 style={S.swapTitle}>Swap Exercise</h3>
-            <p style={S.swapSub}>Replacing: {showSwap.exercise.name}</p>
-            <div style={S.swapList}>
-              {getExercisesByMuscle(showSwap.exercise.muscle, showSwap.exercise.id).map(ex => (
-                <button key={ex.id} onClick={() => { plan.swapExercise(showSwap.id, ex); setShowSwap(null); }} style={S.swapItem}>
-                  <div><div style={S.swapItemName}>{ex.name}</div><div style={S.swapItemMeta}>{ex.equipment}</div></div>
-                </button>
-              ))}
+      {/* Swap exercise modal (Dual Filter) */}
+      {showSwap && (() => {
+        const swapResults = filterExercises({
+          search: exSearch,
+          equipment: exEquipment,
+          muscle: exMuscle === 'All' ? showSwap.exercise.muscle as MuscleGroup : exMuscle,
+        }).filter(ex => ex.id !== showSwap.exercise.id);
+        return (
+          <div style={S.overlay} onClick={() => { setShowSwap(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
+            <div style={{ ...S.swapBox, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h3 style={S.swapTitle}>Swap Exercise</h3>
+              <p style={S.swapSub}>Replacing: {showSwap.exercise.name}</p>
+
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search exercises..."
+                value={exSearch}
+                onChange={e => setExSearch(e.target.value)}
+                style={ebStyles.searchInput}
+              />
+
+              {/* Dual filter dropdowns */}
+              <div style={ebStyles.filterRow}>
+                <select
+                  value={exEquipment}
+                  onChange={e => setExEquipment(e.target.value as Equipment | 'All')}
+                  style={ebStyles.select}
+                >
+                  <option value="All">All Equipment</option>
+                  {EQUIPMENT_TYPES.map(eq => (
+                    <option key={eq} value={eq}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                  ))}
+                </select>
+                <select
+                  value={exMuscle === 'All' ? showSwap.exercise.muscle : exMuscle}
+                  onChange={e => setExMuscle(e.target.value as MuscleGroup | 'All')}
+                  style={ebStyles.select}
+                >
+                  <option value="All">All Muscles</option>
+                  {MUSCLE_GROUPS.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={S.swapList}>
+                {swapResults.map(ex => (
+                  <button
+                    key={ex.id}
+                    onClick={() => {
+                      plan.swapExercise(showSwap.id, ex);
+                      setShowSwap(null);
+                      setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                    }}
+                    style={S.swapItem}
+                  >
+                    <div>
+                      <div style={S.swapItemName}>{ex.name}</div>
+                      <div style={S.swapItemMeta}>
+                        {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                        {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+                {swapResults.length === 0 && (
+                  <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* Add exercise modal */}
+      {/* Add exercise modal (Dual Filter) */}
       {showAddExercise && (
-        <div style={S.overlay} onClick={() => setShowAddExercise(false)}>
-          <div style={S.addExModal} onClick={e => e.stopPropagation()}>
+        <div style={S.overlay} onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
+          <div style={{ ...S.addExModal, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <h3 style={S.addExTitle}>Add Exercise</h3>
             <p style={S.addExSub}>Add to {plan.currentDay?.name}</p>
+
+            {/* Search bar */}
+            <input
+              type="text"
+              placeholder="Search exercises..."
+              value={exSearch}
+              onChange={e => setExSearch(e.target.value)}
+              style={ebStyles.searchInput}
+            />
+
+            {/* Dual filter dropdowns */}
+            <div style={ebStyles.filterRow}>
+              <select
+                value={exEquipment}
+                onChange={e => setExEquipment(e.target.value as Equipment | 'All')}
+                style={ebStyles.select}
+              >
+                <option value="All">All Equipment</option>
+                {EQUIPMENT_TYPES.map(eq => (
+                  <option key={eq} value={eq}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                ))}
+              </select>
+              <select
+                value={exMuscle}
+                onChange={e => setExMuscle(e.target.value as MuscleGroup | 'All')}
+                style={ebStyles.select}
+              >
+                <option value="All">All Muscles</option>
+                {MUSCLE_GROUPS.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Results */}
             <div style={S.addExList}>
-              {getWeightedExercises().map(ex => (
-                <button key={ex.id} onClick={() => { plan.addExercise(ex); setShowAddExercise(false); }} style={S.addExItem}>
-                  <div><div style={S.addExName}>{ex.name}</div><div style={S.addExMeta}>{ex.muscle} · {ex.equipment}</div></div>
+              {filteredExercises.map(ex => (
+                <button
+                  key={ex.id}
+                  onClick={() => {
+                    plan.addExercise(ex);
+                    setShowAddExercise(false);
+                    setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                  }}
+                  style={S.addExItem}
+                >
+                  <div>
+                    <div style={S.addExName}>{ex.name}</div>
+                    <div style={S.addExMeta}>
+                      {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                      {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                    </div>
+                  </div>
                   <div style={S.addExArrow}>+</div>
                 </button>
               ))}
+              {filteredExercises.length === 0 && (
+                <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>
+              )}
             </div>
-            <button onClick={() => setShowAddExercise(false)} style={S.addExCancel}>CANCEL</button>
+            <button onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }} style={S.addExCancel}>CANCEL</button>
           </div>
         </div>
       )}
@@ -704,4 +880,105 @@ const howToBtn: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   padding: 0,
+};
+
+/** Exercise History modal styles */
+const ehStyles: Record<string, React.CSSProperties> = {
+  chartSection: {
+    marginBottom: spacing.md,
+  },
+  chartLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.black,
+    color: colors.textTertiary,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.06em',
+    marginBottom: 4,
+  },
+  sessionLogTitle: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.black,
+    color: colors.textTertiary,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTop: `1px solid ${colors.surfaceBorder}`,
+  },
+  sessionList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: spacing.md,
+  },
+  sessionBlock: {
+    borderBottom: `1px solid ${colors.surfaceBorder}`,
+    paddingBottom: spacing.sm,
+  },
+  sessionDate: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+    marginBottom: 4,
+  },
+  setRow: {
+    display: 'flex',
+    gap: 8,
+    fontSize: typography.sizes.md,
+    padding: '2px 0',
+  },
+  setLabel: {
+    color: colors.textTertiary,
+    fontWeight: typography.weights.medium,
+    width: 48,
+    flexShrink: 0,
+  },
+  setDetail: {
+    color: colors.text,
+    fontWeight: typography.weights.bold,
+  },
+  rpeTag: {
+    color: colors.warning,
+    fontWeight: typography.weights.medium,
+    fontSize: typography.sizes.sm,
+  },
+  sessionVolume: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: 4,
+    fontWeight: typography.weights.bold,
+  },
+};
+
+/** Exercise browser styles (shared by Add and Swap modals) */
+const ebStyles: Record<string, React.CSSProperties> = {
+  searchInput: {
+    width: '100%',
+    padding: `${spacing.sm}px ${spacing.md}px`,
+    borderRadius: radii.md,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    fontSize: typography.sizes.base,
+    outline: 'none',
+    marginBottom: spacing.sm,
+    boxSizing: 'border-box' as const,
+  },
+  filterRow: {
+    display: 'flex',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  select: {
+    flex: 1,
+    padding: `${spacing.sm}px ${spacing.sm}px`,
+    borderRadius: radii.md,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: colors.surface,
+    color: colors.text,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    cursor: 'pointer',
+    appearance: 'auto' as const,
+  },
 };

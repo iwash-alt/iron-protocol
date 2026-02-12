@@ -12,6 +12,8 @@ export const EQUIPMENT_TYPES = [
   'Barbell', 'Dumbbell', 'Smith Machine', 'Cable',
   'Machine (plate-loaded)', 'Machine (pin/stack)',
   'Bodyweight', 'Resistance Band', 'Kettlebell', 'EZ Bar',
+  'Barbell', 'Dumbbells', 'Cable', 'Machine', 'Bar', 'None',
+  'Smith Machine', 'EZ Bar', 'Kettlebell', 'Band',
 ] as const;
 
 export type Equipment = typeof EQUIPMENT_TYPES[number];

@@ -101,3 +101,4 @@ export const EXERCISE_ANIMATION_BY_NAME: Record<string, string> = {
   'Bench Press': 'bench_press',
   'Overhead Press': 'overhead_press',
 };
+

@@ -29,7 +29,6 @@ export interface Exercise {
   formCues: string[];
   commonMistakes: string[];
   primaryMuscles?: string[];
-  animationId?: string;
   tips?: string[];
 }
 

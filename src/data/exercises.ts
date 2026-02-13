@@ -2013,7 +2013,6 @@ const PRIMARY_MUSCLE_MAP: Record<string, string[]> = {
 export const exercises: Exercise[] = baseExercises.map((exercise) => ({
   ...exercise,
   primaryMuscles: exercise.primaryMuscles ?? PRIMARY_MUSCLE_MAP[exercise.muscle] ?? [exercise.muscle.toLowerCase()],
-  animationId: exercise.animationId ?? EXERCISE_ANIMATION_BY_NAME[exercise.name],
 }));
 export function findExerciseByName(name: string): Exercise | undefined {
   return exercises.find(e => e.name === name);

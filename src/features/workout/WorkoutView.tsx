@@ -9,7 +9,7 @@ import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
-import { filterExercises } from '@/data/exercises';
+import { exercises, filterExercises } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
@@ -20,7 +20,7 @@ import type { WorkoutSuggestion } from '@/training/suggestions';
 import { SuggestionToast } from './SuggestionToast';
 import { ReadinessCheck, getTodayReadiness } from '@/features/readiness/ReadinessCheck';
 import type { ReadinessResult } from '@/features/readiness/ReadinessCheck';
-import { HowToSheet } from './HowToSheet';
+import { HowToModal } from '@/ui/modals/HowToModal';
 import { WorkoutSummary, buildWorkoutSummary } from './WorkoutSummary';
 import type { WorkoutSummaryData } from './WorkoutSummary';
 
@@ -647,7 +647,10 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               ) : (
                 <p style={{ color: '#666', textAlign: 'center', padding: '2rem 0' }}>No history yet</p>
               )}
-              <button onClick={() => setShowExerciseHistory(null)} style={S.historyClose}>CLOSE</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => { const ex = exercises.find(e => e.name === showExerciseHistory); if (ex) setShowHowTo(ex); }} style={howToBtn}>?</button>
+                <button onClick={() => setShowExerciseHistory(null)} style={{ ...S.historyClose, flex: 1 }}>CLOSE</button>
+              </div>
             </div>
           </div>
         );
@@ -670,7 +673,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* How-To bottom sheet (Change 2) */}
       {showHowTo && (
-        <HowToSheet exercise={showHowTo} onClose={() => setShowHowTo(null)} />
+        <HowToModal exercise={showHowTo} onClose={() => setShowHowTo(null)} />
       )}
 
       {/* Swap exercise modal (Dual Filter) */}
@@ -721,23 +724,25 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
               <div style={S.swapList}>
                 {swapResults.map(ex => (
-                  <button
-                    key={ex.id}
-                    onClick={() => {
-                      plan.swapExercise(showSwap.id, ex);
-                      setShowSwap(null);
-                      setExSearch(''); setExEquipment('All'); setExMuscle('All');
-                    }}
-                    style={S.swapItem}
-                  >
-                    <div>
-                      <div style={S.swapItemName}>{ex.name}</div>
-                      <div style={S.swapItemMeta}>
-                        {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
-                        {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                  <div key={ex.id} style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => {
+                        plan.swapExercise(showSwap.id, ex);
+                        setShowSwap(null);
+                        setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                      }}
+                      style={{ ...S.swapItem, flex: 1 }}
+                    >
+                      <div>
+                        <div style={S.swapItemName}>{ex.name}</div>
+                        <div style={S.swapItemMeta}>
+                          {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                          {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                    <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
+                  </div>
                 ))}
                 {swapResults.length === 0 && (
                   <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>
@@ -791,24 +796,26 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             {/* Results */}
             <div style={S.addExList}>
               {filteredExercises.map(ex => (
-                <button
-                  key={ex.id}
-                  onClick={() => {
-                    plan.addExercise(ex);
-                    setShowAddExercise(false);
-                    setExSearch(''); setExEquipment('All'); setExMuscle('All');
-                  }}
-                  style={S.addExItem}
-                >
-                  <div>
-                    <div style={S.addExName}>{ex.name}</div>
-                    <div style={S.addExMeta}>
-                      {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
-                      {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => {
+                      plan.addExercise(ex);
+                      setShowAddExercise(false);
+                      setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                    }}
+                    style={{ ...S.addExItem, flex: 1 }}
+                  >
+                    <div>
+                      <div style={S.addExName}>{ex.name}</div>
+                      <div style={S.addExMeta}>
+                        {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                        {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
+                      </div>
                     </div>
-                  </div>
-                  <div style={S.addExArrow}>+</div>
-                </button>
+                    <div style={S.addExArrow}>+</div>
+                  </button>
+                  <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
+                </div>
               ))}
               {filteredExercises.length === 0 && (
                 <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>

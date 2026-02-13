@@ -23,7 +23,6 @@ import RPEModal from './ui/modals/RPEModal';
 import NutritionModal from './ui/modals/NutritionModal';
 import ExerciseEditModal from './ui/modals/ExerciseEditModal';
 import SwapExerciseModal from './ui/modals/SwapExerciseModal';
-import VideoModal from './ui/modals/VideoModal';
 import TemplatesModal from './ui/modals/TemplatesModal';
 import AddExerciseModal from './ui/modals/AddExerciseModal';
 import EndWorkoutModal from './ui/modals/EndWorkoutModal';
@@ -55,7 +54,6 @@ export default function IronProtocol() {
   const [showWarmup, setShowWarmup] = useState(null);
   const [showDeloadAlert, setShowDeloadAlert] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
-  const [showVideo, setShowVideo] = useState(null);
   const [showSwap, setShowSwap] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
@@ -239,7 +237,7 @@ export default function IronProtocol() {
             onCompleteSet={handleCompleteSet}
             onEditExercise={setEditingExercise}
             onShowSwap={setShowSwap}
-            onShowVideo={setShowVideo}
+            onShowVideo={() => {}}
             onShowWarmup={setShowWarmup}
             onShowExerciseHistory={setShowExerciseHistory}
             onShowAddExercise={() => setShowAddExercise(true)}
@@ -277,7 +275,6 @@ export default function IronProtocol() {
       {showMeasurements && <MeasurementsModal onSave={handleSaveMeasurement} onClose={() => setShowMeasurements(false)} currentWeight={profile.weight} />}
       {showExerciseHistory && <ExerciseHistoryModal exerciseName={showExerciseHistory} history={history.exerciseHistory} onClose={() => setShowExerciseHistory(null)} />}
       {showEndConfirm && <EndWorkoutModal progress={progress} onKeepGoing={() => setShowEndConfirm(false)} onEnd={() => handleEndWorkout(true)} />}
-      {showVideo && <VideoModal exercise={showVideo} onClose={() => setShowVideo(null)} />}
       {showSwap && <SwapExerciseModal showSwap={showSwap} onSwap={handleSwap} onClose={() => setShowSwap(null)} />}
       {showRPE && <RPEModal showRPE={showRPE} onConfirm={handleConfirmRPE} onCancel={() => setShowRPE(null)} />}
       {showAddExercise && <AddExerciseModal dayName={workout.currentDay?.name} onAdd={handleAddExercise} onClose={() => setShowAddExercise(false)} />}

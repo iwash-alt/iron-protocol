@@ -5,7 +5,7 @@ export function getTodayKey(): string {
 export function getWeekNumber(): number {
   const now = new Date();
   const yearStart = new Date(now.getFullYear(), 0, 1);
-  return Math.ceil((now.getTime() - yearStart.getTime()) / 604800000);
+  return Math.floor((now.getTime() - yearStart.getTime()) / 604800000) + 1;
 }
 
 export function getGreeting(): 'morning' | 'afternoon' | 'evening' {

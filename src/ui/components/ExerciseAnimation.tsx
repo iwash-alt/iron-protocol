@@ -1,5 +1,5 @@
 import React from 'react';
-import { EXERCISE_ANIMATIONS, type ExerciseAnimationData, type ExercisePose } from '@/data/animations';
+import { EXERCISE_ANIMATIONS, type ExercisePose } from '@/data/animations';
 
 interface Props {
   animationId?: string;
@@ -44,7 +44,6 @@ export function ExerciseAnimation({ animationId, paused = false, forceView }: Pr
   const data = (animationId && EXERCISE_ANIMATIONS[animationId]) || EXERCISE_ANIMATIONS.plank;
   const view = forceView || data.view;
   const start = posePoints(data.startPose, view);
-  const end = posePoints(data.endPose, view);
   const cycle = `ia-${data.exerciseId}`;
   const animation = `${cycle} ${data.duration}ms ease-in-out infinite alternate`;
 

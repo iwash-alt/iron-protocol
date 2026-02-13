@@ -54,7 +54,6 @@ export default function IronProtocol() {
   const [showWarmup, setShowWarmup] = useState(null);
   const [showDeloadAlert, setShowDeloadAlert] = useState(false);
   const [showMeasurements, setShowMeasurements] = useState(false);
-  const [showVideo, setShowVideo] = useState(null);
   const [showSwap, setShowSwap] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
@@ -238,7 +237,7 @@ export default function IronProtocol() {
             onCompleteSet={handleCompleteSet}
             onEditExercise={setEditingExercise}
             onShowSwap={setShowSwap}
-            onShowVideo={setShowVideo}
+            onShowVideo={() => {}}
             onShowWarmup={setShowWarmup}
             onShowExerciseHistory={setShowExerciseHistory}
             onShowAddExercise={() => setShowAddExercise(true)}

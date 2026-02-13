@@ -29,7 +29,8 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const storageInfo = useMemo(() => getProgressPhotosStorageInfo(), [photos]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute when photos changes
+  const storageInfo = useMemo(() => getProgressPhotosStorageInfo(), [photos.length]);
 
   const filteredPhotos = useMemo(() => {
     const sorted = [...photos].sort((a, b) => b.date.localeCompare(a.date));

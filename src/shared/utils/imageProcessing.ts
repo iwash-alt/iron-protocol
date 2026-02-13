@@ -91,8 +91,6 @@ export async function processProfilePhoto(file: File): Promise<string> {
   // Apply orientation, then draw cropped
   applyOrientation(ctx, size, size, orientation);
 
-  // Scale factor from crop to output
-  const scale = size / cropSize;
   ctx.drawImage(
     img,
     sx, sy, cropSize, cropSize,

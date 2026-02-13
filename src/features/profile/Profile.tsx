@@ -4,7 +4,7 @@ import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 import { Icon } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
+import { colors, spacing, typography } from '@/shared/theme/tokens';
 import {
   loadProfile, saveProfile,
   loadWorkoutHistory, loadExerciseHistory, loadPersonalRecords,

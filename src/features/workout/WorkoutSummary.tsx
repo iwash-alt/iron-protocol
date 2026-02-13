@@ -7,6 +7,7 @@
 import React from 'react';
 import type { PlanExercise, SetLog } from '@/shared/types';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
+import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 
 export interface WorkoutSummaryData {
   dayName: string;
@@ -100,11 +101,27 @@ function formatDuration(seconds: number): string {
 }
 
 export function WorkoutSummary({ summary, onDone }: Props) {
+  const { photo: profilePhoto } = useProfilePhoto();
+
   return (
     <div style={ss.overlay}>
       <div style={ss.container}>
         {/* Header */}
         <div style={ss.header}>
+          {profilePhoto && (
+            <img
+              src={profilePhoto}
+              alt=""
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                objectFit: 'cover' as const,
+                border: `2px solid ${colors.primaryBorder}`,
+                marginBottom: spacing.sm,
+              }}
+            />
+          )}
           <div style={ss.icon}>{summary.endedEarly ? '🏁' : '🏆'}</div>
           <h2 style={ss.title}>
             {summary.endedEarly ? 'WORKOUT ENDED EARLY' : 'WORKOUT COMPLETE'}

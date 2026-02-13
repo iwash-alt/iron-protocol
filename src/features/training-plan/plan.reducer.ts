@@ -1,4 +1,4 @@
-import type { PlanExercise, WorkoutDay, Exercise } from '@/shared/types';
+import type { PlanExercise, WorkoutDay, Exercise, CustomWorkoutInput } from '@/shared/types';
 import { isLowerBody } from '@/shared/types';
 import { findExerciseByName } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
@@ -16,7 +16,8 @@ export type PlanAction =
   | { type: 'UPDATE_EXERCISE'; id: string; patch: Partial<PlanExercise> }
   | { type: 'ADD_EXERCISE'; dayId: string; exercise: Exercise }
   | { type: 'REMOVE_EXERCISE'; id: string }
-  | { type: 'SWAP_EXERCISE'; id: string; newExercise: Exercise };
+  | { type: 'SWAP_EXERCISE'; id: string; newExercise: Exercise }
+  | { type: 'CREATE_CUSTOM_WORKOUT'; config: CustomWorkoutInput };
 
 function getWeightMultiplier(level: string): number {
   switch (level) {
@@ -65,6 +66,19 @@ export function createInitialPlan(profile: UserProfile, templateKey?: string): P
   return { days, exercises, dayIndex: 0 };
 }
 
+
+
+function createCustomWorkout(config: CustomWorkoutInput): PlanState {
+  const normalizedDays = Math.max(1, Math.min(7, Math.round(config.days)));
+  const dayNameBase = (config.name || 'Custom Workout').trim() || 'Custom Workout';
+  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => ({
+    id: `custom-d${i}`,
+    name: normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`,
+  }));
+
+  return { days, exercises: [], dayIndex: 0 };
+}
+
 export function planReducer(state: PlanState, action: PlanAction): PlanState {
   switch (action.type) {
     case 'INITIALIZE':
@@ -111,6 +125,9 @@ export function planReducer(state: PlanState, action: PlanAction): PlanState {
           pe.id === action.id ? { ...pe, exercise: action.newExercise } : pe
         ),
       };
+
+    case 'CREATE_CUSTOM_WORKOUT':
+      return createCustomWorkout(action.config);
 
     default:
       return state;

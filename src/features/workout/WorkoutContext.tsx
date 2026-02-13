@@ -342,7 +342,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       }
 
       if (demo.enabled) {
-        demo.updateDemoData(data => ({ ...data, workoutHistory: updated }));
+        demo.updateDemoData(data => ({ ...data, workoutHistory: updated, globalPRs: updatedGlobal }));
       } else {
         saveWorkoutHistory(updated);
       }

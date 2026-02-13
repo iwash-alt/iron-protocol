@@ -187,9 +187,12 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showCustomWorkout, setShowCustomWorkout] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [customWorkoutName, setCustomWorkoutName] = useState('My Workout');
+  const [customWorkoutDays, setCustomWorkoutDays] = useState(4);
 
   // Exercise browser filter states (shared between Add and Swap modals)
   const [exSearch, setExSearch] = useState('');
@@ -311,6 +314,13 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     setShowTemplates(false);
   };
 
+  const handleCreateCustomWorkout = () => {
+    plan.createCustomWorkout({ name: customWorkoutName, days: customWorkoutDays });
+    workout.resetWorkoutState();
+    setShowCustomWorkout(false);
+    setShowTemplates(false);
+  };
+
   const handleDayChange = (index: number) => {
     plan.setDayIndex(index);
     workout.resetWorkoutState();
@@ -333,11 +343,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
           <span style={S.nutritionIcon}>💧</span>
           <span style={S.nutritionValue}>{nutrition.todayWater}/{WATER_GOAL}</span>
           <button onClick={e => { e.stopPropagation(); nutrition.addWater(); }} style={S.addBtn}>+</button>
-        </div>
-        <div style={S.nutritionItem} onClick={() => setShowNutrition(true)}>
-          <span style={S.nutritionIcon}>🥩</span>
-          <span style={S.nutritionValue}>{nutrition.todayProtein}/{proteinGoal}g</span>
-          <button onClick={e => { e.stopPropagation(); setShowNutrition(true); }} style={S.addBtn}>+</button>
         </div>
       </div>
 
@@ -699,7 +704,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 >
                   <option value="All">All Equipment</option>
                   {EQUIPMENT_TYPES.map(eq => (
-                    <option key={eq} value={eq}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                    <option key={eq} value={eq} style={ebStyles.option}>{eq === 'None' ? 'Bodyweight' : eq}</option>
                   ))}
                 </select>
                 <select
@@ -709,7 +714,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 >
                   <option value="All">All Muscles</option>
                   {MUSCLE_GROUPS.map(m => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m} style={ebStyles.option}>{m}</option>
                   ))}
                 </select>
               </div>
@@ -768,7 +773,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               >
                 <option value="All">All Equipment</option>
                 {EQUIPMENT_TYPES.map(eq => (
-                  <option key={eq} value={eq}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                  <option key={eq} value={eq} style={ebStyles.option}>{eq === 'None' ? 'Bodyweight' : eq}</option>
                 ))}
               </select>
               <select
@@ -778,7 +783,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               >
                 <option value="All">All Muscles</option>
                 {MUSCLE_GROUPS.map(m => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m} style={ebStyles.option}>{m}</option>
                 ))}
               </select>
             </div>
@@ -832,7 +837,40 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </button>
               ))}
             </div>
+            <button onClick={() => setShowCustomWorkout(true)} style={templatesCustomStyles.launchBtn}>+ CREATE YOUR OWN WORKOUT</button>
             <button onClick={() => setShowTemplates(false)} style={S.templatesCancel}>CANCEL</button>
+          </div>
+        </div>
+      )}
+
+      {showCustomWorkout && (
+        <div style={S.overlay} onClick={() => setShowCustomWorkout(false)}>
+          <div style={templatesCustomStyles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={templatesCustomStyles.title}>Create Your Own Workout</h3>
+            <p style={templatesCustomStyles.sub}>Start from scratch with your own named split.</p>
+            <label style={templatesCustomStyles.label}>Workout Name</label>
+            <input
+              type="text"
+              value={customWorkoutName}
+              maxLength={32}
+              onChange={e => setCustomWorkoutName(e.target.value)}
+              placeholder="My Workout"
+              style={templatesCustomStyles.input}
+            />
+            <label style={templatesCustomStyles.label}>Training Days / Week</label>
+            <select
+              value={customWorkoutDays}
+              onChange={e => setCustomWorkoutDays(Number(e.target.value))}
+              style={templatesCustomStyles.select}
+            >
+              {[1, 2, 3, 4, 5, 6, 7].map(day => (
+                <option key={day} value={day} style={templatesCustomStyles.option}>{day} {day === 1 ? 'day' : 'days'}</option>
+              ))}
+            </select>
+            <div style={templatesCustomStyles.actions}>
+              <button onClick={() => setShowCustomWorkout(false)} style={templatesCustomStyles.cancel}>Cancel</button>
+              <button onClick={handleCreateCustomWorkout} style={templatesCustomStyles.create}>Create Workout</button>
+            </div>
           </div>
         </div>
       )}
@@ -980,5 +1018,61 @@ const ebStyles: Record<string, React.CSSProperties> = {
     fontWeight: typography.weights.bold,
     cursor: 'pointer',
     appearance: 'auto' as const,
+  },
+  option: {
+    background: '#111',
+    color: '#fff',
+  },
+};
+
+const templatesCustomStyles: Record<string, React.CSSProperties> = {
+  launchBtn: {
+    width: '100%',
+    borderRadius: radii.md,
+    border: `1px solid ${colors.primaryBorder}`,
+    background: 'rgba(255,59,48,0.08)',
+    color: colors.primary,
+    fontWeight: typography.weights.black,
+    fontSize: typography.sizes.sm,
+    padding: `${spacing.sm}px ${spacing.md}px`,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  modal: {
+    width: 'min(92vw, 420px)',
+    borderRadius: radii.xl,
+    background: colors.surface,
+    border: `1px solid ${colors.surfaceBorder}`,
+    padding: spacing.lg,
+  },
+  title: { color: colors.text, margin: 0, marginBottom: spacing.xs, fontSize: typography.sizes.xl },
+  sub: { color: colors.textSecondary, marginTop: 0, marginBottom: spacing.md, fontSize: typography.sizes.sm },
+  label: { display: 'block', color: colors.textSecondary, marginBottom: 6, fontSize: typography.sizes.xs, textTransform: 'uppercase', letterSpacing: '0.06em' },
+  input: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: `${spacing.sm}px ${spacing.md}px`,
+    borderRadius: radii.md,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  select: {
+    width: '100%',
+    padding: `${spacing.sm}px ${spacing.md}px`,
+    borderRadius: radii.md,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: colors.surface,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  option: { background: '#111', color: '#fff' },
+  actions: { display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' },
+  cancel: {
+    borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px`,
+  },
+  create: {
+    borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold,
   },
 };

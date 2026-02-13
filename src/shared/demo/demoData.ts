@@ -294,7 +294,19 @@ export function saveDemoData(data: DemoData): void {
 
 export function ensureDemoData(): DemoData {
   const existing = loadDemoData();
-  if (existing) return existing;
+  if (
+    existing
+    && Array.isArray(existing.workoutHistory)
+    && existing.workoutHistory.length > 0
+    && existing.exerciseHistory
+    && existing.personalRecords
+    && existing.globalPRs
+    && Array.isArray(existing.bodyMeasurements)
+    && existing.nutritionHistory
+  ) {
+    return existing;
+  }
+
   const created = generateDemoData();
   saveDemoData(created);
   return created;

@@ -7,98 +7,123 @@ interface Props {
   forceView?: 'front' | 'side';
 }
 
-const limb = { upperArm: 30, forearm: 26, upperLeg: 36, lowerLeg: 34 };
-const BODY = { shoulderY: 66, hipY: 104, leftX: 82, rightX: 118 };
+const LIMB = { upperArm: 28, forearm: 26, upperLeg: 34, lowerLeg: 34 };
 
-function rad(deg: number) { return (deg * Math.PI) / 180; }
-function endPoint(x: number, y: number, len: number, angle: number) {
-  return { x: x + Math.cos(rad(angle)) * len, y: y + Math.sin(rad(angle)) * len };
+type Point = { x: number; y: number };
+
+function toRad(deg: number) {
+  return (deg * Math.PI) / 180;
+}
+
+function endPoint(x: number, y: number, len: number, angle: number): Point {
+  return { x: x + Math.cos(toRad(angle)) * len, y: y + Math.sin(toRad(angle)) * len };
+}
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function blendPose(start: ExercisePose, end: ExercisePose, t: number): ExercisePose {
+  return {
+    torsoLean: lerp(start.torsoLean, end.torsoLean, t),
+    leftShoulder: lerp(start.leftShoulder, end.leftShoulder, t),
+    leftElbow: lerp(start.leftElbow, end.leftElbow, t),
+    rightShoulder: lerp(start.rightShoulder, end.rightShoulder, t),
+    rightElbow: lerp(start.rightElbow, end.rightElbow, t),
+    leftHip: lerp(start.leftHip, end.leftHip, t),
+    leftKnee: lerp(start.leftKnee, end.leftKnee, t),
+    rightHip: lerp(start.rightHip, end.rightHip, t),
+    rightKnee: lerp(start.rightKnee, end.rightKnee, t),
+  };
 }
 
 function posePoints(pose: ExercisePose, view: 'front' | 'side') {
-  const torsoBase = { x: 100, y: 108 };
-  const torsoTop = endPoint(torsoBase.x, torsoBase.y, 46, -90 + pose.torsoLean);
-  const shoulderL = view === 'front' ? { x: BODY.leftX, y: BODY.shoulderY } : { x: 92, y: 68 };
-  const shoulderR = view === 'front' ? { x: BODY.rightX, y: BODY.shoulderY } : { x: 108, y: 68 };
-  const hipL = view === 'front' ? { x: 90, y: BODY.hipY } : { x: 96, y: 106 };
-  const hipR = view === 'front' ? { x: 110, y: BODY.hipY } : { x: 104, y: 106 };
+  const shoulderL = view === 'front' ? { x: 84, y: 68 } : { x: 92, y: 68 };
+  const shoulderR = view === 'front' ? { x: 116, y: 68 } : { x: 108, y: 68 };
+  const hipL = view === 'front' ? { x: 90, y: 106 } : { x: 96, y: 106 };
+  const hipR = view === 'front' ? { x: 110, y: 106 } : { x: 104, y: 106 };
 
-  const elbowL = endPoint(shoulderL.x, shoulderL.y, limb.upperArm, pose.leftShoulder);
-  const elbowR = endPoint(shoulderR.x, shoulderR.y, limb.upperArm, pose.rightShoulder);
-  const handL = endPoint(elbowL.x, elbowL.y, limb.forearm, pose.leftShoulder + pose.leftElbow);
-  const handR = endPoint(elbowR.x, elbowR.y, limb.forearm, pose.rightShoulder + pose.rightElbow);
+  const elbowL = endPoint(shoulderL.x, shoulderL.y, LIMB.upperArm, pose.leftShoulder);
+  const elbowR = endPoint(shoulderR.x, shoulderR.y, LIMB.upperArm, pose.rightShoulder);
+  const handL = endPoint(elbowL.x, elbowL.y, LIMB.forearm, pose.leftShoulder + pose.leftElbow);
+  const handR = endPoint(elbowR.x, elbowR.y, LIMB.forearm, pose.rightShoulder + pose.rightElbow);
 
-  const kneeL = endPoint(hipL.x, hipL.y, limb.upperLeg, 90 + pose.leftHip);
-  const kneeR = endPoint(hipR.x, hipR.y, limb.upperLeg, 90 + pose.rightHip);
-  const footL = endPoint(kneeL.x, kneeL.y, limb.lowerLeg, 90 + pose.leftHip - pose.leftKnee);
-  const footR = endPoint(kneeR.x, kneeR.y, limb.lowerLeg, 90 + pose.rightHip - pose.rightKnee);
+  const kneeL = endPoint(hipL.x, hipL.y, LIMB.upperLeg, 90 + pose.leftHip);
+  const kneeR = endPoint(hipR.x, hipR.y, LIMB.upperLeg, 90 + pose.rightHip);
+  const footL = endPoint(kneeL.x, kneeL.y, LIMB.lowerLeg, 90 + pose.leftHip - pose.leftKnee);
+  const footR = endPoint(kneeR.x, kneeR.y, LIMB.lowerLeg, 90 + pose.rightHip - pose.rightKnee);
 
-  return { torsoBase, torsoTop, shoulderL, shoulderR, hipL, hipR, elbowL, elbowR, handL, handR, kneeL, kneeR, footL, footR };
+  const torsoBottom = { x: 100, y: 108 };
+  const torsoTop = endPoint(torsoBottom.x, torsoBottom.y, 44, -90 + pose.torsoLean);
+
+  return { shoulderL, shoulderR, elbowL, elbowR, handL, handR, hipL, hipR, kneeL, kneeR, footL, footR, torsoTop, torsoBottom };
 }
 
-function line(a: {x:number;y:number}, b: {x:number;y:number}, key: string) {
-  return <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#E9EEF5" strokeWidth="10" strokeLinecap="round" />;
+function Segment({ from, to, width = 10 }: { from: Point; to: Point; width?: number }) {
+  return <line x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="#E8EDF4" strokeWidth={width} strokeLinecap="round" />;
 }
 
 export function ExerciseAnimation({ animationId, paused = false, forceView }: Props) {
-  const data = (animationId && EXERCISE_ANIMATIONS[animationId]) || EXERCISE_ANIMATIONS.plank;
+  const data = (animationId && EXERCISE_ANIMATIONS[animationId]) || EXERCISE_ANIMATIONS.squat;
   const view = forceView || data.view;
-  const start = posePoints(data.startPose, view);
-  const cycle = `ia-${data.exerciseId}`;
-  const animation = `${cycle} ${data.duration}ms ease-in-out infinite alternate`;
+  const [now, setNow] = React.useState(() => performance.now());
 
-  const equipment = data.equipment !== 'none' && (
-    <g style={{ animationPlayState: paused ? 'paused' : 'running' }}>
-      {data.equipmentConfig?.bench && (
-        <rect x={data.equipmentConfig.bench.x} y={data.equipmentConfig.bench.y} width={data.equipmentConfig.bench.width} height="10" rx="5" fill="#6B7B8D" transform={data.equipmentConfig.bench.angle ? `rotate(${data.equipmentConfig.bench.angle} ${data.equipmentConfig.bench.x} ${data.equipmentConfig.bench.y})` : undefined} />
-      )}
-      {data.equipment === 'barbell' && (
-        <g>
-          <line x1={start.handL.x} y1={start.handL.y} x2={start.handR.x} y2={start.handR.y} stroke="#6B7B8D" strokeWidth="6" style={{ animation }} />
-          <circle cx={start.handL.x - 6} cy={start.handL.y} r="7" fill="#6B7B8D" style={{ animation }} />
-          <circle cx={start.handR.x + 6} cy={start.handR.y} r="7" fill="#6B7B8D" style={{ animation }} />
-        </g>
-      )}
-      {data.equipment === 'dumbbell' && (
-        <g>
-          <rect x={start.handL.x - 7} y={start.handL.y - 2} width="14" height="4" rx="2" fill="#6B7B8D" style={{ animation }} />
-          <rect x={start.handR.x - 7} y={start.handR.y - 2} width="14" height="4" rx="2" fill="#6B7B8D" style={{ animation }} />
-        </g>
-      )}
-      {data.equipment === 'cable' && data.equipmentConfig?.cableAnchor && (
-        <g>
-          <circle cx={data.equipmentConfig.cableAnchor.x} cy={data.equipmentConfig.cableAnchor.y} r="4" fill="#6B7B8D" />
-          <line x1={data.equipmentConfig.cableAnchor.x} y1={data.equipmentConfig.cableAnchor.y} x2={start.handR.x} y2={start.handR.y} stroke="#6B7B8D" strokeWidth="2" style={{ animation }} />
-        </g>
-      )}
-      {data.equipment === 'machine' && data.equipmentConfig?.machine && (
-        <rect x={data.equipmentConfig.machine.x} y={data.equipmentConfig.machine.y} width={data.equipmentConfig.machine.width} height={data.equipmentConfig.machine.height} rx="8" fill="none" stroke="#6B7B8D" strokeWidth="2" />
-      )}
-      {data.equipmentConfig?.bars && <line x1="58" y1={data.equipmentConfig.bars.y || 92} x2="142" y2={data.equipmentConfig.bars.y || 92} stroke="#6B7B8D" strokeWidth="6" />}
-    </g>
-  );
+  React.useEffect(() => {
+    if (paused) return undefined;
+    let frame = 0;
+    const step = (time: number) => {
+      setNow(time);
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [paused]);
+
+  const phase = (now % data.duration) / data.duration;
+  const eased = 0.5 - Math.cos(phase * Math.PI * 2) / 2;
+  const pose = blendPose(data.startPose, data.endPose, eased);
+  const points = posePoints(pose, view);
+
+  const barY = data.equipmentConfig?.bars?.y ?? Math.min(points.handL.y, points.handR.y);
+  const barLeft = Math.min(points.handL.x, points.handR.x) - 10;
+  const barRight = Math.max(points.handL.x, points.handR.x) + 10;
 
   return (
-    <div style={{ background: '#11161c', borderRadius: 12, border: '1px solid #232e3d', padding: 8 }}>
-      <style>{`@keyframes ${cycle}{from{transform:translateY(0px)}to{transform:translateY(${data.movementHint === 'static' ? -2 : -8}px)}}`}</style>
-      <svg viewBox="0 0 200 200" width="100%" style={{ maxHeight: 220 }}>
-        {equipment}
-        <g style={{ animation, animationPlayState: paused ? 'paused' : 'running', transformOrigin: '100px 100px' }}>
-          <circle cx="100" cy="32" r="14" fill="#E9EEF5" />
-          <rect x="82" y="48" width="36" height="62" rx="16" fill="#DCE3EC" />
-          {line(start.shoulderL, start.elbowL, 'uaL')}
-          {line(start.elbowL, start.handL, 'faL')}
-          {line(start.shoulderR, start.elbowR, 'uaR')}
-          {line(start.elbowR, start.handR, 'faR')}
-          {line(start.hipL, start.kneeL, 'ulL')}
-          {line(start.kneeL, start.footL, 'llL')}
-          {line(start.hipR, start.kneeR, 'ulR')}
-          {line(start.kneeR, start.footR, 'llR')}
-          {[start.shoulderL, start.elbowL, start.handL, start.shoulderR, start.elbowR, start.handR, start.hipL, start.kneeL, start.hipR, start.kneeR].map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="4" fill="#FFFFFF" />
-          ))}
+    <div style={{ background: 'linear-gradient(180deg,#121922 0%,#0B1017 100%)', borderRadius: 14, border: '1px solid #273447', padding: 10, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+      <svg viewBox="0 0 200 200" width="100%" style={{ maxHeight: 240 }}>
+        {data.equipmentConfig?.bench && (
+          <rect
+            x={data.equipmentConfig.bench.x}
+            y={data.equipmentConfig.bench.y}
+            width={data.equipmentConfig.bench.width}
+            height="10"
+            rx="5"
+            fill="#64758A"
+            transform={data.equipmentConfig.bench.angle ? `rotate(${data.equipmentConfig.bench.angle} ${data.equipmentConfig.bench.x} ${data.equipmentConfig.bench.y})` : undefined}
+          />
+        )}
+
+        {data.equipment === 'barbell' && (
+          <g>
+            <line x1={barLeft} y1={barY} x2={barRight} y2={barY} stroke="#9FAFBE" strokeWidth="6" strokeLinecap="round" />
+            <circle cx={barLeft - 5} cy={barY} r="7" fill="#77889A" />
+            <circle cx={barRight + 5} cy={barY} r="7" fill="#77889A" />
+          </g>
+        )}
+
+        <g>
+          <circle cx="100" cy="32" r="13" fill="#F3F7FC" />
+          <line x1={points.torsoTop.x} y1={points.torsoTop.y} x2={points.torsoBottom.x} y2={points.torsoBottom.y} stroke="#DEE6F0" strokeWidth="14" strokeLinecap="round" />
+
+          <Segment from={points.shoulderL} to={points.elbowL} />
+          <Segment from={points.elbowL} to={points.handL} width={9} />
+          <Segment from={points.shoulderR} to={points.elbowR} />
+          <Segment from={points.elbowR} to={points.handR} width={9} />
+          <Segment from={points.hipL} to={points.kneeL} width={11} />
+          <Segment from={points.kneeL} to={points.footL} width={10} />
+          <Segment from={points.hipR} to={points.kneeR} width={11} />
+          <Segment from={points.kneeR} to={points.footR} width={10} />
         </g>
-        {!animationId && <path d="M160 24 L184 40 L160 56" fill="none" stroke="#FF9500" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
     </div>
   );

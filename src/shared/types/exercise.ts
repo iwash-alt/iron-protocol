@@ -28,7 +28,9 @@ export interface Exercise {
   isBodyweight: boolean;
   formCues: string[];
   commonMistakes: string[];
-  youtubeId?: string;
+  primaryMuscles?: string[];
+  animationId?: string;
+  tips?: string[];
 }
 
 export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [

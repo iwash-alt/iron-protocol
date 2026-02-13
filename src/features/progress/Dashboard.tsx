@@ -5,7 +5,7 @@ import { useNutrition } from '@/features/nutrition/nutrition.context';
 import { useProgress } from './progress.context';
 import { MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { getProteinGoal, WATER_GOAL, getLast7Days } from '@/shared/utils';
+import { WATER_GOAL } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { generateWeeklyInsights } from '@/analytics/insights';
@@ -65,11 +65,8 @@ export function Dashboard({
 
   const [prFilter, setPrFilter] = useState('All');
 
-  const proteinGoal = getProteinGoal(profile.weight);
   const totalVol = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
   const volData = workout.workoutHistory.slice(-7).map(w => w.totalVolumeKg || 0);
-  const last7 = getLast7Days();
-  const proteinData = last7.map(d => nutrition.nutritionHistory[d]?.protein || 0);
   const weightData = progress.bodyMeasurements.slice(-10).map(m => parseFloat(String(m.weight)) || 0);
   const programsCompleted = Math.floor(workout.weekCount / 4);
 
@@ -250,18 +247,12 @@ export function Dashboard({
             <div style={S.miniProgress}><div style={{ ...S.miniProgressFill, width: `${(nutrition.todayWater / WATER_GOAL) * 100}%`, background: '#3B82F6' }} /></div>
             <button onClick={e => { e.stopPropagation(); nutrition.addWater(); }} style={S.nutritionCardBtn}>+ ADD</button>
           </div>
-          <div style={S.nutritionCard} onClick={onOpenNutrition}>
-            <div style={S.nutritionCardHeader}><span style={{ fontSize: '1.25rem' }}>{'\u{1F969}'}</span><span style={S.nutritionCardTitle}>Protein</span></div>
-            <div style={S.nutritionCardValue}>{nutrition.todayProtein}<span style={S.nutritionCardUnit}>g</span></div>
-            <div style={S.miniProgress}><div style={{ ...S.miniProgressFill, width: `${Math.min(100, (nutrition.todayProtein / proteinGoal) * 100)}%`, background: '#34C759' }} /></div>
-            <button onClick={e => { e.stopPropagation(); onOpenNutrition(); }} style={S.nutritionCardBtn}>+ LOG</button>
-          </div>
         </div>
       </div>
 
       <div style={S.chartBox}>
-        <h3 style={S.chartTitle}>{'\u{1F4CA}'} Protein (7 Days)</h3>
-        <MiniChart data={proteinData.length ? proteinData : [0]} color="#34C759" height={60} />
+        <h3 style={S.chartTitle}>{'\u{1F4CA}'} Hydration (7 Days)</h3>
+        <MiniChart data={Object.values(nutrition.nutritionHistory).slice(-7).map(d => d.water).length ? Object.values(nutrition.nutritionHistory).slice(-7).map(d => d.water) : [0]} color="#3B82F6" height={60} />
         <div style={S.chartLabels}><span>7 days ago</span><span>Today</span></div>
       </div>
 

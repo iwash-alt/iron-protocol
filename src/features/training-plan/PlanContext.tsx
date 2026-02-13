@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import type { PlanExercise, WorkoutDay, UserProfile, Exercise } from '@/shared/types';
+import type { PlanExercise, WorkoutDay, UserProfile, Exercise, CustomWorkoutInput } from '@/shared/types';
 import { planReducer, createInitialPlan } from './plan.reducer';
 
 interface PlanContextValue {
@@ -15,6 +15,7 @@ interface PlanContextValue {
   addExercise: (exercise: Exercise) => void;
   removeExercise: (id: string) => void;
   swapExercise: (id: string, newExercise: Exercise) => void;
+  createCustomWorkout: (config: CustomWorkoutInput) => void;
 }
 
 const PlanContext = createContext<PlanContextValue | null>(null);
@@ -50,6 +51,10 @@ export function PlanProvider({ children, profile }: { children: ReactNode; profi
     dispatch({ type: 'SWAP_EXERCISE', id, newExercise });
   }, []);
 
+  const createCustomWorkout = useCallback((config: CustomWorkoutInput) => {
+    dispatch({ type: 'CREATE_CUSTOM_WORKOUT', config });
+  }, []);
+
   return (
     <PlanContext.Provider value={{
       days: state.days,
@@ -63,6 +68,7 @@ export function PlanProvider({ children, profile }: { children: ReactNode; profi
       addExercise,
       removeExercise,
       swapExercise,
+      createCustomWorkout,
     }}>
       {children}
     </PlanContext.Provider>

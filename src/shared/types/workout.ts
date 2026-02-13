@@ -20,6 +20,11 @@ export interface WorkoutDay {
   name: string;
 }
 
+export interface CustomWorkoutInput {
+  name: string;
+  days: number;
+}
+
 export interface SetLog {
   exerciseName: string;
   weightKg: number;

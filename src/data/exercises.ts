@@ -2144,9 +2144,24 @@ export function filterExercises(opts: {
   equipment?: Equipment | 'All';
   muscle?: MuscleGroup | 'All';
 }): Exercise[] {
+  const normalizeEquipment = (equipment: string): string => {
+    const value = equipment.toLowerCase();
+    if (value === 'none' || value === 'bodyweight') return 'bodyweight';
+    if (value === 'dumbbells') return 'dumbbell';
+    if (value === 'bar') return 'barbell';
+    if (value === 'band') return 'resistance band';
+    if (value === 'machine') return 'machine';
+    return value;
+  };
+
   let results = opts.search ? searchExercises(opts.search) : exercises;
   if (opts.equipment && opts.equipment !== 'All') {
-    results = results.filter(e => e.equipment === opts.equipment);
+    const target = normalizeEquipment(opts.equipment);
+    results = results.filter(e => {
+      const source = normalizeEquipment(e.equipment);
+      if (target === 'machine') return source.includes('machine');
+      return source === target;
+    });
   }
   if (opts.muscle && opts.muscle !== 'All') {
     results = results.filter(e => e.muscle === opts.muscle);

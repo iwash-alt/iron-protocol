@@ -2,7 +2,7 @@ export type { Exercise, MuscleGroup, Equipment, ExerciseType } from './exercise'
 export { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISE_TYPES, LOWER_BODY_MUSCLES, isLowerBody } from './exercise';
 
 export type {
-  RPEValue, PlanExercise, WorkoutDay, SetLog, WorkoutLog,
+  RPEValue, PlanExercise, WorkoutDay, CustomWorkoutInput, SetLog, WorkoutLog,
   ExerciseHistoryEntry, PersonalRecords, PersonalRecordsLegacy,
   ExercisePR, GlobalPRs, ExerciseHistory, CompletedSets,
 } from './workout';

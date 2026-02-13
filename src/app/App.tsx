@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { Icon, ErrorBoundary } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
@@ -18,10 +18,11 @@ import { QuickWorkoutList } from '@/features/quick-workout/QuickWorkoutList';
 import { QuickWorkoutActive } from '@/features/quick-workout/QuickWorkoutActive';
 import { Profile } from '@/features/profile/Profile';
 import type { QuickTemplate } from '@/data/quick-templates';
-// @ts-expect-error — JSX homepage component without type declarations
-import Homepage from '@/ui/screens/Homepage';
 import { InstallBanner } from '@/features/pwa/InstallBanner';
 import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
+
+// @ts-expect-error — JSX homepage component without type declarations
+const Homepage = React.lazy(() => import('@/ui/screens/Homepage'));
 
 // Run migrations before first render
 runMigrations();
@@ -93,7 +94,11 @@ export default function App() {
 
   // Route: Homepage
   if (hash === '#/' || hash === '' || hash === '#') {
-    return <Homepage />;
+    return (
+      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0A0A0A' }} />}>
+        <Homepage />
+      </Suspense>
+    );
   }
 
   // Route: Main App (#/app)

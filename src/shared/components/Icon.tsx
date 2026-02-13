@@ -38,6 +38,12 @@ const iconPaths = {
   'chevron-right': <polyline points="9 18 15 12 9 6" strokeWidth="2" stroke="currentColor" fill="none"/>,
   'chevron-left': <polyline points="15 18 9 12 15 6" strokeWidth="2" stroke="currentColor" fill="none"/>,
   refresh: <><polyline points="23 4 23 10 17 10" strokeWidth="2" stroke="currentColor" fill="none"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" strokeWidth="2" stroke="currentColor" fill="none"/></>,
+  camera: <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" strokeWidth="2" stroke="currentColor" fill="none"/><circle cx="12" cy="13" r="4" strokeWidth="2" stroke="currentColor" fill="none"/></>,
+  image: <><rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor" fill="none"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><polyline points="21 15 16 10 5 21" strokeWidth="2" stroke="currentColor" fill="none"/></>,
+  grid: <><rect x="3" y="3" width="7" height="7" strokeWidth="2" stroke="currentColor" fill="none"/><rect x="14" y="3" width="7" height="7" strokeWidth="2" stroke="currentColor" fill="none"/><rect x="14" y="14" width="7" height="7" strokeWidth="2" stroke="currentColor" fill="none"/><rect x="3" y="14" width="7" height="7" strokeWidth="2" stroke="currentColor" fill="none"/></>,
+  columns: <><rect x="3" y="3" width="8" height="18" rx="1" strokeWidth="2" stroke="currentColor" fill="none"/><rect x="13" y="3" width="8" height="18" rx="1" strokeWidth="2" stroke="currentColor" fill="none"/></>,
+  x: <><line x1="18" y1="6" x2="6" y2="18" strokeWidth="2" stroke="currentColor"/><line x1="6" y1="6" x2="18" y2="18" strokeWidth="2" stroke="currentColor"/></>,
+  'chevron-down': <polyline points="6 9 12 15 18 9" strokeWidth="2" stroke="currentColor" fill="none"/>,
 };
 
 export function Icon({ name, size = 20 }: IconProps) {

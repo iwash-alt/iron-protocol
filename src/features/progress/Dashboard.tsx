@@ -3,7 +3,7 @@ import type { UserProfile, ExercisePR } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
 import { useProgress } from './progress.context';
-import { MiniChart } from '@/shared/components';
+import { MiniChart, Icon } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { getProteinGoal, WATER_GOAL, getLast7Days } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
@@ -13,6 +13,7 @@ import { FatigueCard } from './FatigueCard';
 import { InsightsCard } from './InsightsCard';
 import { findExerciseByName } from '@/data/exercises';
 import { colors, radii, typography, spacing } from '@/shared/theme/tokens';
+import { ProgressPhotos } from '@/features/photos/ProgressPhotos';
 
 /** Muscle group filter categories - maps UI labels to exercise muscle groups */
 const PR_FILTER_GROUPS: Record<string, string[]> = {
@@ -64,6 +65,7 @@ export function Dashboard({
   const isPro = canAccess('analytics_advanced');
 
   const [prFilter, setPrFilter] = useState('All');
+  const [measureTab, setMeasureTab] = useState<'measurements' | 'photos'>('measurements');
 
   const proteinGoal = getProteinGoal(profile.weight);
   const totalVol = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
@@ -225,19 +227,46 @@ export function Dashboard({
 
       <div style={S.chartBox}>
         <div style={S.chartHeader}>
-          <h3 style={S.chartTitle}>{'\u{1F4CF}'} Body Measurements</h3>
-          <button onClick={onOpenMeasurements} style={S.addMeasureBtn}>+ LOG</button>
+          <h3 style={S.chartTitle}>{'\u{1F4CF}'} Body Tracking</h3>
+          {measureTab === 'measurements' && (
+            <button onClick={onOpenMeasurements} style={S.addMeasureBtn}>+ LOG</button>
+          )}
         </div>
-        {weightData.length > 1 ? (
-          <>
-            <MiniChart data={weightData} color="#3B82F6" height={60} />
-            <div style={S.measureSummary}>
-              <span>Current: {progress.bodyMeasurements[progress.bodyMeasurements.length - 1]?.weight}kg</span>
-              <span>Start: {progress.bodyMeasurements[0]?.weight}kg</span>
-            </div>
-          </>
+        {/* Measurements / Photos tabs */}
+        <div style={measureTabStyles.tabRow}>
+          <button
+            onClick={() => setMeasureTab('measurements')}
+            style={{
+              ...measureTabStyles.tab,
+              ...(measureTab === 'measurements' ? measureTabStyles.tabActive : {}),
+            }}
+          >
+            <Icon name="ruler" size={14} /> Measurements
+          </button>
+          <button
+            onClick={() => setMeasureTab('photos')}
+            style={{
+              ...measureTabStyles.tab,
+              ...(measureTab === 'photos' ? measureTabStyles.tabActive : {}),
+            }}
+          >
+            <Icon name="camera" size={14} /> Progress Photos
+          </button>
+        </div>
+        {measureTab === 'measurements' ? (
+          weightData.length > 1 ? (
+            <>
+              <MiniChart data={weightData} color="#3B82F6" height={60} />
+              <div style={S.measureSummary}>
+                <span>Current: {progress.bodyMeasurements[progress.bodyMeasurements.length - 1]?.weight}kg</span>
+                <span>Start: {progress.bodyMeasurements[0]?.weight}kg</span>
+              </div>
+            </>
+          ) : (
+            <p style={S.emptyText}>Log measurements to track progress</p>
+          )
         ) : (
-          <p style={S.emptyText}>Log measurements to track progress</p>
+          <ProgressPhotos currentWeight={profile.weight} />
         )}
       </div>
 
@@ -513,6 +542,35 @@ const prStyles: Record<string, React.CSSProperties> = {
     background: colors.primarySurface,
     marginLeft: 4,
     flexShrink: 0,
+  },
+};
+
+const measureTabStyles: Record<string, React.CSSProperties> = {
+  tabRow: {
+    display: 'flex',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  tab: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    padding: `${spacing.sm + 2}px ${spacing.md}px`,
+    borderRadius: radii.pill,
+    border: `1px solid ${colors.surfaceHover}`,
+    background: colors.surface,
+    color: colors.textSecondary,
+    cursor: 'pointer',
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    whiteSpace: 'nowrap' as const,
+  },
+  tabActive: {
+    background: colors.primarySurface,
+    border: `1px solid ${colors.primaryBorder}`,
+    color: colors.text,
   },
 };
 

@@ -22,6 +22,7 @@ import type { QuickTemplate } from '@/data/quick-templates';
 import Homepage from '@/ui/screens/Homepage';
 import { InstallBanner } from '@/features/pwa/InstallBanner';
 import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
+import { ProfilePhotoProvider, useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 
 // Run migrations before first render
 runMigrations();
@@ -104,18 +105,20 @@ export default function App() {
   return (
     <ErrorBoundary>
       <EntitlementProvider>
-        <DemoModeProvider>
-          <PlanProvider profile={profile}>
-            <WorkoutProvider>
-              <NutritionProvider>
-                <ProgressProvider>
-                  <AppShell profile={profile} onProfileUpdate={setProfile} />
-                  <InstallBanner />
-                </ProgressProvider>
-              </NutritionProvider>
-            </WorkoutProvider>
-          </PlanProvider>
-        </DemoModeProvider>
+        <ProfilePhotoProvider>
+          <DemoModeProvider>
+            <PlanProvider profile={profile}>
+              <WorkoutProvider>
+                <NutritionProvider>
+                  <ProgressProvider>
+                    <AppShell profile={profile} onProfileUpdate={setProfile} />
+                    <InstallBanner />
+                  </ProgressProvider>
+                </NutritionProvider>
+              </WorkoutProvider>
+            </PlanProvider>
+          </DemoModeProvider>
+        </ProfilePhotoProvider>
       </EntitlementProvider>
     </ErrorBoundary>
   );
@@ -281,6 +284,7 @@ function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; onProfil
   const workout = useWorkout();
   const progress = useProgress();
   const plan = usePlan();
+  const { photo: profilePhoto } = useProfilePhoto();
 
   const streak = useMemo(() => {
     if (!workout.workoutHistory.length) return 0;
@@ -438,7 +442,22 @@ function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; onProfil
         paddingTop: 'max(16px, env(safe-area-inset-top))',
       }}>
         <div style={S.headerLeft}>
-          <div style={S.logo}><Icon name="dumbbell" size={22} /></div>
+          {profilePhoto ? (
+            <img
+              src={profilePhoto}
+              alt=""
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: `2px solid ${colors.primaryBorder}`,
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div style={S.logo}><Icon name="dumbbell" size={22} /></div>
+          )}
           <div>
             <h1 style={S.title}>IRON PROTOCOL</h1>
             <p style={S.welcome}>Good {getGreeting()}, {profile.name?.split(' ')[0]}</p>

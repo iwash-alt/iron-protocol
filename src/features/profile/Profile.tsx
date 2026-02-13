@@ -1,27 +1,42 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
+import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 import { Icon } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { colors } from '@/shared/theme/tokens';
+import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import {
   loadProfile, saveProfile,
   loadWorkoutHistory, loadExerciseHistory, loadPersonalRecords,
   loadBodyMeasurements, loadNutritionHistory,
   StorageKeys,
 } from '@/shared/storage';
+import { processProfilePhoto } from '@/shared/utils/imageProcessing';
 
 interface ProfileProps {
   profile: UserProfile;
   onProfileUpdate: (p: UserProfile) => void;
 }
 
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   const workout = useWorkout();
+  const { photo: profilePhoto, setPhoto, clearPhoto } = useProfilePhoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ ...profile });
   const [showReset, setShowReset] = useState(false);
   const [showPrefs, setShowPrefs] = useState(false);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
 
   const handleSave = useCallback(() => {
     const updated = { ...profile, ...editData };
@@ -56,6 +71,21 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
     window.location.reload();
   }, []);
 
+  const handlePhotoSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoProcessing(true);
+    try {
+      const base64 = await processProfilePhoto(file);
+      setPhoto(base64);
+    } catch (err) {
+      console.error('Failed to process photo:', err);
+    } finally {
+      setPhotoProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [setPhoto]);
+
   const totalWorkouts = workout.workoutHistory.length;
   const totalVolume = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
   const prCount = Object.keys(workout.personalRecords).length;
@@ -63,9 +93,49 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   return (
     <div style={S.profileScreen}>
       {/* Avatar & Name */}
-      <div style={S.profileAvatar}>
-        <Icon name="user" size={36} />
+      <div
+        style={{
+          ...avatarStyles.container,
+          cursor: 'pointer',
+          position: 'relative' as const,
+        }}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {profilePhoto ? (
+          <img
+            src={profilePhoto}
+            alt="Profile"
+            style={avatarStyles.image}
+          />
+        ) : (
+          <div style={avatarStyles.initials}>
+            {getInitials(profile.name)}
+          </div>
+        )}
+        <div style={avatarStyles.cameraBadge}>
+          {photoProcessing ? (
+            <span style={avatarStyles.spinner} />
+          ) : (
+            <Icon name="camera" size={14} />
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          onChange={handlePhotoSelect}
+          style={{ display: 'none' }}
+        />
       </div>
+      {profilePhoto && (
+        <button
+          onClick={(e) => { e.stopPropagation(); clearPhoto(); }}
+          style={avatarStyles.removeBtn}
+        >
+          Remove Photo
+        </button>
+      )}
       <div style={S.profileName as React.CSSProperties}>{profile.name}</div>
       <div style={S.profileSub as React.CSSProperties}>{profile.level} lifter</div>
 
@@ -354,3 +424,68 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
     </div>
   );
 }
+
+const avatarStyles: Record<string, React.CSSProperties> = {
+  container: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    margin: '0 auto 8px',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  image: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    objectFit: 'cover',
+    display: 'block',
+    border: `3px solid ${colors.primaryBorder}`,
+  },
+  initials: {
+    width: 80,
+    height: 80,
+    borderRadius: '50%',
+    background: colors.primaryGradient,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: typography.sizes['6xl'],
+    fontWeight: typography.weights.black,
+    color: colors.text,
+    boxShadow: `0 8px 30px ${colors.primaryGlow}`,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    background: colors.surface,
+    border: `2px solid ${colors.background}`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: colors.text,
+  },
+  spinner: {
+    width: 12,
+    height: 12,
+    border: `2px solid ${colors.textTertiary}`,
+    borderTopColor: colors.primary,
+    borderRadius: '50%',
+    display: 'inline-block',
+    animation: 'pullRefreshSpin 0.6s linear infinite',
+  },
+  removeBtn: {
+    display: 'block',
+    margin: '0 auto 8px',
+    padding: `${spacing.xs}px ${spacing.md}px`,
+    background: 'none',
+    border: 'none',
+    color: colors.textTertiary,
+    fontSize: typography.sizes.sm,
+    cursor: 'pointer',
+  },
+};

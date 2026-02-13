@@ -29,6 +29,8 @@ export const StorageKeys = {
   WEEK_COUNT: 'ironWeekCount',
   LAST_WORKOUT_WEEK: 'ironLastWorkoutWeek',
   ENTITLEMENTS: 'ironEntitlements',
+  PROFILE_PHOTO: 'iron_profile_photo',
+  PROGRESS_PHOTOS: 'iron_progress_photos',
 } as const;
 
 /** Safe JSON parse with Zod validation. Returns null on any failure. */
@@ -249,4 +251,83 @@ export function loadEntitlementStore(): EntitlementStore | null {
 
 export function saveEntitlementStore(store: EntitlementStore): void {
   safeSave(StorageKeys.ENTITLEMENTS, store);
+}
+
+// === Profile Photo ===
+
+export function loadProfilePhoto(): string | null {
+  try {
+    return localStorage.getItem(StorageKeys.PROFILE_PHOTO);
+  } catch {
+    return null;
+  }
+}
+
+export function saveProfilePhoto(base64: string): void {
+  try {
+    localStorage.setItem(StorageKeys.PROFILE_PHOTO, base64);
+  } catch (err) {
+    console.error('Failed to save profile photo:', err);
+  }
+}
+
+export function removeProfilePhoto(): void {
+  localStorage.removeItem(StorageKeys.PROFILE_PHOTO);
+}
+
+// === Progress Photos ===
+
+export interface ProgressPhoto {
+  id: string;
+  date: string;
+  poseType: 'Front' | 'Side' | 'Back' | 'Custom';
+  bodyWeight: number;
+  data: string;
+  thumbnail: string;
+}
+
+const MAX_PROGRESS_PHOTOS = 20;
+
+export function loadProgressPhotos(): ProgressPhoto[] {
+  try {
+    const raw = localStorage.getItem(StorageKeys.PROGRESS_PHOTOS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+export function saveProgressPhotos(photos: ProgressPhoto[]): void {
+  safeSave(StorageKeys.PROGRESS_PHOTOS, photos);
+}
+
+export function addProgressPhoto(photo: ProgressPhoto): { success: boolean; message?: string } {
+  const photos = loadProgressPhotos();
+  if (photos.length >= MAX_PROGRESS_PHOTOS) {
+    return { success: false, message: `Photo limit reached (${MAX_PROGRESS_PHOTOS}/${MAX_PROGRESS_PHOTOS}). Delete some photos to add more.` };
+  }
+  photos.push(photo);
+  try {
+    saveProgressPhotos(photos);
+    return { success: true };
+  } catch {
+    return { success: false, message: 'Storage full. Delete some photos to free space.' };
+  }
+}
+
+export function deleteProgressPhoto(id: string): void {
+  const photos = loadProgressPhotos().filter(p => p.id !== id);
+  saveProgressPhotos(photos);
+}
+
+export function getProgressPhotosStorageInfo(): { count: number; maxCount: number; bytesUsed: number } {
+  const raw = localStorage.getItem(StorageKeys.PROGRESS_PHOTOS) || '[]';
+  return {
+    count: loadProgressPhotos().length,
+    maxCount: MAX_PROGRESS_PHOTOS,
+    bytesUsed: new Blob([raw]).size,
+  };
 }

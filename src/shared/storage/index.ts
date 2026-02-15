@@ -9,6 +9,7 @@ export {
   loadNutritionHistory, saveNutritionHistory,
   loadWeekCount, saveWeekCount,
   loadLastWorkoutWeek, saveLastWorkoutWeek,
+  loadTrainingPlan, saveTrainingPlan,
   loadEntitlementStore, saveEntitlementStore,
   loadProfilePhoto, saveProfilePhoto, removeProfilePhoto,
   loadProgressPhotos, saveProgressPhotos, addProgressPhoto, deleteProgressPhoto, getProgressPhotosStorageInfo,
@@ -16,3 +17,5 @@ export {
 } from './storage';
 
 export type { ProgressPhoto } from './storage';
+
+export { batchSave, recoverPendingTransaction } from './batch';

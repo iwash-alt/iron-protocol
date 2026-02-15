@@ -1,4 +1,5 @@
 import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { ReactNode } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { Icon, ErrorBoundary } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
@@ -8,6 +9,7 @@ import { loadProfile, saveProfile, runMigrations } from '@/shared/storage';
 import { DemoModeProvider, useDemoMode } from '@/shared/demo/DemoModeContext';
 import { PlanProvider, usePlan } from '@/features/training-plan/PlanContext';
 import { WorkoutProvider, useWorkout } from '@/features/workout/WorkoutContext';
+import type { ProgressionResult } from '@/training/progression';
 import { NutritionProvider } from '@/features/nutrition/nutrition.context';
 import { ProgressProvider, useProgress } from '@/features/progress/progress.context';
 import { Onboarding } from '@/features/onboarding/Onboarding';
@@ -113,19 +115,40 @@ export default function App() {
         <ProfilePhotoProvider>
           <DemoModeProvider>
             <PlanProvider profile={profile}>
-              <WorkoutProvider>
+              <WorkoutPlanBridge>
                 <NutritionProvider>
                   <ProgressProvider>
                     <AppShell profile={profile} onProfileUpdate={setProfile} />
                     <InstallBanner />
                   </ProgressProvider>
                 </NutritionProvider>
-              </WorkoutProvider>
+              </WorkoutPlanBridge>
             </PlanProvider>
           </DemoModeProvider>
         </ProfilePhotoProvider>
       </EntitlementProvider>
     </ErrorBoundary>
+  );
+}
+
+
+function WorkoutPlanBridge({ children }: { children: ReactNode }) {
+  const plan = usePlan();
+
+  const handleProgression = useCallback((result: ProgressionResult) => {
+    plan.updateExercise(result.exerciseId, {
+      [result.field]: result.newValue,
+    });
+  }, [plan]);
+
+  return (
+    <WorkoutProvider
+      dayExercises={plan.dayExercises}
+      currentDayName={plan.currentDay?.name ?? ''}
+      onProgression={handleProgression}
+    >
+      {children}
+    </WorkoutProvider>
   );
 }
 

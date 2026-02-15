@@ -4,6 +4,7 @@ import type { WorkoutLog, ExerciseHistory, PersonalRecords, GlobalPRs } from '@/
 import type { BodyMeasurement } from '@/shared/types';
 import type { NutritionHistory } from '@/shared/types';
 import type { EntitlementStore } from '@/shared/types';
+import type { PlanExercise, WorkoutDay } from '@/shared/types';
 import {
   userProfileSchema,
   workoutLogSchema,
@@ -31,7 +32,15 @@ export const StorageKeys = {
   ENTITLEMENTS: 'ironEntitlements',
   PROFILE_PHOTO: 'iron_profile_photo',
   PROGRESS_PHOTOS: 'iron_progress_photos',
+  TRAINING_PLAN: 'iron_training_plan',
 } as const;
+
+
+interface TrainingPlanState {
+  days: WorkoutDay[];
+  exercises: PlanExercise[];
+  dayIndex: number;
+}
 
 /** Safe JSON parse with Zod validation. Returns null on any failure. */
 function safeLoad<T>(key: string, schema: z.ZodType<T>): T | null {
@@ -241,6 +250,24 @@ export function loadLastWorkoutWeek(): number | null {
 
 export function saveLastWorkoutWeek(week: number): void {
   localStorage.setItem(StorageKeys.LAST_WORKOUT_WEEK, week.toString());
+}
+
+export function loadTrainingPlan(): TrainingPlanState | null {
+  const raw = localStorage.getItem(StorageKeys.TRAINING_PLAN);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<TrainingPlanState>;
+    if (!Array.isArray(parsed.days) || !Array.isArray(parsed.exercises)) return null;
+    if (typeof parsed.dayIndex !== 'number') return null;
+    return parsed as TrainingPlanState;
+  } catch {
+    return null;
+  }
+}
+
+export function saveTrainingPlan(plan: TrainingPlanState): void {
+  safeSave(StorageKeys.TRAINING_PLAN, plan);
 }
 
 export function loadEntitlementStore(): EntitlementStore | null {

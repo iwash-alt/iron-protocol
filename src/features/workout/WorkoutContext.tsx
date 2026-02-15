@@ -3,15 +3,21 @@ import type { ReactNode } from 'react';
 import type { RPEValue, PlanExercise, WorkoutLog, ExerciseHistory, PersonalRecords, GlobalPRs, ExercisePR, SetLog } from '@/shared/types';
 import { workoutReducer, initialWorkoutState } from './workout.reducer';
 import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
-import { usePlan } from '@/features/training-plan/PlanContext';
+import { calculateProgression } from '@/training/progression';
+import type { ProgressionResult } from '@/training/progression';
 import { useDemoMode } from '@/shared/demo/DemoModeContext';
 import {
-  loadWorkoutHistory, saveWorkoutHistory,
-  loadExerciseHistory, saveExerciseHistory,
-  loadPersonalRecords, savePersonalRecords,
-  loadGlobalPRs, saveGlobalPRs,
-  loadWeekCount, saveWeekCount,
-  loadLastWorkoutWeek, saveLastWorkoutWeek,
+  StorageKeys,
+  loadWorkoutHistory,
+  loadExerciseHistory,
+  saveExerciseHistory,
+  loadPersonalRecords,
+  savePersonalRecords,
+  loadGlobalPRs,
+  loadWeekCount,
+  saveWeekCount,
+  loadLastWorkoutWeek,
+  batchSave,
 } from '@/shared/storage';
 
 /** Create a fresh empty ExercisePR */
@@ -45,6 +51,13 @@ interface WorkoutContextValue {
   dismissPR: () => void;
 }
 
+interface WorkoutProviderProps {
+  children: ReactNode;
+  dayExercises: PlanExercise[];
+  currentDayName: string;
+  onProgression?: (result: ProgressionResult) => void;
+}
+
 const DEFAULT_GLOBAL_PRS: GlobalPRs = {
   highestSessionVolume: null,
   longestStreak: null,
@@ -54,8 +67,7 @@ const DEFAULT_GLOBAL_PRS: GlobalPRs = {
 
 const WorkoutContext = createContext<WorkoutContextValue | null>(null);
 
-export function WorkoutProvider({ children }: { children: ReactNode }) {
-  const plan = usePlan();
+export function WorkoutProvider({ children, dayExercises, currentDayName, onProgression }: WorkoutProviderProps) {
   const demo = useDemoMode();
   const [state, dispatch] = useReducer(workoutReducer, initialWorkoutState);
 
@@ -100,7 +112,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   }, [demo.enabled, demo.demoData]);
 
   const progress = useCallback(() => {
-    const dayExercises = plan.dayExercises;
     if (!dayExercises.length) return 0;
     let total = 0, done = 0;
     dayExercises.forEach(pe => {
@@ -108,7 +119,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       done += state.completedSets[pe.id] || 0;
     });
     return Math.round((done / total) * 100);
-  }, [plan.dayExercises, state.completedSets]);
+  }, [dayExercises, state.completedSets]);
 
   const persistPRs = useCallback((updated: PersonalRecords) => {
     setPersonalRecords(updated);
@@ -116,15 +127,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       demo.updateDemoData(data => ({ ...data, personalRecords: updated }));
     } else {
       savePersonalRecords(updated);
-    }
-  }, [demo]);
-
-  const persistGlobalPRs = useCallback((updated: GlobalPRs) => {
-    setGlobalPRs(updated);
-    if (demo.enabled) {
-      demo.updateDemoData(data => ({ ...data, globalPRs: updated }));
-    } else {
-      saveGlobalPRs(updated);
     }
   }, [demo]);
 
@@ -144,37 +146,30 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    // Track PR and exercise history for weighted exercises
     if (!pe.exercise.isBodyweight) {
       const e1rm = calculate1RM(pe.weightKg, pe.reps);
       const name = pe.exercise.name;
       const today = getTodayKey();
       const setVolume = pe.weightKg * pe.reps;
-
-      // Update enhanced PRs
       const current = personalRecords[name] ?? emptyExercisePR();
       let anyPR = false;
       const updated = { ...current };
 
-      // Heaviest Weight
       if (!current.heaviestWeight || pe.weightKg > current.heaviestWeight.weightKg) {
         updated.heaviestWeight = { weightKg: pe.weightKg, reps: pe.reps, date: today };
         anyPR = true;
       }
 
-      // Best Estimated 1RM
       if (!current.bestEstimated1RM || e1rm > current.bestEstimated1RM.value) {
         updated.bestEstimated1RM = { value: e1rm, weightKg: pe.weightKg, reps: pe.reps, date: today };
         anyPR = true;
       }
 
-      // Best Set Volume
       if (!current.bestSetVolume || setVolume > current.bestSetVolume.value) {
         updated.bestSetVolume = { value: setVolume, weightKg: pe.weightKg, reps: pe.reps, date: today };
         anyPR = true;
       }
 
-      // Most Reps at Weight (only update if more reps at same or heavier weight)
       if (!current.mostRepsAtWeight || pe.reps > current.mostRepsAtWeight.reps ||
           (pe.reps === current.mostRepsAtWeight.reps && pe.weightKg > current.mostRepsAtWeight.weightKg)) {
         updated.mostRepsAtWeight = { weightKg: pe.weightKg, reps: pe.reps, date: today };
@@ -185,7 +180,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         const allUpdated = { ...personalRecords, [name]: updated };
         persistPRs(allUpdated);
 
-        // Show PR notification for the most impressive one
         if (!current.bestEstimated1RM || e1rm > current.bestEstimated1RM.value) {
           setNewPR({ name, category: 'Est 1RM', value: `${e1rm}kg` });
         } else if (!current.heaviestWeight || pe.weightKg > current.heaviestWeight.weightKg) {
@@ -197,7 +191,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       }
 
       setExerciseHistory(prev => {
-        const updated = {
+        const updatedHistory = {
           ...prev,
           [name]: [...(prev[name] || []), {
             date: today,
@@ -207,51 +201,49 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           }],
         };
         if (demo.enabled) {
-          demo.updateDemoData(data => ({ ...data, exerciseHistory: updated }));
+          demo.updateDemoData(data => ({ ...data, exerciseHistory: updatedHistory }));
         } else {
-          saveExerciseHistory(updated);
+          saveExerciseHistory(updatedHistory);
         }
-        return updated;
+        return updatedHistory;
       });
     }
 
-    // Auto-regulation on last set
     if (setNum === pe.sets && !pe.exercise.isBodyweight) {
-      if (rpe <= 8) {
-        if (pe.reps < pe.repsMax) {
-          plan.updateExercise(pe.id, { reps: pe.reps + 1 });
-        } else {
-          plan.updateExercise(pe.id, {
-            weightKg: pe.weightKg + pe.progressionKg,
-            reps: pe.repsMin,
-          });
-        }
-      } else if (rpe === 10) {
-        plan.updateExercise(pe.id, {
-          weightKg: Math.max(0, pe.weightKg - pe.progressionKg),
-          reps: pe.repsMin,
-        });
+      const progression = calculateProgression(rpe, {
+        weightKg: pe.weightKg,
+        reps: pe.reps,
+        sets: pe.sets,
+        targetReps: pe.repsMax,
+      }, {
+        incrementKg: pe.progressionKg,
+      });
+
+      if (progression && onProgression) {
+        onProgression({ ...progression, exerciseId: pe.id });
       }
     }
-  }, [state.completedSets, personalRecords, plan, demo, persistPRs]);
+  }, [state.completedSets, personalRecords, demo, persistPRs, onProgression]);
 
   const endWorkout = useCallback((_force = false) => {
     const pct = progress();
 
-    // Reduce weight for incomplete exercises
-    plan.dayExercises.forEach(pe => {
+    dayExercises.forEach(pe => {
       const done = state.completedSets[pe.id] || 0;
-      if (!pe.exercise.isBodyweight && done < pe.sets) {
-        plan.updateExercise(pe.id, {
-          weightKg: Math.max(0, pe.weightKg - pe.progressionKg),
-          reps: pe.repsMin,
+      if (!pe.exercise.isBodyweight && done < pe.sets && onProgression) {
+        onProgression({
+          exerciseId: pe.id,
+          field: 'weightKg',
+          oldValue: pe.weightKg,
+          newValue: Math.max(0, pe.weightKg - pe.progressionKg),
+          reason: 'Incomplete workout - reducing load for next session',
         });
       }
     });
 
     const vol = state.currentLog.reduce((a, l) => a + l.weightKg * l.reps, 0);
     const today = getTodayKey();
-    const dayName = plan.currentDay?.name || '';
+    const dayName = currentDayName;
     const newLog: WorkoutLog = {
       date: today,
       dayName,
@@ -260,7 +252,6 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       completionPercent: pct,
     };
 
-    // Update session volume PRs per exercise
     const sessionVolByExercise: Record<string, number> = {};
     state.currentLog.forEach(s => {
       sessionVolByExercise[s.exerciseName] = (sessionVolByExercise[s.exerciseName] || 0) + s.weightKg * s.reps;
@@ -275,99 +266,95 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         prsChanged = true;
       }
     }
-    if (prsChanged) {
-      persistPRs(updatedPRs);
-    }
 
-    // Update global PRs
     const updatedGlobal = { ...globalPRs };
-    let globalChanged = false;
-
-    // Highest session volume
+    const setCount = state.currentLog.length;
     if (!updatedGlobal.highestSessionVolume || vol > updatedGlobal.highestSessionVolume.value) {
       updatedGlobal.highestSessionVolume = { value: vol, date: today, dayName };
-      globalChanged = true;
     }
-
-    // Most sets in workout
-    const setCount = state.currentLog.length;
     if (!updatedGlobal.mostSetsInWorkout || setCount > updatedGlobal.mostSetsInWorkout.count) {
       updatedGlobal.mostSetsInWorkout = { count: setCount, date: today, dayName };
-      globalChanged = true;
     }
-
-    // Highest avg RPE
     if (state.currentLog.length > 0) {
       const avgRPE = Math.round(
         (state.currentLog.reduce((a, s) => a + s.rpe, 0) / state.currentLog.length) * 10
       ) / 10;
       if (!updatedGlobal.highestAvgRPE || avgRPE > updatedGlobal.highestAvgRPE.value) {
         updatedGlobal.highestAvgRPE = { value: avgRPE, date: today, dayName };
-        globalChanged = true;
       }
     }
 
-    if (globalChanged) {
-      persistGlobalPRs(updatedGlobal);
-    }
-
-    setWorkoutHistory(prev => {
-      const updated = [...prev, newLog];
-
-      // Compute longest streak from all history
-      const allDates = [...new Set(updated.map(w => w.date))].sort();
-      let maxStreak = 1;
-      let currentStreak = 1;
-      let streakEnd = allDates[allDates.length - 1] || today;
-      let bestEnd = streakEnd;
-      for (let i = 1; i < allDates.length; i++) {
-        const prev = new Date(allDates[i - 1]);
-        const curr = new Date(allDates[i]);
-        const diffDays = (curr.getTime() - prev.getTime()) / 86400000;
-        if (diffDays <= 2) { // Allow 1 rest day between workouts
-          currentStreak++;
-          streakEnd = allDates[i];
-          if (currentStreak > maxStreak) {
-            maxStreak = currentStreak;
-            bestEnd = streakEnd;
-          }
-        } else {
-          currentStreak = 1;
-          streakEnd = allDates[i];
+    const updatedHistory = [...workoutHistory, newLog];
+    const allDates = [...new Set(updatedHistory.map(w => w.date))].sort();
+    let maxStreak = 1;
+    let currentStreak = 1;
+    let streakEnd = allDates[allDates.length - 1] || today;
+    let bestEnd = streakEnd;
+    for (let i = 1; i < allDates.length; i++) {
+      const prev = new Date(allDates[i - 1]);
+      const curr = new Date(allDates[i]);
+      const diffDays = (curr.getTime() - prev.getTime()) / 86400000;
+      if (diffDays <= 2) {
+        currentStreak++;
+        streakEnd = allDates[i];
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+          bestEnd = streakEnd;
         }
-      }
-      if (!updatedGlobal.longestStreak || maxStreak > updatedGlobal.longestStreak.days) {
-        const finalGlobal = { ...updatedGlobal, longestStreak: { days: maxStreak, endDate: bestEnd } };
-        persistGlobalPRs(finalGlobal);
-      }
-
-      if (demo.enabled) {
-        demo.updateDemoData(data => ({ ...data, workoutHistory: updated, globalPRs: updatedGlobal }));
       } else {
-        saveWorkoutHistory(updated);
+        currentStreak = 1;
+        streakEnd = allDates[i];
       }
-      return updated;
-    });
+    }
+    if (!updatedGlobal.longestStreak || maxStreak > updatedGlobal.longestStreak.days) {
+      updatedGlobal.longestStreak = { days: maxStreak, endDate: bestEnd };
+    }
 
-    // Week tracking and deload
+    let newWeekCount = weekCount;
+    let newLastWorkoutWeek = lastWorkoutWeek;
     const currentWeek = getWeekNumber();
     if (currentWeek !== lastWorkoutWeek) {
-      const newWeekCount = weekCount + 1;
-      setWeekCount(newWeekCount);
-      setLastWorkoutWeek(currentWeek);
-      if (demo.enabled) {
-        demo.updateDemoData(data => ({ ...data, weekCount: newWeekCount, lastWorkoutWeek: currentWeek }));
-      } else {
-        saveWeekCount(newWeekCount);
-        saveLastWorkoutWeek(currentWeek);
-      }
+      newWeekCount = weekCount + 1;
+      newLastWorkoutWeek = currentWeek;
       if (newWeekCount > 0 && newWeekCount % 4 === 0) {
         setShowDeloadAlert(true);
       }
     }
 
+    setWorkoutHistory(updatedHistory);
+    if (prsChanged) {
+      setPersonalRecords(updatedPRs);
+    }
+    setGlobalPRs(updatedGlobal);
+    setWeekCount(newWeekCount);
+    setLastWorkoutWeek(newLastWorkoutWeek);
+
+    if (demo.enabled) {
+      demo.updateDemoData(data => ({
+        ...data,
+        workoutHistory: updatedHistory,
+        personalRecords: prsChanged ? updatedPRs : data.personalRecords,
+        globalPRs: updatedGlobal,
+        weekCount: newWeekCount,
+        lastWorkoutWeek: newLastWorkoutWeek,
+      }));
+    } else {
+      const operations: Array<{ key: string; value: unknown }> = [
+        { key: StorageKeys.WORKOUT_HISTORY, value: updatedHistory },
+        { key: StorageKeys.GLOBAL_PRS, value: updatedGlobal },
+        { key: StorageKeys.WEEK_COUNT, value: newWeekCount.toString() },
+        { key: StorageKeys.LAST_WORKOUT_WEEK, value: newLastWorkoutWeek == null ? '' : newLastWorkoutWeek.toString() },
+      ];
+
+      if (prsChanged) {
+        operations.unshift({ key: StorageKeys.PRS, value: updatedPRs });
+      }
+
+      batchSave(operations);
+    }
+
     dispatch({ type: 'RESET' });
-  }, [progress, plan, state, weekCount, lastWorkoutWeek, demo, personalRecords, globalPRs, persistPRs, persistGlobalPRs]);
+  }, [progress, dayExercises, state, weekCount, lastWorkoutWeek, demo, personalRecords, globalPRs, workoutHistory, currentDayName, onProgression]);
 
   const resetWorkoutState = useCallback(() => {
     dispatch({ type: 'RESET' });

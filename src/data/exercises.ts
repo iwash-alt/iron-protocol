@@ -1,5 +1,4 @@
 import type { Exercise, Equipment, MuscleGroup } from '@/shared/types';
-import { EXERCISE_ANIMATION_BY_NAME } from './animations';
 
 const baseExercises: Exercise[] = [
   // ── CHEST ──────────────────────────────────────────────────────────────

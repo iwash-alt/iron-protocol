@@ -1,15 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { KEYS, loadJSON, saveJSON } from '../data/storage';
 import { getTodayKey } from '../training/engine';
 
-export function useNutrition(profile) {
+type ProfileLike = { weight: number };
+
+type ProteinSource = {
+  name: string;
+  protein: number;
+  icon: string;
+};
+
+type ProteinLogEntry = ProteinSource & {
+  time: string;
+};
+
+type DailyNutrition = {
+  water: number;
+  protein: number;
+  proteinLog: ProteinLogEntry[];
+};
+
+type NutritionHistory = Record<string, DailyNutrition>;
+
+export function useNutrition(profile: ProfileLike | null) {
   const [todayWater, setTodayWater] = useState(0);
   const [todayProtein, setTodayProtein] = useState(0);
-  const [proteinLog, setProteinLog] = useState([]);
-  const [nutritionHistory, setNutritionHistory] = useState({});
+  const [proteinLog, setProteinLog] = useState<ProteinLogEntry[]>([]);
+  const [nutritionHistory, setNutritionHistory] = useState<NutritionHistory>({});
 
   useEffect(() => {
-    const nh = loadJSON(KEYS.nutrition);
+    const nh = loadJSON<NutritionHistory>(KEYS.nutrition);
     if (nh) {
       setNutritionHistory(nh);
       const today = getTodayKey();
@@ -24,7 +44,7 @@ export function useNutrition(profile) {
   useEffect(() => {
     if (profile && (todayWater > 0 || todayProtein > 0 || proteinLog.length > 0)) {
       const t = getTodayKey();
-      setNutritionHistory(prev => {
+      setNutritionHistory((prev) => {
         const updated = { ...prev, [t]: { water: todayWater, protein: todayProtein, proteinLog } };
         saveJSON(KEYS.nutrition, updated);
         return updated;
@@ -32,18 +52,19 @@ export function useNutrition(profile) {
     }
   }, [todayWater, todayProtein, proteinLog, profile]);
 
-  const addWater = () => setTodayWater(w => w + 1);
+  const addWater = () => setTodayWater((w) => w + 1);
 
-  const addProtein = (source) => {
-    setTodayProtein(p => p + source.protein);
-    setProteinLog(l => [...l, {
+  const addProtein = (source: ProteinSource) => {
+    setTodayProtein((p) => p + source.protein);
+    setProteinLog((l) => [...l, {
       ...source,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
   };
 
   return {
-    todayWater, setTodayWater,
+    todayWater,
+    setTodayWater,
     todayProtein,
     proteinLog,
     nutritionHistory,

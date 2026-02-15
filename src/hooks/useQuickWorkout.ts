@@ -1,21 +1,34 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { exercises } from '../domain/exercises';
 
-export function useQuickWorkout({ onComplete } = {}) {
+type Exercise = (typeof exercises)[number];
+
+type QuickTemplate = {
+  id: string;
+  name: string;
+  duration: number;
+  exercises: string[];
+};
+
+type ActiveQuickTemplate = Omit<QuickTemplate, 'exercises'> & {
+  exercises: Exercise[];
+};
+
+export function useQuickWorkout({ onComplete }: { onComplete?: () => void } = {}) {
   const [showQuick, setShowQuick] = useState(false);
-  const [quickReady, setQuickReady] = useState(null);
+  const [quickReady, setQuickReady] = useState<QuickTemplate | null>(null);
   const [readyCountdown, setReadyCountdown] = useState(0);
-  const [quickActive, setQuickActive] = useState(null);
+  const [quickActive, setQuickActive] = useState<ActiveQuickTemplate | null>(null);
   const [quickIdx, setQuickIdx] = useState(0);
   const [quickTimer, setQuickTimer] = useState(0);
   const [quickRest, setQuickRest] = useState(false);
 
   useEffect(() => {
-    if (readyCountdown <= 0) return;
+    if (readyCountdown <= 0 || !quickReady) return;
     const t = setTimeout(() => {
-      setReadyCountdown(prev => {
+      setReadyCountdown((prev) => {
         if (prev <= 1) {
-          const exs = quickReady.exercises.map(n => exercises.find(e => e.name === n)).filter(Boolean);
+          const exs = quickReady.exercises.map((n) => exercises.find((e) => e.name === n)).filter((e): e is Exercise => Boolean(e));
           setQuickActive({ ...quickReady, exercises: exs });
           setQuickIdx(0);
           setQuickTimer(40);
@@ -32,11 +45,11 @@ export function useQuickWorkout({ onComplete } = {}) {
   useEffect(() => {
     if (!quickActive || quickTimer <= 0) return;
     const t = setTimeout(() => {
-      setQuickTimer(prev => {
+      setQuickTimer((prev) => {
         if (prev <= 1) {
           if (quickRest) {
             if (quickIdx < quickActive.exercises.length - 1) {
-              setQuickIdx(i => i + 1);
+              setQuickIdx((i) => i + 1);
               setQuickRest(false);
               return 40;
             }
@@ -53,7 +66,7 @@ export function useQuickWorkout({ onComplete } = {}) {
     return () => clearTimeout(t);
   }, [quickActive, quickTimer, quickRest, quickIdx, onComplete]);
 
-  const startQuickWorkout = useCallback((template) => {
+  const startQuickWorkout = useCallback((template: QuickTemplate) => {
     setQuickReady(template);
     setReadyCountdown(3);
     setShowQuick(false);
@@ -69,9 +82,16 @@ export function useQuickWorkout({ onComplete } = {}) {
   }, []);
 
   return {
-    showQuick, setShowQuick,
-    quickReady, readyCountdown,
-    quickActive, quickIdx, quickTimer, quickRest,
-    startQuickWorkout, cancelQuickReady, cancelQuickActive,
+    showQuick,
+    setShowQuick,
+    quickReady,
+    readyCountdown,
+    quickActive,
+    quickIdx,
+    quickTimer,
+    quickRest,
+    startQuickWorkout,
+    cancelQuickReady,
+    cancelQuickActive,
   };
 }

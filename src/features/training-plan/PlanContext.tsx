@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import type { PlanExercise, WorkoutDay, UserProfile, Exercise, CustomWorkoutInput } from '@/shared/types';
+import { loadTrainingPlan, saveTrainingPlan } from '@/shared/storage';
 import { planReducer, createInitialPlan } from './plan.reducer';
 
 interface PlanContextValue {
@@ -21,10 +22,16 @@ interface PlanContextValue {
 const PlanContext = createContext<PlanContextValue | null>(null);
 
 export function PlanProvider({ children, profile }: { children: ReactNode; profile: UserProfile }) {
-  const [state, dispatch] = useReducer(planReducer, profile, (p) => createInitialPlan(p));
+  const [state, dispatch] = useReducer(planReducer, profile, (p) => loadTrainingPlan() ?? createInitialPlan(p));
 
   const currentDay = state.days[state.dayIndex];
   const dayExercises = state.exercises.filter(pe => pe.dayId === currentDay?.id);
+
+  useEffect(() => {
+    if (state.days.length > 0) {
+      saveTrainingPlan(state);
+    }
+  }, [state]);
 
   const initialize = useCallback((profile: UserProfile, templateKey?: string) => {
     dispatch({ type: 'INITIALIZE', profile, templateKey });

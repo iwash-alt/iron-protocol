@@ -3,3 +3,6 @@ export type { FatigueResult, FatigueFactor, FatigueTrend, SuggestedAction } from
 
 export { evaluateSuggestions } from './suggestions';
 export type { WorkoutSuggestion, SuggestionEvent, SuggestionType, SuggestionPriority } from './suggestions';
+
+export { calculateProgression } from './progression';
+export type { ProgressionResult, ProgressionExercise } from './progression';

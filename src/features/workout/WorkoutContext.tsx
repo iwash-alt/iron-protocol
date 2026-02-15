@@ -6,6 +6,7 @@ import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
 import { calculateProgression } from '@/training/progression';
 import type { ProgressionResult } from '@/training/progression';
 import { useDemoMode } from '@/shared/demo/DemoModeContext';
+import { TIMINGS } from '@/shared/constants/timings';
 import {
   StorageKeys,
   loadWorkoutHistory,
@@ -187,7 +188,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
         } else if (!current.bestSetVolume || setVolume > current.bestSetVolume.value) {
           setNewPR({ name, category: 'Set Volume', value: `${setVolume}kg` });
         }
-        setTimeout(() => setNewPR(null), 3000);
+        setTimeout(() => setNewPR(null), TIMINGS.PR_DISPLAY_DURATION);
       }
 
       setExerciseHistory(prev => {

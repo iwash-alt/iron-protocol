@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { colors } from '@/shared/theme/tokens';
+import { TIMINGS } from '@/shared/constants/timings';
 
 // ─── localStorage keys ──────────────────────────────────────────────────────
 const INSTALL_DISMISSED_KEY = 'ironInstallDismissed';
@@ -66,15 +67,17 @@ export function InstallBanner() {
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    // Track install
-    window.addEventListener('appinstalled', () => {
+    const onInstalled = () => {
       localStorage.setItem(INSTALL_STATE_KEY, 'installed');
       setShow(false);
       deferredPrompt.current = null;
-    });
+    };
+
+    window.addEventListener('appinstalled', onInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
@@ -89,7 +92,7 @@ export function InstallBanner() {
           requestAnimationFrame(() => setAnimateIn(true));
         });
       }
-    }, 5000);
+    }, TIMINGS.SUGGESTION_TOAST_DURATION);
 
     return () => clearInterval(checkInterval);
   }, [show]);
@@ -106,13 +109,13 @@ export function InstallBanner() {
 
     deferredPrompt.current = null;
     setAnimateIn(false);
-    setTimeout(() => setShow(false), 300);
+    setTimeout(() => setShow(false), TIMINGS.ANIMATION_NORMAL);
   }, []);
 
   const handleDismiss = useCallback(() => {
     localStorage.setItem(INSTALL_DISMISSED_KEY, Date.now().toString());
     setAnimateIn(false);
-    setTimeout(() => setShow(false), 300);
+    setTimeout(() => setShow(false), TIMINGS.ANIMATION_NORMAL);
   }, []);
 
   if (!show) return null;

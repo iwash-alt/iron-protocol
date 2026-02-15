@@ -18,24 +18,9 @@ ReactDOM.createRoot(root).render(
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/service-worker.js')
-      .then((registration) => {
-        // Listen for updates
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'activated') {
-                // New service worker activated - could notify user to refresh
-                // SW update logging intentionally silent in production
-              }
-            });
-          }
-        });
-      })
-      .catch((err) => {
-        console.warn('[SW] Registration failed:', err);
-      });
+      .register('/iron-protocol/sw.js')
+      .then((reg) => console.warn('SW registered:', reg.scope))
+      .catch((err) => console.error('SW failed:', err));
 
     // Listen for background sync messages from SW
     navigator.serviceWorker.addEventListener('message', (event) => {

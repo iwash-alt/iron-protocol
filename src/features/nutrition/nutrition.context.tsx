@@ -4,6 +4,8 @@ import type { ProteinSource, ProteinLogEntry, NutritionHistory } from '@/shared/
 import { getTodayKey } from '@/shared/utils';
 import { loadNutritionHistory, saveNutritionHistory } from '@/shared/storage';
 import { useDemoMode } from '@/shared/demo/DemoModeContext';
+import { useDebouncedSave } from '@/shared/hooks';
+import { TIMINGS } from '@/shared/constants/timings';
 
 interface NutritionContextValue {
   todayWater: number;
@@ -43,37 +45,35 @@ export function NutritionProvider({ children }: { children: ReactNode }) {
       setTodayWater(history[today]?.water || 0);
       setTodayProtein(history[today]?.protein || 0);
       setProteinLog(history[today]?.proteinLog || []);
-    } else {
-      const history = loadNutritionHistory();
-      const today = getTodayKey();
-      setNutritionHistory(history);
-      setTodayWater(history[today]?.water || 0);
-      setTodayProtein(history[today]?.protein || 0);
-      setProteinLog(history[today]?.proteinLog || []);
+      return;
     }
+
+    const history = loadNutritionHistory();
+    const today = getTodayKey();
+    setNutritionHistory(history);
+    setTodayWater(history[today]?.water || 0);
+    setTodayProtein(history[today]?.protein || 0);
+    setProteinLog(history[today]?.proteinLog || []);
   }, [demo.enabled, demo.demoData]);
 
-  // Persist nutrition changes
   useEffect(() => {
-    if (todayWater > 0 || todayProtein > 0 || proteinLog.length > 0) {
-      const today = getTodayKey();
-      setNutritionHistory(prev => {
-        const updated = {
-          ...prev,
-          [today]: { water: todayWater, protein: todayProtein, proteinLog },
-        };
-        if (demo.enabled) {
-          demo.updateDemoData(data => ({ ...data, nutritionHistory: updated }));
-        } else {
-          saveNutritionHistory(updated);
-        }
-        return updated;
-      });
+    const today = getTodayKey();
+    setNutritionHistory((prev) => ({
+      ...prev,
+      [today]: { water: todayWater, protein: todayProtein, proteinLog },
+    }));
+  }, [todayWater, todayProtein, proteinLog]);
+
+  useDebouncedSave('nutrition-history', nutritionHistory, (_key, history) => {
+    if (demo.enabled) {
+      demo.updateDemoData((data) => ({ ...data, nutritionHistory: history }));
+      return;
     }
-  }, [todayWater, todayProtein, proteinLog, demo]);
+    saveNutritionHistory(history);
+  }, TIMINGS.DEBOUNCE_SAVE);
 
   const addWater = useCallback(() => {
-    setTodayWater(w => w + 1);
+    setTodayWater((w) => w + 1);
   }, []);
 
   const setWaterTo = useCallback((count: number) => {
@@ -81,8 +81,8 @@ export function NutritionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addProtein = useCallback((source: ProteinSource) => {
-    setTodayProtein(p => p + source.protein);
-    setProteinLog(log => [...log, {
+    setTodayProtein((p) => p + source.protein);
+    setProteinLog((log) => [...log, {
       ...source,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);

@@ -8,8 +8,8 @@ import { useTimer, getAdaptiveRest } from '@/shared/hooks';
 import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
+import { TIMINGS } from '@/shared/constants/timings';
 import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
-import { exercises, filterExercises } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
@@ -24,6 +24,8 @@ import { HowToModal } from '@/ui/modals/HowToModal';
 import { WorkoutSummary, buildWorkoutSummary } from './WorkoutSummary';
 import type { WorkoutSummaryData } from './WorkoutSummary';
 
+
+type ExerciseDataModule = typeof import('@/data/exercises');
 interface WorkoutViewProps {
   profile: UserProfile;
 }
@@ -199,10 +201,22 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [exEquipment, setExEquipment] = useState<Equipment | 'All'>('All');
   const [exMuscle, setExMuscle] = useState<MuscleGroup | 'All'>('All');
 
+  const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
+
+  useEffect(() => {
+    if (!showAddExercise && !showSwap && !showExerciseHistory) return;
+    let mounted = true;
+    import('@/data/exercises').then((mod) => {
+      if (mounted) setExerciseData(mod);
+    });
+    return () => { mounted = false; };
+  }, [showAddExercise, showSwap, showExerciseHistory]);
+
   // Filtered exercise list for dual-filter
   const filteredExercises = useMemo(() => {
-    return filterExercises({ search: exSearch, equipment: exEquipment, muscle: exMuscle });
-  }, [exSearch, exEquipment, exMuscle]);
+    if (!exerciseData) return [];
+    return exerciseData.filterExercises({ search: exSearch, equipment: exEquipment, muscle: exMuscle });
+  }, [exerciseData, exSearch, exEquipment, exMuscle]);
 
   // Intelligence features (Pro only)
   const [activeSuggestion, setActiveSuggestion] = useState<WorkoutSuggestion | null>(null);
@@ -268,7 +282,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     const setNum = (workout.completedSets[exercise.id] || 0) + 1;
     if (setNum === exercise.sets) {
       setCelebrate(true);
-      setTimeout(() => setCelebrate(false), 1500);
+      setTimeout(() => setCelebrate(false), TIMINGS.CELEBRATION_DURATION);
     }
     setShowRPE(null);
   };
@@ -648,7 +662,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 <p style={{ color: '#666', textAlign: 'center', padding: '2rem 0' }}>No history yet</p>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { const ex = exercises.find(e => e.name === showExerciseHistory); if (ex) setShowHowTo(ex); }} style={howToBtn}>?</button>
+                <button onClick={() => { const ex = exerciseData?.exercises.find(e => e.name === showExerciseHistory); if (ex) setShowHowTo(ex); }} style={howToBtn}>?</button>
                 <button onClick={() => setShowExerciseHistory(null)} style={{ ...S.historyClose, flex: 1 }}>CLOSE</button>
               </div>
             </div>
@@ -678,11 +692,11 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* Swap exercise modal (Dual Filter) */}
       {showSwap && (() => {
-        const swapResults = filterExercises({
+        const swapResults = exerciseData?.filterExercises({
           search: exSearch,
           equipment: exEquipment,
           muscle: exMuscle === 'All' ? showSwap.exercise.muscle as MuscleGroup : exMuscle,
-        }).filter(ex => ex.id !== showSwap.exercise.id);
+        }).filter(ex => ex.id !== showSwap.exercise.id) ?? [];
         return (
           <div style={S.overlay} onClick={() => { setShowSwap(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
             <div style={{ ...S.swapBox, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>

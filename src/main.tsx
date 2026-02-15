@@ -19,7 +19,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/iron-protocol/sw.js')
-      .then((reg) => console.log('SW registered:', reg.scope))
+      .then((reg) => console.warn('SW registered:', reg.scope))
       .catch((err) => console.error('SW failed:', err));
 
     // Listen for background sync messages from SW

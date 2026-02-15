@@ -174,6 +174,6 @@ export const exercises = [
 
 export const LOWER_BODY_MUSCLES = ['Quads', 'Hamstrings', 'Glutes', 'Calves'];
 
-export function isLowerBody(muscle) {
+export function isLowerBody(muscle: string): boolean {
   return LOWER_BODY_MUSCLES.includes(muscle);
 }

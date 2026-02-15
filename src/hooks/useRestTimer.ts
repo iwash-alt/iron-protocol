@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { playRestComplete } from '../training/engine';
 
 export function useRestTimer() {
   const [restTime, setRestTime] = useState(0);
-  const [restFor, setRestFor] = useState(null);
-  const restTimerRef = useRef(null);
+  const [restFor, setRestFor] = useState<string | null>(null);
+  const restTimerRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (restTime <= 0) {
@@ -15,11 +15,11 @@ export function useRestTimer() {
       return;
     }
     restTimerRef.current = true;
-    const t = setTimeout(() => setRestTime(r => r - 1), 1000);
+    const t = setTimeout(() => setRestTime((r) => r - 1), 1000);
     return () => clearTimeout(t);
   }, [restTime]);
 
-  const startRest = (duration, exerciseId) => {
+  const startRest = (duration: number, exerciseId: string) => {
     setRestTime(duration);
     setRestFor(exerciseId);
   };

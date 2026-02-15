@@ -1,15 +1,65 @@
 import { exercises, isLowerBody } from '../domain/exercises';
 import { workoutTemplates } from '../domain/templates';
 
-export function calculate1RM(weight, reps) {
+type Profile = {
+  level: 'beginner' | 'intermediate' | 'advanced';
+  days: number;
+};
+
+type WarmupSet = {
+  label: string;
+  weight: number;
+  reps: number;
+};
+
+type ExerciseRef = {
+  id: string;
+  name: string;
+  muscle: string;
+  bodyweight: boolean;
+};
+
+type PlanExercise = {
+  id: string;
+  dayId: string;
+  exercise: ExerciseRef;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  reps: number;
+  weight: number;
+  rest: number;
+  progression: number;
+};
+
+type WorkoutDay = {
+  id: string;
+  name: string;
+};
+
+type WorkoutTemplateDay = {
+  name: string;
+  exercises: string[];
+};
+
+type WorkoutTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  days: WorkoutTemplateDay[];
+};
+
+type WorkoutTemplateMap = Record<string, WorkoutTemplate>;
+
+export function calculate1RM(weight: number, reps: number): number {
   return reps === 1 ? weight : Math.round(weight * (1 + reps / 30));
 }
 
-export function getWarmupSets(w) {
+export function getWarmupSets(w: number): WarmupSet[] {
   if (w < 20) return [];
-  const half = Math.round(w * 0.5 / 2.5) * 2.5;
-  const seventy = Math.round(w * 0.7 / 2.5) * 2.5;
-  const ninety = Math.round(w * 0.9 / 2.5) * 2.5;
+  const half = Math.round((w * 0.5) / 2.5) * 2.5;
+  const seventy = Math.round((w * 0.7) / 2.5) * 2.5;
+  const ninety = Math.round((w * 0.9) / 2.5) * 2.5;
   return [
     { label: 'Bar', weight: 20, reps: 10 },
     ...(half > 20 ? [{ label: '50%', weight: half, reps: 5 }] : []),
@@ -18,19 +68,22 @@ export function getWarmupSets(w) {
   ];
 }
 
-export function getTodayKey() {
+export function getTodayKey(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export function getWeekNum() {
-  return Math.ceil((new Date() - new Date(new Date().getFullYear(), 0, 1)) / 604800000);
+export function getWeekNum(): number {
+  return Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 604800000);
 }
 
-export function playRestComplete() {
+export function playRestComplete(): void {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200, 100, 200]);
   try {
     if (typeof window !== 'undefined') {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtx = window.AudioContext
+        || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -42,21 +95,24 @@ export function playRestComplete() {
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
     }
-  } catch { /* audio not supported */ }
+  } catch {
+    // audio not supported
+  }
 }
 
-export function buildPlan(profile, templateKey = null) {
+export function buildPlan(profile: Profile, templateKey: string | null = null): { days: WorkoutDay[]; planExercises: PlanExercise[] } {
   const mult = profile.level === 'beginner' ? 0.6 : profile.level === 'intermediate' ? 0.8 : 1;
-  const template = templateKey && workoutTemplates[templateKey]
-    ? workoutTemplates[templateKey]
-    : profile.days === 4 ? workoutTemplates.upperLower : workoutTemplates.ppl;
+  const templates = workoutTemplates as WorkoutTemplateMap;
+  const template = templateKey && templates[templateKey]
+    ? templates[templateKey]
+    : profile.days === 4 ? templates.upperLower : templates.ppl;
 
   const days = template.days.map((d, i) => ({ id: `d${i}`, name: d.name }));
-  const planExercises = [];
+  const planExercises: PlanExercise[] = [];
 
   template.days.forEach((day, di) => {
     day.exercises.forEach((name, ei) => {
-      const ex = exercises.find(e => e.name === name);
+      const ex = exercises.find((e) => e.name === name);
       if (ex) {
         const lower = isLowerBody(ex.muscle);
         planExercises.push({
@@ -78,7 +134,7 @@ export function buildPlan(profile, templateKey = null) {
   return { days, planExercises };
 }
 
-export function calculateSetProgression(rpe, exercise) {
+export function calculateSetProgression(rpe: number, exercise: PlanExercise): { reps: number } | { weight: number; reps: number } | null {
   if (exercise.exercise.bodyweight) return null;
   const repsMin = exercise.repsMin ?? exercise.reps;
   const repsMax = exercise.repsMax ?? exercise.reps;
@@ -93,13 +149,13 @@ export function calculateSetProgression(rpe, exercise) {
   return null;
 }
 
-export function calculateIncompleteSetPenalty(exercise) {
+export function calculateIncompleteSetPenalty(exercise: PlanExercise): { weight: number; reps: number } | null {
   if (exercise.exercise.bodyweight) return null;
   const repsMin = exercise.repsMin ?? exercise.reps;
   return { weight: Math.max(0, exercise.weight - exercise.progression), reps: repsMin };
 }
 
-export function createExerciseEntry(currentDay, exercise) {
+export function createExerciseEntry(currentDay: WorkoutDay, exercise: ExerciseRef): PlanExercise {
   const lower = isLowerBody(exercise.muscle);
   return {
     id: `${currentDay.id}-${Date.now()}`,

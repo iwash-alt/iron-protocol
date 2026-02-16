@@ -1,5 +1,5 @@
-export type { Exercise, MuscleGroup, Equipment, ExerciseType } from './exercise';
-export { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISE_TYPES, LOWER_BODY_MUSCLES, isLowerBody } from './exercise';
+export type { Exercise, MuscleGroup, Equipment, ExerciseType, EquipmentFilter, MuscleFilter } from './exercise';
+export { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISE_TYPES, LOWER_BODY_MUSCLES, isLowerBody, EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from './exercise';
 
 export type {
   RPEValue, PlanExercise, WorkoutDay, CustomWorkoutInput, SetLog, WorkoutLog,

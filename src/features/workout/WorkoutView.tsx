@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import type { PlanExercise, RPEValue, Exercise, Equipment, MuscleGroup } from '@/shared/types';
-import { EQUIPMENT_TYPES, MUSCLE_GROUPS } from '@/shared/types';
+import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } from '@/shared/types';
+import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
@@ -26,6 +26,15 @@ import type { WorkoutSummaryData } from './WorkoutSummary';
 
 
 type ExerciseDataModule = typeof import('@/data/exercises');
+
+/** Map a raw MuscleGroup (e.g. 'Lats') to its curated filter value (e.g. 'Back') */
+function toCuratedMuscle(raw: string): MuscleFilter {
+  for (const [filter, groups] of Object.entries(MUSCLE_FILTER_MAP)) {
+    if ((groups as readonly string[]).includes(raw)) return filter as MuscleFilter;
+  }
+  return 'All';
+}
+
 interface WorkoutViewProps {
   profile: UserProfile;
 }
@@ -198,8 +207,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
   // Exercise browser filter states (shared between Add and Swap modals)
   const [exSearch, setExSearch] = useState('');
-  const [exEquipment, setExEquipment] = useState<Equipment | 'All'>('All');
-  const [exMuscle, setExMuscle] = useState<MuscleGroup | 'All'>('All');
+  const [exEquipment, setExEquipment] = useState<EquipmentFilter>('All');
+  const [exMuscle, setExMuscle] = useState<MuscleFilter>('All');
 
   const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
 
@@ -692,10 +701,11 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* Swap exercise modal (Dual Filter) */}
       {showSwap && (() => {
+        const defaultMuscle = toCuratedMuscle(showSwap.exercise.muscle);
         const swapResults = exerciseData?.filterExercises({
           search: exSearch,
           equipment: exEquipment,
-          muscle: exMuscle === 'All' ? showSwap.exercise.muscle as MuscleGroup : exMuscle,
+          muscle: exMuscle === 'All' ? defaultMuscle : exMuscle,
         }).filter(ex => ex.id !== showSwap.exercise.id) ?? [];
         return (
           <div style={S.overlay} onClick={() => { setShowSwap(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
@@ -716,25 +726,32 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               <div style={ebStyles.filterRow}>
                 <select
                   value={exEquipment}
-                  onChange={e => setExEquipment(e.target.value as Equipment | 'All')}
+                  onChange={e => setExEquipment(e.target.value as EquipmentFilter)}
                   style={ebStyles.select}
                 >
                   <option value="All">All Equipment</option>
-                  {EQUIPMENT_TYPES.map(eq => (
-                    <option key={eq} value={eq} style={ebStyles.option}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                  {EQUIPMENT_FILTER_OPTIONS.map(eq => (
+                    <option key={eq} value={eq} style={ebStyles.option}>{eq}</option>
                   ))}
                 </select>
                 <select
-                  value={exMuscle === 'All' ? showSwap.exercise.muscle : exMuscle}
-                  onChange={e => setExMuscle(e.target.value as MuscleGroup | 'All')}
+                  value={exMuscle === 'All' ? defaultMuscle : exMuscle}
+                  onChange={e => setExMuscle(e.target.value as MuscleFilter)}
                   style={ebStyles.select}
                 >
                   <option value="All">All Muscles</option>
-                  {MUSCLE_GROUPS.map(m => (
+                  {MUSCLE_FILTER_OPTIONS.map(m => (
                     <option key={m} value={m} style={ebStyles.option}>{m}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Result count */}
+              <p style={ebStyles.resultCount}>
+                {swapResults.length > 0
+                  ? `${swapResults.length} exercise${swapResults.length !== 1 ? 's' : ''}`
+                  : 'No exercises match these filters'}
+              </p>
 
               <div style={S.swapList}>
                 {swapResults.map(ex => (
@@ -758,9 +775,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                     <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
                   </div>
                 ))}
-                {swapResults.length === 0 && (
-                  <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>
-                )}
               </div>
             </div>
           </div>
@@ -787,25 +801,32 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             <div style={ebStyles.filterRow}>
               <select
                 value={exEquipment}
-                onChange={e => setExEquipment(e.target.value as Equipment | 'All')}
+                onChange={e => setExEquipment(e.target.value as EquipmentFilter)}
                 style={ebStyles.select}
               >
                 <option value="All">All Equipment</option>
-                {EQUIPMENT_TYPES.map(eq => (
-                  <option key={eq} value={eq} style={ebStyles.option}>{eq === 'None' ? 'Bodyweight' : eq}</option>
+                {EQUIPMENT_FILTER_OPTIONS.map(eq => (
+                  <option key={eq} value={eq} style={ebStyles.option}>{eq}</option>
                 ))}
               </select>
               <select
                 value={exMuscle}
-                onChange={e => setExMuscle(e.target.value as MuscleGroup | 'All')}
+                onChange={e => setExMuscle(e.target.value as MuscleFilter)}
                 style={ebStyles.select}
               >
                 <option value="All">All Muscles</option>
-                {MUSCLE_GROUPS.map(m => (
+                {MUSCLE_FILTER_OPTIONS.map(m => (
                   <option key={m} value={m} style={ebStyles.option}>{m}</option>
                 ))}
               </select>
             </div>
+
+            {/* Result count */}
+            <p style={ebStyles.resultCount}>
+              {filteredExercises.length > 0
+                ? `${filteredExercises.length} exercise${filteredExercises.length !== 1 ? 's' : ''}`
+                : 'No exercises match these filters'}
+            </p>
 
             {/* Results */}
             <div style={S.addExList}>
@@ -831,9 +852,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                   <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
                 </div>
               ))}
-              {filteredExercises.length === 0 && (
-                <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '1rem 0' }}>No exercises match filters</p>
-              )}
             </div>
             <button onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }} style={S.addExCancel}>CANCEL</button>
           </div>
@@ -1043,6 +1061,13 @@ const ebStyles: Record<string, React.CSSProperties> = {
   option: {
     background: '#111',
     color: '#fff',
+  },
+  resultCount: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    textAlign: 'center' as const,
+    marginBottom: spacing.sm,
+    marginTop: 0,
   },
 };
 

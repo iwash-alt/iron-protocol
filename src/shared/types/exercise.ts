@@ -39,3 +39,31 @@ export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [
 export function isLowerBody(muscle: MuscleGroup): boolean {
   return (LOWER_BODY_MUSCLES as readonly string[]).includes(muscle);
 }
+
+// ── Curated filter options (consolidated subset for UI dropdowns) ──
+
+export const EQUIPMENT_FILTER_OPTIONS = [
+  'Barbell', 'Dumbbell', 'Smith Machine', 'Cable',
+  'Machine', 'Bodyweight', 'EZ Bar', 'Kettlebell', 'Band',
+] as const;
+export type EquipmentFilter = typeof EQUIPMENT_FILTER_OPTIONS[number] | 'All';
+
+export const MUSCLE_FILTER_OPTIONS = [
+  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
+  'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core',
+] as const;
+export type MuscleFilter = typeof MUSCLE_FILTER_OPTIONS[number] | 'All';
+
+/** Maps curated muscle filter → raw MuscleGroup values it covers */
+export const MUSCLE_FILTER_MAP: Record<typeof MUSCLE_FILTER_OPTIONS[number], readonly MuscleGroup[]> = {
+  Chest: ['Chest'],
+  Back: ['Back', 'Lats'],
+  Shoulders: ['Shoulders', 'Rear Delts'],
+  Biceps: ['Biceps'],
+  Triceps: ['Triceps'],
+  Quads: ['Quads'],
+  Hamstrings: ['Hamstrings'],
+  Glutes: ['Glutes'],
+  Calves: ['Calves'],
+  Core: ['Core'],
+};

@@ -1,4 +1,5 @@
-import type { Exercise, Equipment, MuscleGroup } from '@/shared/types';
+import type { Exercise, Equipment, MuscleGroup, EquipmentFilter, MuscleFilter } from '@/shared/types';
+import { MUSCLE_FILTER_MAP } from '@/shared/types';
 
 const baseExercises: Exercise[] = [
   // ── CHEST ──────────────────────────────────────────────────────────────
@@ -2055,8 +2056,8 @@ export function searchExercises(query: string): Exercise[] {
 /** Filter exercises by equipment and/or muscle, with optional search */
 export function filterExercises(opts: {
   search?: string;
-  equipment?: Equipment | 'All';
-  muscle?: MuscleGroup | 'All';
+  equipment?: EquipmentFilter;
+  muscle?: MuscleFilter;
 }): Exercise[] {
   const normalizeEquipment = (equipment: string): string => {
     const value = equipment.toLowerCase();
@@ -2078,7 +2079,10 @@ export function filterExercises(opts: {
     });
   }
   if (opts.muscle && opts.muscle !== 'All') {
-    results = results.filter(e => e.muscle === opts.muscle);
+    const matchGroups = MUSCLE_FILTER_MAP[opts.muscle];
+    if (matchGroups) {
+      results = results.filter(e => (matchGroups as readonly string[]).includes(e.muscle));
+    }
   }
   return results;
 }

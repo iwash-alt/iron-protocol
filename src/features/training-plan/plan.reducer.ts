@@ -1,6 +1,6 @@
-import type { PlanExercise, WorkoutDay, Exercise, CustomWorkoutInput } from '@/shared/types';
+import type { PlanExercise, WorkoutDay, Exercise, CustomWorkoutInput, CustomWorkoutDayInput } from '@/shared/types';
 import { isLowerBody } from '@/shared/types';
-import { findExerciseByName } from '@/data/exercises';
+import { exercises, findExerciseByName } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
 import type { UserProfile } from '@/shared/types';
 
@@ -8,6 +8,7 @@ export interface PlanState {
   days: WorkoutDay[];
   exercises: PlanExercise[];
   dayIndex: number;
+  programName?: string;
 }
 
 export type PlanAction =
@@ -63,20 +64,63 @@ export function createInitialPlan(profile: UserProfile, templateKey?: string): P
     });
   });
 
-  return { days, exercises, dayIndex: 0 };
+  return { days, exercises, dayIndex: 0, programName: template.name };
 }
 
 
+function toPositiveInt(value: number, fallback: number): number {
+  const normalized = Math.round(value);
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
+}
+
+function createExerciseFromInput(dayId: string, exerciseIndex: number, input: CustomWorkoutDayInput['exercises'][number]): PlanExercise | null {
+  const exercise = exercises.find(ex => ex.id === input.exerciseId) ?? findExerciseByName(input.exerciseId);
+  if (!exercise) return null;
+
+  const lower = isLowerBody(exercise.muscle);
+  const reps = toPositiveInt(input.reps, lower ? 8 : 10);
+
+  return {
+    id: `${dayId}-ex${exerciseIndex}`,
+    dayId,
+    exercise,
+    sets: toPositiveInt(input.sets, 3),
+    reps,
+    repsMin: reps,
+    repsMax: reps,
+    weightKg: Number.isFinite(input.weightKg) && input.weightKg >= 0 ? input.weightKg : 0,
+    restSeconds: 90,
+    progressionKg: 2.5,
+  };
+}
 
 function createCustomWorkout(config: CustomWorkoutInput): PlanState {
-  const normalizedDays = Math.max(1, Math.min(7, Math.round(config.days)));
-  const dayNameBase = (config.name || 'Custom Workout').trim() || 'Custom Workout';
-  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => ({
-    id: `custom-d${i}`,
-    name: normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`,
+  const programName = config.programName.trim() || 'Custom Workout';
+  const sourceDays = Array.isArray(config.days) ? config.days : [];
+  const fallbackDayId = 'custom-d0';
+
+  const days: WorkoutDay[] = (sourceDays.length > 0 ? sourceDays : [{ id: fallbackDayId, name: '', exercises: [] }]).map((day, index) => ({
+    id: day.id?.trim() || `custom-d${index}`,
+    name: day.name.trim() || `Day ${index + 1}`,
   }));
 
-  return { days, exercises: [], dayIndex: 0 };
+  const exercises: PlanExercise[] = [];
+  sourceDays.forEach((day, dayIndex) => {
+    const mappedDayId = days[dayIndex]?.id ?? `custom-d${dayIndex}`;
+    day.exercises.forEach((exerciseInput, exerciseIndex) => {
+      const mapped = createExerciseFromInput(mappedDayId, exerciseIndex, exerciseInput);
+      if (mapped) {
+        exercises.push(mapped);
+      }
+    });
+  });
+
+  return {
+    days,
+    exercises,
+    dayIndex: 0,
+    programName,
+  };
 }
 
 export function planReducer(state: PlanState, action: PlanAction): PlanState {

@@ -2,7 +2,7 @@ export type { Exercise, MuscleGroup, Equipment, ExerciseType, EquipmentFilter, M
 export { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISE_TYPES, LOWER_BODY_MUSCLES, isLowerBody, EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from './exercise';
 
 export type {
-  RPEValue, PlanExercise, WorkoutDay, CustomWorkoutInput, SetLog, WorkoutLog,
+  RPEValue, PlanExercise, WorkoutDay, CustomWorkoutInput, CustomWorkoutDayInput, CustomWorkoutExerciseInput, SetLog, WorkoutLog,
   ExerciseHistoryEntry, PersonalRecords, PersonalRecordsLegacy,
   ExercisePR, GlobalPRs, ExerciseHistory, CompletedSets,
 } from './workout';

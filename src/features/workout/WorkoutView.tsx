@@ -567,12 +567,14 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* Exercise list */}
       <div style={S.exList}>
-        {plan.dayExercises.map(pe => {
+        {plan.dayExercises.map((pe, index) => {
           const done = workout.completedSets[pe.id] || 0;
           const isDone = done >= pe.sets;
           const isWarmupOpen = showWarmup === pe.id;
           const warmups = getWarmupSets(pe.weightKg);
           const hasHistory = (workout.exerciseHistory[pe.exercise.name]?.length || 0) > 0;
+          const isFirstExercise = index === 0;
+          const isLastExercise = index === plan.dayExercises.length - 1;
 
           return (
             <div key={pe.id} style={{ ...S.exCard, ...(isDone ? S.exDone : {}) }}>
@@ -583,6 +585,26 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                     {isDone && <span style={S.doneTag}><Icon name="check" size={12} /> Done</span>}
                   </div>
                   <h3 style={{ ...S.exName, color: isDone ? '#34C759' : '#fff' }}>{pe.exercise.name}</h3>
+                  <div style={orderStyles.row}>
+                    <button
+                      onClick={() => plan.reorderDayExercises(index, index - 1)}
+                      disabled={isFirstExercise}
+                      style={{ ...orderStyles.button, ...(isFirstExercise ? orderStyles.buttonDisabled : {}) }}
+                      aria-label={`Move ${pe.exercise.name} up`}
+                      title="Move up"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => plan.reorderDayExercises(index, index + 1)}
+                      disabled={isLastExercise}
+                      style={{ ...orderStyles.button, ...(isLastExercise ? orderStyles.buttonDisabled : {}) }}
+                      aria-label={`Move ${pe.exercise.name} down`}
+                      title="Move down"
+                    >
+                      ↓
+                    </button>
+                  </div>
                 </div>
                 <div style={S.exActions}>
                   {hasHistory && <button onClick={() => setShowExerciseHistory(pe.exercise.name)} style={S.historyBtn}><Icon name="history" size={16} /></button>}
@@ -1514,6 +1536,33 @@ const ebStyles: Record<string, React.CSSProperties> = {
     textAlign: 'center' as const,
     marginBottom: spacing.sm,
     marginTop: 0,
+  },
+};
+
+
+const orderStyles: Record<string, React.CSSProperties> = {
+  row: {
+    display: 'flex',
+    gap: 6,
+    marginTop: 8,
+  },
+  button: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.sm,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    fontWeight: typography.weights.black,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+  },
+  buttonDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
   },
 };
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planReducer, createInitialPlan } from './plan.reducer';
+import { planReducer, createInitialPlan, reorderDayExercises } from './plan.reducer';
 import type { PlanState } from './plan.reducer';
 import type { UserProfile, Exercise } from '@/shared/types';
 
@@ -219,6 +219,21 @@ describe('planReducer', () => {
   });
 
 
+  describe('REORDER_DAY_EXERCISES', () => {
+    it('persists reordered exercises for the active day', () => {
+      const dayId = initialState.days[0].id;
+      const dayExercises = initialState.exercises.filter(e => e.dayId === dayId);
+
+      const state = planReducer(initialState, {
+        type: 'REORDER_DAY_EXERCISES',
+        dayId,
+        fromIndex: 0,
+        toIndex: 1,
+      });
+
+      const reorderedDay = state.exercises.filter(e => e.dayId === dayId);
+      expect(reorderedDay[0].id).toBe(dayExercises[1].id);
+      expect(reorderedDay[1].id).toBe(dayExercises[0].id);
 
   describe('CREATE_CUSTOM_WORKOUT', () => {
     it('builds a plan from provided program/day/exercise payload', () => {
@@ -290,5 +305,34 @@ describe('planReducer', () => {
       expect(swapped?.sets).toBe(target.sets);
       expect(swapped?.weightKg).toBe(target.weightKg);
     });
+  });
+});
+
+
+describe('reorderDayExercises', () => {
+  it('moves a day exercise up and preserves other days', () => {
+    const state = createInitialPlan(baseProfile);
+    const dayId = state.days[0].id;
+    const firstDayExercises = state.exercises.filter(e => e.dayId === dayId);
+    const originalSecond = firstDayExercises[1];
+
+    const reordered = reorderDayExercises(state.exercises, dayId, 1, 0);
+    const updatedDayExercises = reordered.filter(e => e.dayId === dayId);
+
+    expect(updatedDayExercises[0].id).toBe(originalSecond.id);
+
+    const otherDayId = state.days[1].id;
+    const otherBefore = state.exercises.filter(e => e.dayId === otherDayId).map(e => e.id);
+    const otherAfter = reordered.filter(e => e.dayId === otherDayId).map(e => e.id);
+    expect(otherAfter).toEqual(otherBefore);
+  });
+
+  it('returns original array when indexes are out of bounds', () => {
+    const state = createInitialPlan(baseProfile);
+    const dayId = state.days[0].id;
+
+    const reordered = reorderDayExercises(state.exercises, dayId, -1, 0);
+
+    expect(reordered).toBe(state.exercises);
   });
 });

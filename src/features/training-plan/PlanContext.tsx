@@ -16,6 +16,7 @@ interface PlanContextValue {
   addExercise: (exercise: Exercise) => void;
   removeExercise: (id: string) => void;
   swapExercise: (id: string, newExercise: Exercise) => void;
+  reorderDayExercises: (fromIndex: number, toIndex: number) => void;
   createCustomWorkout: (config: CustomWorkoutInput) => void;
 }
 
@@ -58,6 +59,11 @@ export function PlanProvider({ children, profile }: { children: ReactNode; profi
     dispatch({ type: 'SWAP_EXERCISE', id, newExercise });
   }, []);
 
+  const reorderDayExercises = useCallback((fromIndex: number, toIndex: number) => {
+    if (!currentDay) return;
+    dispatch({ type: 'REORDER_DAY_EXERCISES', dayId: currentDay.id, fromIndex, toIndex });
+  }, [currentDay]);
+
   const createCustomWorkout = useCallback((config: CustomWorkoutInput) => {
     dispatch({ type: 'CREATE_CUSTOM_WORKOUT', config });
   }, []);
@@ -75,6 +81,7 @@ export function PlanProvider({ children, profile }: { children: ReactNode; profi
       addExercise,
       removeExercise,
       swapExercise,
+      reorderDayExercises,
       createCustomWorkout,
     }}>
       {children}

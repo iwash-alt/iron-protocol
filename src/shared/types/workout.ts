@@ -20,9 +20,30 @@ export interface WorkoutDay {
   name: string;
 }
 
-export interface CustomWorkoutInput {
+export interface CustomWorkoutExerciseInput {
+  exerciseId: string;
+  sets: number;
+  reps: number;
+  weightKg: number;
+}
+
+export interface CustomWorkoutDayInput {
+  id: string;
   name: string;
   days: number;
+  dayExercises?: {
+    name?: string;
+    exercises: {
+      exercise: Exercise;
+      sets: number;
+      reps: number;
+      weightKg: number;
+    }[];
+  }[];
+  dayConfigs?: Array<{
+    name: string;
+    exercises: Exercise[];
+  }>;
 }
 
 export interface SetLog {

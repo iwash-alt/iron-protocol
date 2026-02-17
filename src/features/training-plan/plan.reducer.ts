@@ -17,7 +17,32 @@ export type PlanAction =
   | { type: 'ADD_EXERCISE'; dayId: string; exercise: Exercise }
   | { type: 'REMOVE_EXERCISE'; id: string }
   | { type: 'SWAP_EXERCISE'; id: string; newExercise: Exercise }
+  | { type: 'REORDER_DAY_EXERCISES'; dayId: string; fromIndex: number; toIndex: number }
   | { type: 'CREATE_CUSTOM_WORKOUT'; config: CustomWorkoutInput };
+
+export function reorderDayExercises(
+  exercises: PlanExercise[],
+  dayId: string,
+  fromIndex: number,
+  toIndex: number,
+): PlanExercise[] {
+  if (fromIndex === toIndex) return exercises;
+
+  const dayExerciseIndexes = exercises
+    .map((exercise, index) => (exercise.dayId === dayId ? index : -1))
+    .filter(index => index >= 0);
+
+  if (fromIndex < 0 || toIndex < 0 || fromIndex >= dayExerciseIndexes.length || toIndex >= dayExerciseIndexes.length) {
+    return exercises;
+  }
+
+  const reordered = [...exercises];
+  const sourceIndex = dayExerciseIndexes[fromIndex];
+  const targetIndex = dayExerciseIndexes[toIndex];
+  const [moved] = reordered.splice(sourceIndex, 1);
+  reordered.splice(targetIndex, 0, moved);
+  return reordered;
+}
 
 function getWeightMultiplier(level: string): number {
   switch (level) {
@@ -124,6 +149,12 @@ export function planReducer(state: PlanState, action: PlanAction): PlanState {
         exercises: state.exercises.map(pe =>
           pe.id === action.id ? { ...pe, exercise: action.newExercise } : pe
         ),
+      };
+
+    case 'REORDER_DAY_EXERCISES':
+      return {
+        ...state,
+        exercises: reorderDayExercises(state.exercises, action.dayId, action.fromIndex, action.toIndex),
       };
 
     case 'CREATE_CUSTOM_WORKOUT':

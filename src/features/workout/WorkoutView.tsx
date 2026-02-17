@@ -338,7 +338,14 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   };
 
   const handleCreateCustomWorkout = () => {
-    plan.createCustomWorkout({ name: customWorkoutName, days: customWorkoutDays });
+    plan.createCustomWorkout({
+      programName: customWorkoutName,
+      days: Array.from({ length: customWorkoutDays }, (_, index) => ({
+        id: `custom-d${index}`,
+        name: `Day ${index + 1}`,
+        exercises: [],
+      })),
+    });
     workout.resetWorkoutState();
     setShowCustomWorkout(false);
     setShowTemplates(false);

@@ -30,6 +30,11 @@ export interface CustomWorkoutExerciseInput {
 export interface CustomWorkoutDayInput {
   id: string;
   name: string;
+  exercises?: CustomWorkoutExerciseInput[];
+}
+
+export interface CustomWorkoutInput {
+  name: string;
   days: number;
   dayExercises?: {
     name?: string;

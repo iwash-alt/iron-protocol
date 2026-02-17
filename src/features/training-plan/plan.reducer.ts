@@ -129,59 +129,63 @@ function createExerciseFromInput(dayId: string, exerciseIndex: number, input: Cu
 function createCustomWorkout(config: CustomWorkoutInput): PlanState {
   const normalizedDays = Math.max(1, Math.min(7, Math.round(config.days)));
   const dayNameBase = (config.name || 'Custom Workout').trim() || 'Custom Workout';
-  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => ({
-    id: `custom-d${i}`,
-    name: config.dayExercises?.[i]?.name?.trim() || (normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`),
-  }));
-
-  const exercises: PlanExercise[] = (config.dayExercises ?? []).flatMap((dayDraft, dayIndex) => {
-    const dayId = days[dayIndex]?.id;
-    if (!dayId) return [];
-
-    return dayDraft.exercises.map((draftExercise, exerciseIndex) => {
-      const lower = isLowerBody(draftExercise.exercise.muscle);
-      return {
-        id: `${dayId}-${exerciseIndex}-${Date.now()}`,
-        dayId,
-        exercise: draftExercise.exercise,
-        sets: Math.max(1, Math.round(draftExercise.sets)),
-        repsMin: lower ? 6 : 8,
-        repsMax: lower ? 10 : 12,
-        reps: Math.max(1, Math.round(draftExercise.reps)),
-        weightKg: Math.max(0, draftExercise.weightKg),
-        restSeconds: 90,
-        progressionKg: 2.5,
-      } satisfies PlanExercise;
-  const dayConfigs = config.dayConfigs ?? [];
+  const dayConfigs = config.dayConfigs;
+  const dayExercises = config.dayExercises;
 
   const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => {
-    const cfg = dayConfigs[i];
     const fallbackName = normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`;
+    const cfgName = dayConfigs?.[i]?.name?.trim();
+    const exerciseName = dayExercises?.[i]?.name?.trim();
     return {
       id: `custom-d${i}`,
-      name: cfg?.name?.trim() || fallbackName,
+      name: cfgName || exerciseName || fallbackName,
     };
   });
 
   const exercises: PlanExercise[] = [];
-  dayConfigs.slice(0, normalizedDays).forEach((dayConfig, dayIndex) => {
-    dayConfig.exercises.forEach((exercise, exerciseIndex) => {
-      exercises.push({
-        id: `custom-d${dayIndex}-${exerciseIndex}-${Date.now()}`,
-        dayId: `custom-d${dayIndex}`,
-        exercise,
-        sets: 3,
-        repsMin: 8,
-        repsMax: 12,
-        reps: 10,
-        weightKg: 20,
-        restSeconds: 90,
-        progressionKg: 2.5,
+
+  if (dayExercises?.length) {
+    dayExercises.slice(0, normalizedDays).forEach((dayDraft, dayIndex) => {
+      const dayId = days[dayIndex].id;
+      dayDraft.exercises.forEach((draftExercise, exerciseIndex) => {
+        const lower = isLowerBody(draftExercise.exercise.muscle);
+        const reps = toPositiveInt(draftExercise.reps, lower ? 8 : 10);
+        exercises.push({
+          id: `${dayId}-${exerciseIndex}-${Date.now()}`,
+          dayId,
+          exercise: draftExercise.exercise,
+          sets: toPositiveInt(draftExercise.sets, 3),
+          repsMin: reps,
+          repsMax: reps,
+          reps,
+          weightKg: Math.max(0, draftExercise.weightKg),
+          restSeconds: 90,
+          progressionKg: 2.5,
+        });
       });
     });
-  });
+  } else if (dayConfigs?.length) {
+    dayConfigs.slice(0, normalizedDays).forEach((dayConfig, dayIndex) => {
+      const dayId = days[dayIndex].id;
+      dayConfig.exercises.forEach((exercise, exerciseIndex) => {
+        const lower = isLowerBody(exercise.muscle);
+        exercises.push({
+          id: `${dayId}-${exerciseIndex}-${Date.now()}`,
+          dayId,
+          exercise,
+          sets: 3,
+          repsMin: lower ? 6 : 8,
+          repsMax: lower ? 10 : 12,
+          reps: lower ? 8 : 10,
+          weightKg: exercise.isBodyweight ? 0 : 20,
+          restSeconds: 90,
+          progressionKg: 2.5,
+        });
+      });
+    });
+  }
 
-  return { days, exercises, dayIndex: 0 };
+  return { days, exercises, dayIndex: 0, programName: dayNameBase };
 }
 
 export function planReducer(state: PlanState, action: PlanAction): PlanState {

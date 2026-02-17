@@ -95,32 +95,38 @@ function createExerciseFromInput(dayId: string, exerciseIndex: number, input: Cu
 }
 
 function createCustomWorkout(config: CustomWorkoutInput): PlanState {
-  const programName = config.programName.trim() || 'Custom Workout';
-  const sourceDays = Array.isArray(config.days) ? config.days : [];
-  const fallbackDayId = 'custom-d0';
+  const normalizedDays = Math.max(1, Math.min(7, Math.round(config.days)));
+  const dayNameBase = (config.name || 'Custom Workout').trim() || 'Custom Workout';
+  const dayConfigs = config.dayConfigs ?? [];
 
-  const days: WorkoutDay[] = (sourceDays.length > 0 ? sourceDays : [{ id: fallbackDayId, name: '', exercises: [] }]).map((day, index) => ({
-    id: day.id?.trim() || `custom-d${index}`,
-    name: day.name.trim() || `Day ${index + 1}`,
-  }));
+  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => {
+    const cfg = dayConfigs[i];
+    const fallbackName = normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`;
+    return {
+      id: `custom-d${i}`,
+      name: cfg?.name?.trim() || fallbackName,
+    };
+  });
 
   const exercises: PlanExercise[] = [];
-  sourceDays.forEach((day, dayIndex) => {
-    const mappedDayId = days[dayIndex]?.id ?? `custom-d${dayIndex}`;
-    day.exercises.forEach((exerciseInput, exerciseIndex) => {
-      const mapped = createExerciseFromInput(mappedDayId, exerciseIndex, exerciseInput);
-      if (mapped) {
-        exercises.push(mapped);
-      }
+  dayConfigs.slice(0, normalizedDays).forEach((dayConfig, dayIndex) => {
+    dayConfig.exercises.forEach((exercise, exerciseIndex) => {
+      exercises.push({
+        id: `custom-d${dayIndex}-${exerciseIndex}-${Date.now()}`,
+        dayId: `custom-d${dayIndex}`,
+        exercise,
+        sets: 3,
+        repsMin: 8,
+        repsMax: 12,
+        reps: 10,
+        weightKg: 20,
+        restSeconds: 90,
+        progressionKg: 2.5,
+      });
     });
   });
 
-  return {
-    days,
-    exercises,
-    dayIndex: 0,
-    programName,
-  };
+  return { days, exercises, dayIndex: 0 };
 }
 
 export function planReducer(state: PlanState, action: PlanAction): PlanState {

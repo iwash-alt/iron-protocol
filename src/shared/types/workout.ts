@@ -30,12 +30,11 @@ export interface CustomWorkoutExerciseInput {
 export interface CustomWorkoutDayInput {
   id: string;
   name: string;
-  exercises: CustomWorkoutExerciseInput[];
-}
-
-export interface CustomWorkoutInput {
-  programName: string;
-  days: CustomWorkoutDayInput[];
+  days: number;
+  dayConfigs?: Array<{
+    name: string;
+    exercises: Exercise[];
+  }>;
 }
 
 export interface SetLog {

@@ -31,6 +31,15 @@ export interface CustomWorkoutDayInput {
   id: string;
   name: string;
   days: number;
+  dayExercises?: {
+    name?: string;
+    exercises: {
+      exercise: Exercise;
+      sets: number;
+      reps: number;
+      weightKg: number;
+    }[];
+  }[];
   dayConfigs?: Array<{
     name: string;
     exercises: Exercise[];

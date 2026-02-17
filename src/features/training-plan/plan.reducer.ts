@@ -71,12 +71,36 @@ export function createInitialPlan(profile: UserProfile, templateKey?: string): P
 function createCustomWorkout(config: CustomWorkoutInput): PlanState {
   const normalizedDays = Math.max(1, Math.min(7, Math.round(config.days)));
   const dayNameBase = (config.name || 'Custom Workout').trim() || 'Custom Workout';
-  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => ({
-    id: `custom-d${i}`,
-    name: normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`,
-  }));
+  const dayConfigs = config.dayConfigs ?? [];
 
-  return { days, exercises: [], dayIndex: 0 };
+  const days: WorkoutDay[] = Array.from({ length: normalizedDays }, (_, i) => {
+    const cfg = dayConfigs[i];
+    const fallbackName = normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`;
+    return {
+      id: `custom-d${i}`,
+      name: cfg?.name?.trim() || fallbackName,
+    };
+  });
+
+  const exercises: PlanExercise[] = [];
+  dayConfigs.slice(0, normalizedDays).forEach((dayConfig, dayIndex) => {
+    dayConfig.exercises.forEach((exercise, exerciseIndex) => {
+      exercises.push({
+        id: `custom-d${dayIndex}-${exerciseIndex}-${Date.now()}`,
+        dayId: `custom-d${dayIndex}`,
+        exercise,
+        sets: 3,
+        repsMin: 8,
+        repsMax: 12,
+        reps: 10,
+        weightKg: 20,
+        restSeconds: 90,
+        progressionKg: 2.5,
+      });
+    });
+  });
+
+  return { days, exercises, dayIndex: 0 };
 }
 
 export function planReducer(state: PlanState, action: PlanAction): PlanState {

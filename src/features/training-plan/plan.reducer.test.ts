@@ -218,6 +218,51 @@ describe('planReducer', () => {
     });
   });
 
+
+
+  describe('CREATE_CUSTOM_WORKOUT', () => {
+    it('builds a plan from provided program/day/exercise payload', () => {
+      const state = planReducer(initialState, {
+        type: 'CREATE_CUSTOM_WORKOUT',
+        config: {
+          programName: 'Strength Builder',
+          days: [
+            {
+              id: 'alpha',
+              name: 'Heavy Push',
+              exercises: [
+                { exerciseId: '1', sets: 5, reps: 5, weightKg: 100 },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(state.programName).toBe('Strength Builder');
+      expect(state.days).toEqual([{ id: 'alpha', name: 'Heavy Push' }]);
+      expect(state.exercises).toHaveLength(1);
+      expect(state.exercises[0].exercise.id).toBe('1');
+      expect(state.exercises[0].sets).toBe(5);
+      expect(state.exercises[0].reps).toBe(5);
+      expect(state.exercises[0].weightKg).toBe(100);
+    });
+
+    it('falls back to Day N names when provided names are blank', () => {
+      const state = planReducer(initialState, {
+        type: 'CREATE_CUSTOM_WORKOUT',
+        config: {
+          programName: 'Custom',
+          days: [
+            { id: 'one', name: '   ', exercises: [] },
+            { id: 'two', name: '', exercises: [] },
+          ],
+        },
+      });
+
+      expect(state.days.map(day => day.name)).toEqual(['Day 1', 'Day 2']);
+    });
+  });
+
   describe('SWAP_EXERCISE', () => {
     it('replaces the exercise object while keeping plan settings', () => {
       const target = initialState.exercises[0];

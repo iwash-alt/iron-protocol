@@ -40,6 +40,7 @@ interface TrainingPlanState {
   days: WorkoutDay[];
   exercises: PlanExercise[];
   dayIndex: number;
+  programName?: string;
 }
 
 /** Safe JSON parse with Zod validation. Returns null on any failure. */
@@ -252,15 +253,47 @@ export function saveLastWorkoutWeek(week: number): void {
   localStorage.setItem(StorageKeys.LAST_WORKOUT_WEEK, week.toString());
 }
 
+function normalizeTrainingPlanState(parsed: unknown): TrainingPlanState | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  const candidate = parsed as Partial<TrainingPlanState>;
+  if (!Array.isArray(candidate.days) || !Array.isArray(candidate.exercises)) return null;
+
+  const days = candidate.days
+    .filter((day): day is WorkoutDay => Boolean(day) && typeof day.id === 'string' && typeof day.name === 'string')
+    .map((day, index) => ({
+      id: day.id.trim() || `legacy-d${index}`,
+      name: day.name.trim() || `Day ${index + 1}`,
+    }));
+
+  if (days.length === 0) return null;
+
+  const validDayIds = new Set(days.map(day => day.id));
+  const exercises = candidate.exercises
+    .filter((exercise): exercise is PlanExercise => Boolean(exercise) && typeof exercise.dayId === 'string')
+    .filter(exercise => validDayIds.has(exercise.dayId));
+
+  const safeDayIndex = typeof candidate.dayIndex === 'number'
+    ? Math.min(Math.max(Math.round(candidate.dayIndex), 0), days.length - 1)
+    : 0;
+
+  const programName = typeof candidate.programName === 'string' ? candidate.programName : undefined;
+
+  return {
+    days,
+    exercises,
+    dayIndex: safeDayIndex,
+    programName,
+  };
+}
+
 export function loadTrainingPlan(): TrainingPlanState | null {
   const raw = localStorage.getItem(StorageKeys.TRAINING_PLAN);
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as Partial<TrainingPlanState>;
-    if (!Array.isArray(parsed.days) || !Array.isArray(parsed.exercises)) return null;
-    if (typeof parsed.dayIndex !== 'number') return null;
-    return parsed as TrainingPlanState;
+    const parsed = JSON.parse(raw);
+    return normalizeTrainingPlanState(parsed);
   } catch {
     return null;
   }

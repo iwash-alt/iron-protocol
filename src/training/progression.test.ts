@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateProgression } from './progression';
+import { calculateProgression, formatProgressionBanner } from './progression';
 
 describe('calculateProgression', () => {
   it('increases reps for RPE 6 with reps below target', () => {
@@ -45,5 +45,78 @@ describe('calculateProgression', () => {
       oldValue: 0,
       newValue: 0,
     });
+  });
+});
+
+describe('formatProgressionBanner', () => {
+  it('shows weight increase with success tone', () => {
+    const result = {
+      exerciseId: 'ex1',
+      field: 'weightKg' as const,
+      oldValue: 80,
+      newValue: 82.5,
+      reason: 'Target reps reached, progressing weight',
+    };
+    const banner = formatProgressionBanner(result, 80);
+
+    expect(banner.tone).toBe('success');
+    expect(banner.icon).toBe('\u2191');
+    expect(banner.label).toContain('82.5kg');
+    expect(banner.label).toContain('+2.5kg');
+  });
+
+  it('shows weight decrease with warning tone', () => {
+    const result = {
+      exerciseId: 'ex1',
+      field: 'weightKg' as const,
+      oldValue: 80,
+      newValue: 77.5,
+      reason: 'RPE 10 - reducing weight for safety',
+    };
+    const banner = formatProgressionBanner(result, 80);
+
+    expect(banner.tone).toBe('warning');
+    expect(banner.icon).toBe('\u2193');
+    expect(banner.label).toContain('77.5kg');
+    expect(banner.label).toContain('-2.5kg');
+  });
+
+  it('shows rep increase with success tone', () => {
+    const result = {
+      exerciseId: 'ex1',
+      field: 'reps' as const,
+      oldValue: 8,
+      newValue: 9,
+      reason: 'RPE indicates room for more reps',
+    };
+    const banner = formatProgressionBanner(result, 80);
+
+    expect(banner.tone).toBe('success');
+    expect(banner.icon).toBe('\u2191');
+    expect(banner.label).toContain('80kg');
+    expect(banner.label).toContain('9 reps');
+    expect(banner.label).toContain('+1 rep');
+    expect(banner.label).not.toContain('+1 reps');
+  });
+
+  it('pluralizes reps correctly for multi-rep increase', () => {
+    const result = {
+      exerciseId: 'ex1',
+      field: 'reps' as const,
+      oldValue: 6,
+      newValue: 8,
+      reason: 'RPE indicates room for more reps',
+    };
+    const banner = formatProgressionBanner(result, 60);
+
+    expect(banner.label).toContain('+2 reps');
+  });
+
+  it('shows neutral banner for null result (no change)', () => {
+    const banner = formatProgressionBanner(null, 80);
+
+    expect(banner.tone).toBe('neutral');
+    expect(banner.icon).toBe('\u2192');
+    expect(banner.label).toContain('same weight');
   });
 });

@@ -53,3 +53,50 @@ export function calculateProgression(
 
   return null;
 }
+
+export interface ProgressionBanner {
+  icon: string;
+  label: string;
+  subtext: string;
+  tone: 'success' | 'warning' | 'neutral';
+}
+
+export function formatProgressionBanner(
+  result: ProgressionResult | null,
+  currentWeightKg: number,
+): ProgressionBanner {
+  if (!result) {
+    return {
+      icon: '\u2192',
+      label: 'Next session: same weight',
+      subtext: 'Good effort \u2014 maintain current load',
+      tone: 'neutral',
+    };
+  }
+
+  if (result.field === 'weightKg') {
+    const diff = result.newValue - result.oldValue;
+    if (diff > 0) {
+      return {
+        icon: '\u2191',
+        label: `Next session: ${result.newValue}kg (+${diff}kg)`,
+        subtext: result.reason,
+        tone: 'success',
+      };
+    }
+    return {
+      icon: '\u2193',
+      label: `Next session: ${result.newValue}kg (${diff}kg)`,
+      subtext: result.reason,
+      tone: 'warning',
+    };
+  }
+
+  const repDiff = result.newValue - result.oldValue;
+  return {
+    icon: '\u2191',
+    label: `Next session: ${currentWeightKg}kg \u00d7 ${result.newValue} reps (+${repDiff} rep${repDiff !== 1 ? 's' : ''})`,
+    subtext: result.reason,
+    tone: 'success',
+  };
+}

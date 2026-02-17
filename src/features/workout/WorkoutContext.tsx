@@ -36,6 +36,7 @@ interface WorkoutContextValue {
   completedSets: Record<string, number>;
   currentLog: SetLog[];
   restTimerFor: string | null;
+  progressions: Record<string, ProgressionResult | null>;
   workoutHistory: WorkoutLog[];
   exerciseHistory: ExerciseHistory;
   personalRecords: PersonalRecords;
@@ -223,6 +224,12 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
       if (progression && onProgression) {
         onProgression({ ...progression, exerciseId: pe.id });
       }
+
+      dispatch({
+        type: 'SET_PROGRESSION',
+        exerciseId: pe.id,
+        result: progression ? { ...progression, exerciseId: pe.id } : null,
+      });
     }
   }, [state.completedSets, personalRecords, demo, persistPRs, onProgression]);
 
@@ -384,6 +391,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
       completedSets: state.completedSets,
       currentLog: state.currentLog,
       restTimerFor: state.restTimerFor,
+      progressions: state.progressions,
       workoutHistory,
       exerciseHistory,
       personalRecords,

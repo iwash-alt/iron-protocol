@@ -1,4 +1,11 @@
-import type { PlanExercise, WorkoutDay, Exercise, CustomWorkoutInput, CustomWorkoutDayInput } from '@/shared/types';
+import type {
+  PlanExercise,
+  WorkoutDay,
+  Exercise,
+  CustomWorkoutInput,
+  CustomWorkoutDayInput,
+  CustomWorkoutExerciseInput,
+} from '@/shared/types';
 import { isLowerBody } from '@/shared/types';
 import { exercises, findExerciseByName } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
@@ -73,7 +80,7 @@ function toPositiveInt(value: number, fallback: number): number {
   return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
 }
 
-function createExerciseFromInput(dayId: string, exerciseIndex: number, input: CustomWorkoutDayInput['exercises'][number]): PlanExercise | null {
+function createExerciseFromInput(dayId: string, exerciseIndex: number, input: CustomWorkoutExerciseInput): PlanExercise | null {
   const exercise = exercises.find(ex => ex.id === input.exerciseId) ?? findExerciseByName(input.exerciseId);
   if (!exercise) return null;
 
@@ -99,15 +106,17 @@ function createCustomWorkout(config: CustomWorkoutInput): PlanState {
   const sourceDays = Array.isArray(config.days) ? config.days : [];
   const fallbackDayId = 'custom-d0';
 
-  const days: WorkoutDay[] = (sourceDays.length > 0 ? sourceDays : [{ id: fallbackDayId, name: '', exercises: [] }]).map((day, index) => ({
+  const fallbackDay: CustomWorkoutDayInput = { id: fallbackDayId, name: '', exercises: [] };
+
+  const days: WorkoutDay[] = (sourceDays.length > 0 ? sourceDays : [fallbackDay]).map((day, index) => ({
     id: day.id?.trim() || `custom-d${index}`,
     name: day.name.trim() || `Day ${index + 1}`,
   }));
 
   const exercises: PlanExercise[] = [];
-  sourceDays.forEach((day, dayIndex) => {
+  sourceDays.forEach((day: CustomWorkoutDayInput, dayIndex: number) => {
     const mappedDayId = days[dayIndex]?.id ?? `custom-d${dayIndex}`;
-    day.exercises.forEach((exerciseInput, exerciseIndex) => {
+    day.exercises.forEach((exerciseInput: CustomWorkoutExerciseInput, exerciseIndex: number) => {
       const mapped = createExerciseFromInput(mappedDayId, exerciseIndex, exerciseInput);
       if (mapped) {
         exercises.push(mapped);

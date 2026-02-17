@@ -252,9 +252,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [customBuilderStep, setCustomBuilderStep] = useState<1 | 2 | 3 | 4>(1);
   const [customWorkoutDraft, setCustomWorkoutDraft] = useState<CustomWorkoutDraft>(EMPTY_CUSTOM_WORKOUT_DRAFT);
   const [selectedBuilderDayId, setSelectedBuilderDayId] = useState<string | null>(null);
-  const [showAddExercise, setShowAddExercise] = useState(false);
-  const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
-  const [celebrate, setCelebrate] = useState(false);
 
   // Exercise browser filter states (shared between Add and Swap modals)
   const [exSearch, setExSearch] = useState('');
@@ -461,19 +458,13 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     })));
   };
 
-  const handleCreateCustomWorkout = () => {
-    plan.createCustomWorkout({
-      name: customWorkoutName,
-      days: customWorkoutDays,
-      dayExercises: builderDraftDays.map((day) => ({
-        name: day.name,
   const resetCustomWorkoutBuilder = () => {
     setCustomBuilderStep(1);
     setSelectedBuilderDayId(null);
     setCustomWorkoutDraft(EMPTY_CUSTOM_WORKOUT_DRAFT);
   };
 
-  const handleCustomWorkoutDaysChange = (daysPerWeek: number) => {
+  const handleCustomWorkoutDraftDaysChange = (daysPerWeek: number) => {
     setCustomWorkoutDraft(prev => {
       const nextDays = Array.from({ length: daysPerWeek }, (_, i) => {
         const existing = prev.days[i];
@@ -1188,7 +1179,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 <h3 style={templatesCustomStyles.title}>How many days per week?</h3>
                 <select
                   value={customWorkoutDraft.daysPerWeek}
-                  onChange={e => handleCustomWorkoutDaysChange(Number(e.target.value))}
+                  onChange={e => handleCustomWorkoutDraftDaysChange(Number(e.target.value))}
                   style={templatesCustomStyles.select}
                 >
                   {[1, 2, 3, 4, 5, 6, 7].map(day => (
@@ -1568,225 +1559,46 @@ const orderStyles: Record<string, React.CSSProperties> = {
 
 const templatesCustomStyles: Record<string, React.CSSProperties> = {
   launchBtn: {
-    width: '100%',
-    borderRadius: radii.md,
-    border: `1px solid ${colors.primaryBorder}`,
-    background: 'rgba(255,59,48,0.08)',
-    color: colors.primary,
-    fontWeight: typography.weights.black,
-    fontSize: typography.sizes.sm,
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    width: '100%', borderRadius: radii.md, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary,
+    fontWeight: typography.weights.black, fontSize: typography.sizes.sm, padding: `${spacing.sm}px ${spacing.md}px`, marginTop: spacing.sm, marginBottom: spacing.sm,
   },
-  modal: {
-    width: 'min(92vw, 420px)',
-    borderRadius: radii.xl,
-    background: colors.surface,
-    border: `1px solid ${colors.surfaceBorder}`,
-    padding: spacing.lg,
-  },
+  modal: { width: 'min(92vw, 420px)', borderRadius: radii.xl, background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.lg },
   title: { color: colors.text, margin: 0, marginBottom: spacing.xs, fontSize: typography.sizes.xl },
   sub: { color: colors.textSecondary, marginTop: 0, marginBottom: spacing.md, fontSize: typography.sizes.sm },
   label: { display: 'block', color: colors.textSecondary, marginBottom: 6, fontSize: typography.sizes.xs, textTransform: 'uppercase', letterSpacing: '0.06em' },
-  input: {
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: 'rgba(255,255,255,0.06)',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  select: {
-    width: '100%',
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: colors.surface,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
+  input: { width: '100%', boxSizing: 'border-box', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, marginBottom: spacing.md },
+  select: { width: '100%', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: colors.surface, color: colors.text, marginBottom: spacing.md },
   option: { background: '#111', color: '#fff' },
-  dayCards: {
-    maxHeight: 320,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  dayCard: {
-    border: `1px solid ${colors.surfaceBorder}`,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    background: 'rgba(255,255,255,0.03)',
-  },
-  dayHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
+  stepBadge: { display: 'inline-block', fontSize: typography.sizes.xs, fontWeight: typography.weights.black, color: colors.textSecondary, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: '0.08em' },
+  dayPreviewList: { display: 'flex', flexDirection: 'column', gap: spacing.xs, marginBottom: spacing.sm },
+  dayPreviewCard: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.03)' },
+  dayPreviewTitle: { color: colors.text, fontWeight: typography.weights.bold },
+  dayPreviewMeta: { color: colors.textSecondary, fontSize: typography.sizes.xs, marginTop: 2 },
+  dayCards: { maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: spacing.sm, marginBottom: spacing.md },
+  dayCardsList: { display: 'flex', flexDirection: 'column', gap: spacing.sm, maxHeight: '45vh', overflowY: 'auto', paddingRight: 2, marginBottom: spacing.sm },
+  dayCard: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.sm, background: 'rgba(255,255,255,0.03)' },
+  dayHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
   dayName: { color: colors.text, fontWeight: typography.weights.black, fontSize: typography.sizes.sm },
-  dayAddBtn: {
-  stepBadge: {
-    display: 'inline-block',
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.black,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.08em',
-  },
-  dayPreviewList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  dayPreviewCard: {
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: 'rgba(255,255,255,0.03)',
-  },
-  dayPreviewTitle: {
-    color: colors.text,
-    fontWeight: typography.weights.bold,
-  },
-  dayPreviewMeta: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-    marginTop: 2,
-  },
-  dayCardsList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: spacing.sm,
-    maxHeight: '45vh',
-    overflowY: 'auto' as const,
-    paddingRight: 2,
-    marginBottom: spacing.sm,
-  },
-  dayCard: {
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    padding: spacing.sm,
-    background: 'rgba(255,255,255,0.03)',
-  },
-  dayNameInput: {
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: 'rgba(255,255,255,0.06)',
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  dayExerciseList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 6,
-    marginBottom: spacing.sm,
-  },
-  emptyExerciseText: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-  },
-  exerciseItem: {
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-  },
-  addExerciseBtn: {
-    width: '100%',
-    borderRadius: radii.md,
-    border: `1px solid ${colors.primaryBorder}`,
-    background: 'rgba(255,59,48,0.08)',
-    color: colors.primary,
-    padding: `4px ${spacing.sm}px`,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-  },
+  dayNameInput: { width: '100%', boxSizing: 'border-box', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, marginBottom: spacing.sm },
+  dayAddBtn: { borderRadius: radii.sm, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary, padding: `4px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
+  dayExerciseList: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: spacing.sm },
   dayEmpty: { color: colors.textTertiary, fontSize: typography.sizes.xs },
-  dayExerciseList: { display: 'flex', flexDirection: 'column', gap: 6 },
-  dayExerciseRow: {
-    display: 'grid',
-    gridTemplateColumns: '28px 1fr 68px 52px 52px',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rowRemoveBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
-    border: 'none',
-    background: 'rgba(255,59,48,0.14)',
-    color: colors.primary,
-    fontSize: typography.sizes.lg,
-    lineHeight: '28px',
-    padding: 0,
-  },
+  dayExerciseRow: { display: 'grid', gridTemplateColumns: '28px 1fr 68px 52px 52px', alignItems: 'center', gap: 6 },
+  rowRemoveBtn: { width: 28, height: 28, borderRadius: radii.sm, border: 'none', background: 'rgba(255,59,48,0.14)', color: colors.primary, fontSize: typography.sizes.lg, lineHeight: '28px', padding: 0 },
   rowMeta: { minWidth: 0 },
   rowName: { color: colors.text, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   rowSub: { color: colors.textTertiary, fontSize: '0.65rem' },
-  rowInput: {
-    width: '100%',
-    borderRadius: radii.sm,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: 'rgba(255,255,255,0.06)',
-    color: colors.text,
-    padding: '4px 6px',
-    fontSize: typography.sizes.xs,
-    padding: `${spacing.xs}px ${spacing.sm}px`,
-    fontWeight: typography.weights.bold,
-  },
-  summaryHeader: {
-    color: colors.text,
-    fontWeight: typography.weights.black,
-    fontSize: typography.sizes.lg,
-    marginBottom: spacing.sm,
-  },
-  summaryList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: spacing.sm,
-    maxHeight: '46vh',
-    overflowY: 'auto' as const,
-    marginBottom: spacing.sm,
-    paddingRight: 2,
-  },
-  summaryDayCard: {
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    padding: spacing.sm,
-    background: 'rgba(255,255,255,0.03)',
-  },
-  summaryDayTitle: {
-    color: colors.text,
-    fontWeight: typography.weights.bold,
-    marginBottom: 6,
-  },
-  summaryExerciseRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-    marginBottom: 4,
-  },
-  summaryDefaults: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-    whiteSpace: 'nowrap' as const,
-  },
+  rowInput: { width: '100%', borderRadius: radii.sm, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, padding: `${spacing.xs}px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
+  emptyExerciseText: { color: colors.textSecondary, fontSize: typography.sizes.xs },
+  exerciseItem: { color: colors.text, fontSize: typography.sizes.sm },
+  addExerciseBtn: { width: '100%', borderRadius: radii.md, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary, padding: `4px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
+  summaryHeader: { color: colors.text, fontWeight: typography.weights.black, fontSize: typography.sizes.lg, marginBottom: spacing.sm },
+  summaryList: { display: 'flex', flexDirection: 'column', gap: spacing.sm, maxHeight: '46vh', overflowY: 'auto', marginBottom: spacing.sm, paddingRight: 2 },
+  summaryDayCard: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.sm, background: 'rgba(255,255,255,0.03)' },
+  summaryDayTitle: { color: colors.text, fontWeight: typography.weights.bold, marginBottom: 6 },
+  summaryExerciseRow: { display: 'flex', justifyContent: 'space-between', gap: spacing.sm, color: colors.text, fontSize: typography.sizes.sm, marginBottom: 4 },
+  summaryDefaults: { color: colors.textSecondary, fontSize: typography.sizes.xs, whiteSpace: 'nowrap' },
   actions: { display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' },
-  cancel: {
-    borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px`,
-  },
-  create: {
-    borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold,
-  },
+  cancel: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px` },
+  create: { borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold },
 };

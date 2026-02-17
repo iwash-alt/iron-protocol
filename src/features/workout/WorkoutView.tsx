@@ -16,6 +16,7 @@ import type { UserProfile } from '@/shared/types';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { evaluateSuggestions } from '@/training/suggestions';
+import { formatProgressionBanner } from '@/training/progression';
 import type { WorkoutSuggestion } from '@/training/suggestions';
 import { SuggestionToast } from './SuggestionToast';
 import { ReadinessCheck, getTodayReadiness } from '@/features/readiness/ReadinessCheck';
@@ -599,11 +600,23 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                     />
                   )}
                 </div>
-                <div style={S.stat}>
-                  <div style={S.statLabel}>NEXT</div>
-                  <div style={S.statValGreen}>+{pe.progressionKg}</div>
-                </div>
               </div>
+
+              {isDone && !pe.exercise.isBodyweight && pe.id in workout.progressions && (() => {
+                const banner = formatProgressionBanner(
+                  workout.progressions[pe.id],
+                  pe.weightKg,
+                );
+                return (
+                  <div style={progressionBannerStyles[banner.tone]}>
+                    <span style={progressionBannerStyles.icon}>{banner.icon}</span>
+                    <div>
+                      <div style={progressionBannerStyles.label}>{banner.label}</div>
+                      <div style={progressionBannerStyles.subtext}>{banner.subtext}</div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {!isDone && (
                 <button
@@ -1472,4 +1485,22 @@ const templatesCustomStyles: Record<string, React.CSSProperties> = {
   actions: { display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' },
   cancel: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px` },
   create: { borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold },
+};
+
+const progressionBannerBase: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  gap: spacing.sm,
+  padding: `${spacing.sm + 2}px ${spacing.md}px`,
+  borderRadius: radii.lg,
+  marginBottom: spacing.md,
+};
+
+const progressionBannerStyles: Record<string, React.CSSProperties> = {
+  success: { ...progressionBannerBase, background: colors.successSurface, border: `1px solid ${colors.successBorder}` },
+  warning: { ...progressionBannerBase, background: colors.warningSurface, border: `1px solid ${colors.warningBorder}` },
+  neutral: { ...progressionBannerBase, background: colors.surface, border: `1px solid ${colors.surfaceBorder}` },
+  icon: { fontSize: typography.sizes['3xl'], fontWeight: typography.weights.black, lineHeight: '1.2', flexShrink: 0 },
+  label: { fontSize: typography.sizes.md, fontWeight: typography.weights.bold, color: colors.text },
+  subtext: { fontSize: typography.sizes.sm, color: colors.textSecondary, marginTop: 2 },
 };

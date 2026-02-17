@@ -145,6 +145,49 @@ describe('workoutReducer', () => {
       expect(state.completedSets).toEqual({});
       expect(state.currentLog).toEqual([]);
       expect(state.restTimerFor).toBeNull();
+      expect(state.progressions).toEqual({});
+    });
+  });
+
+  describe('SET_PROGRESSION', () => {
+    it('stores a progression result for an exercise', () => {
+      const result = {
+        exerciseId: 'ex1',
+        field: 'weightKg' as const,
+        oldValue: 80,
+        newValue: 82.5,
+        reason: 'Target reps reached',
+      };
+      const state = workoutReducer(initialWorkoutState, {
+        type: 'SET_PROGRESSION',
+        exerciseId: 'ex1',
+        result,
+      });
+
+      expect(state.progressions['ex1']).toEqual(result);
+    });
+
+    it('stores null for no-change progression', () => {
+      const state = workoutReducer(initialWorkoutState, {
+        type: 'SET_PROGRESSION',
+        exerciseId: 'ex1',
+        result: null,
+      });
+
+      expect(state.progressions['ex1']).toBeNull();
+      expect('ex1' in state.progressions).toBe(true);
+    });
+
+    it('clears progressions on RESET', () => {
+      let state = workoutReducer(initialWorkoutState, {
+        type: 'SET_PROGRESSION',
+        exerciseId: 'ex1',
+        result: null,
+      });
+
+      state = workoutReducer(state, { type: 'RESET' });
+
+      expect(state.progressions).toEqual({});
     });
   });
 

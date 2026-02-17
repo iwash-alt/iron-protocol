@@ -82,7 +82,7 @@ export const S: Record<string, CSSProperties> = {
   warmupVal: { fontWeight: typography.weights.bold },
 
   // Stats grid
-  stats: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xl - 6 },
+  stats: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xl - 6 },
   stat: { padding: `${spacing.sm + 2}px ${spacing.sm}px`, borderRadius: radii.lg, background: colors.surface, border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' },
   statLabel: { fontSize: typography.sizes.xs, color: colors.textTertiary, fontWeight: typography.weights.black, marginBottom: 4, letterSpacing: '0.03em' },
   statVal: { fontSize: typography.sizes.xl, fontWeight: typography.weights.black, color: colors.text },

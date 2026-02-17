@@ -1,4 +1,11 @@
-import type { PlanExercise, WorkoutDay, Exercise, CustomWorkoutInput, CustomWorkoutDayInput } from '@/shared/types';
+import type {
+  PlanExercise,
+  WorkoutDay,
+  Exercise,
+  CustomWorkoutInput,
+  CustomWorkoutDayInput,
+  CustomWorkoutExerciseInput,
+} from '@/shared/types';
 import { isLowerBody } from '@/shared/types';
 import { exercises, findExerciseByName } from '@/data/exercises';
 import { workoutTemplates } from '@/data/templates';
@@ -73,7 +80,7 @@ function toPositiveInt(value: number, fallback: number): number {
   return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;
 }
 
-function createExerciseFromInput(dayId: string, exerciseIndex: number, input: CustomWorkoutDayInput['exercises'][number]): PlanExercise | null {
+function createExerciseFromInput(dayId: string, exerciseIndex: number, input: CustomWorkoutExerciseInput): PlanExercise | null {
   const exercise = exercises.find(ex => ex.id === input.exerciseId) ?? findExerciseByName(input.exerciseId);
   if (!exercise) return null;
 

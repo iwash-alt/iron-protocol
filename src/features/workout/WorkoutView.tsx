@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } from '@/shared/types';
-import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from '@/shared/types';
+import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isLowerBody } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useNutrition } from '@/features/nutrition/nutrition.context';
@@ -37,6 +37,30 @@ function toCuratedMuscle(raw: string): MuscleFilter {
 
 interface WorkoutViewProps {
   profile: UserProfile;
+}
+
+interface BuilderDraftExercise {
+  exercise: Exercise;
+  sets: number;
+  reps: number;
+  weightKg: number;
+}
+
+interface BuilderDraftDay {
+  id: string;
+  name: string;
+  exercises: BuilderDraftExercise[];
+}
+
+function createBuilderDraftDays(dayCount: number, workoutName: string): BuilderDraftDay[] {
+  const normalizedDays = Math.max(1, Math.min(7, Math.round(dayCount)));
+  const dayNameBase = (workoutName || 'Custom Workout').trim() || 'Custom Workout';
+
+  return Array.from({ length: normalizedDays }, (_, i) => ({
+    id: `builder-day-${i}`,
+    name: normalizedDays === 1 ? dayNameBase : `${dayNameBase} ${i + 1}`,
+    exercises: [],
+  }));
 }
 
 // ── Inline Editable Field ─────────────────────────────────────────────────────
@@ -199,11 +223,14 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showNutrition, setShowNutrition] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCustomWorkout, setShowCustomWorkout] = useState(false);
+  const [showBuilderExerciseBrowser, setShowBuilderExerciseBrowser] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [customWorkoutName, setCustomWorkoutName] = useState('My Workout');
   const [customWorkoutDays, setCustomWorkoutDays] = useState(4);
+  const [builderDraftDays, setBuilderDraftDays] = useState<BuilderDraftDay[]>(() => createBuilderDraftDays(4, 'My Workout'));
+  const [builderActiveDayId, setBuilderActiveDayId] = useState<string | null>(null);
 
   // Exercise browser filter states (shared between Add and Swap modals)
   const [exSearch, setExSearch] = useState('');
@@ -213,13 +240,13 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
 
   useEffect(() => {
-    if (!showAddExercise && !showSwap && !showExerciseHistory) return;
+    if (!showAddExercise && !showSwap && !showExerciseHistory && !showBuilderExerciseBrowser) return;
     let mounted = true;
     import('@/data/exercises').then((mod) => {
       if (mounted) setExerciseData(mod);
     });
     return () => { mounted = false; };
-  }, [showAddExercise, showSwap, showExerciseHistory]);
+  }, [showAddExercise, showSwap, showExerciseHistory, showBuilderExerciseBrowser]);
 
   // Filtered exercise list for dual-filter
   const filteredExercises = useMemo(() => {
@@ -331,15 +358,97 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     }
   };
 
+  const updateBuilderExerciseField = (dayId: string, exerciseIndex: number, patch: Partial<BuilderDraftExercise>) => {
+    setBuilderDraftDays(prev => prev.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        exercises: day.exercises.map((draftExercise, index) =>
+          index === exerciseIndex ? { ...draftExercise, ...patch } : draftExercise,
+        ),
+      };
+    }));
+  };
+
+  const removeBuilderExercise = (dayId: string, exerciseIndex: number) => {
+    setBuilderDraftDays(prev => prev.map(day => {
+      if (day.id !== dayId) return day;
+      return {
+        ...day,
+        exercises: day.exercises.filter((_, index) => index !== exerciseIndex),
+      };
+    }));
+  };
+
+  const addBuilderExercise = (exercise: Exercise) => {
+    if (!builderActiveDayId) return;
+
+    setBuilderDraftDays(prev => prev.map(day => {
+      if (day.id !== builderActiveDayId) return day;
+      const lower = isLowerBody(exercise.muscle);
+      return {
+        ...day,
+        exercises: [...day.exercises, {
+          exercise,
+          sets: 3,
+          reps: lower ? 8 : 10,
+          weightKg: exercise.isBodyweight ? 0 : 20,
+        }],
+      };
+    }));
+
+    setShowBuilderExerciseBrowser(false);
+    setBuilderActiveDayId(null);
+    setExSearch('');
+    setExEquipment('All');
+    setExMuscle('All');
+  };
+
   const handleApplyTemplate = (key: string) => {
     plan.initialize(profile, key);
     workout.resetWorkoutState();
     setShowTemplates(false);
   };
 
+  const handleLaunchCustomWorkoutBuilder = () => {
+    setBuilderDraftDays(createBuilderDraftDays(customWorkoutDays, customWorkoutName));
+    setBuilderActiveDayId(null);
+    setShowBuilderExerciseBrowser(false);
+    setShowCustomWorkout(true);
+  };
+
+  const handleCustomWorkoutDaysChange = (days: number) => {
+    setCustomWorkoutDays(days);
+    setBuilderDraftDays(prev => {
+      const nextBase = createBuilderDraftDays(days, customWorkoutName);
+      return nextBase.map((nextDay, index) => ({
+        ...nextDay,
+        name: prev[index]?.name ?? nextDay.name,
+        exercises: prev[index]?.exercises ?? [],
+      }));
+    });
+  };
+
+  const handleCustomWorkoutNameChange = (name: string) => {
+    setCustomWorkoutName(name);
+    setBuilderDraftDays(prev => prev.map((day, index) => ({
+      ...day,
+      name: name.trim() ? `${name.trim()} ${index + 1}` : day.name,
+    })));
+  };
+
   const handleCreateCustomWorkout = () => {
-    plan.createCustomWorkout({ name: customWorkoutName, days: customWorkoutDays });
+    plan.createCustomWorkout({
+      name: customWorkoutName,
+      days: customWorkoutDays,
+      dayExercises: builderDraftDays.map((day) => ({
+        name: day.name,
+        exercises: day.exercises,
+      })),
+    });
     workout.resetWorkoutState();
+    setShowBuilderExerciseBrowser(false);
+    setBuilderActiveDayId(null);
     setShowCustomWorkout(false);
     setShowTemplates(false);
   };
@@ -876,7 +985,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </button>
               ))}
             </div>
-            <button onClick={() => setShowCustomWorkout(true)} style={templatesCustomStyles.launchBtn}>+ CREATE YOUR OWN WORKOUT</button>
+            <button onClick={handleLaunchCustomWorkoutBuilder} style={templatesCustomStyles.launchBtn}>+ CREATE YOUR OWN WORKOUT</button>
             <button onClick={() => setShowTemplates(false)} style={S.templatesCancel}>CANCEL</button>
           </div>
         </div>
@@ -892,24 +1001,167 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               type="text"
               value={customWorkoutName}
               maxLength={32}
-              onChange={e => setCustomWorkoutName(e.target.value)}
+              onChange={e => handleCustomWorkoutNameChange(e.target.value)}
               placeholder="My Workout"
               style={templatesCustomStyles.input}
             />
             <label style={templatesCustomStyles.label}>Training Days / Week</label>
             <select
               value={customWorkoutDays}
-              onChange={e => setCustomWorkoutDays(Number(e.target.value))}
+              onChange={e => handleCustomWorkoutDaysChange(Number(e.target.value))}
               style={templatesCustomStyles.select}
             >
               {[1, 2, 3, 4, 5, 6, 7].map(day => (
                 <option key={day} value={day} style={templatesCustomStyles.option}>{day} {day === 1 ? 'day' : 'days'}</option>
               ))}
             </select>
+
+            <div style={templatesCustomStyles.dayCards}>
+              {builderDraftDays.map(day => (
+                <div key={day.id} style={templatesCustomStyles.dayCard}>
+                  <div style={templatesCustomStyles.dayHeader}>
+                    <div style={templatesCustomStyles.dayName}>{day.name}</div>
+                    <button
+                      onClick={() => {
+                        setBuilderActiveDayId(day.id);
+                        setShowBuilderExerciseBrowser(true);
+                      }}
+                      style={templatesCustomStyles.dayAddBtn}
+                    >
+                      + Add exercise
+                    </button>
+                  </div>
+                  {day.exercises.length === 0 ? (
+                    <div style={templatesCustomStyles.dayEmpty}>No exercises added yet.</div>
+                  ) : (
+                    <div style={templatesCustomStyles.dayExerciseList}>
+                      {day.exercises.map((draftExercise, exerciseIndex) => (
+                        <div key={`${draftExercise.exercise.id}-${exerciseIndex}`} style={templatesCustomStyles.dayExerciseRow}>
+                          <button onClick={() => removeBuilderExercise(day.id, exerciseIndex)} style={templatesCustomStyles.rowRemoveBtn}>×</button>
+                          <div style={templatesCustomStyles.rowMeta}>
+                            <div style={templatesCustomStyles.rowName}>{draftExercise.exercise.name}</div>
+                            <div style={templatesCustomStyles.rowSub}>{draftExercise.exercise.muscle}</div>
+                          </div>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.5}
+                            value={draftExercise.weightKg}
+                            onChange={e => updateBuilderExerciseField(day.id, exerciseIndex, { weightKg: Number(e.target.value) })}
+                            style={templatesCustomStyles.rowInput}
+                            aria-label="Weight (kg)"
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={draftExercise.reps}
+                            onChange={e => updateBuilderExerciseField(day.id, exerciseIndex, { reps: Number(e.target.value) })}
+                            style={templatesCustomStyles.rowInput}
+                            aria-label="Reps"
+                          />
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={draftExercise.sets}
+                            onChange={e => updateBuilderExerciseField(day.id, exerciseIndex, { sets: Number(e.target.value) })}
+                            style={templatesCustomStyles.rowInput}
+                            aria-label="Sets"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
             <div style={templatesCustomStyles.actions}>
               <button onClick={() => setShowCustomWorkout(false)} style={templatesCustomStyles.cancel}>Cancel</button>
               <button onClick={handleCreateCustomWorkout} style={templatesCustomStyles.create}>Create Workout</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showBuilderExerciseBrowser && (
+        <div
+          style={S.overlay}
+          onClick={() => {
+            setShowBuilderExerciseBrowser(false);
+            setBuilderActiveDayId(null);
+            setExSearch('');
+            setExEquipment('All');
+            setExMuscle('All');
+          }}
+        >
+          <div style={{ ...S.addExModal, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h3 style={S.addExTitle}>Add Exercise</h3>
+            <p style={S.addExSub}>Add to {builderDraftDays.find(day => day.id === builderActiveDayId)?.name}</p>
+            <input
+              type="text"
+              placeholder="Search exercises..."
+              value={exSearch}
+              onChange={e => setExSearch(e.target.value)}
+              style={ebStyles.searchInput}
+            />
+            <div style={ebStyles.filterRow}>
+              <select
+                value={exEquipment}
+                onChange={e => setExEquipment(e.target.value as EquipmentFilter)}
+                style={ebStyles.select}
+              >
+                <option value="All">All Equipment</option>
+                {EQUIPMENT_FILTER_OPTIONS.map(eq => (
+                  <option key={eq} value={eq} style={ebStyles.option}>{eq}</option>
+                ))}
+              </select>
+              <select
+                value={exMuscle}
+                onChange={e => setExMuscle(e.target.value as MuscleFilter)}
+                style={ebStyles.select}
+              >
+                <option value="All">All Muscles</option>
+                {MUSCLE_FILTER_OPTIONS.map(m => (
+                  <option key={m} value={m} style={ebStyles.option}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <p style={ebStyles.resultCount}>
+              {filteredExercises.length > 0
+                ? `${filteredExercises.length} exercise${filteredExercises.length !== 1 ? 's' : ''}`
+                : 'No exercises match these filters'}
+            </p>
+            <div style={S.addExList}>
+              {filteredExercises.map(ex => (
+                <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={() => addBuilderExercise(ex)} style={{ ...S.addExItem, flex: 1 }}>
+                    <div>
+                      <div style={S.addExName}>{ex.name}</div>
+                      <div style={S.addExMeta}>
+                        {ex.muscle} {'·'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                        {ex.isBodyweight ? '' : ' · Weighted'}
+                      </div>
+                    </div>
+                    <div style={S.addExArrow}>+</div>
+                  </button>
+                  <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                setShowBuilderExerciseBrowser(false);
+                setBuilderActiveDayId(null);
+                setExSearch('');
+                setExEquipment('All');
+                setExMuscle('All');
+              }}
+              style={S.addExCancel}
+            >
+              CANCEL
+            </button>
           </div>
         </div>
       )}
@@ -1114,6 +1366,67 @@ const templatesCustomStyles: Record<string, React.CSSProperties> = {
     marginBottom: spacing.md,
   },
   option: { background: '#111', color: '#fff' },
+  dayCards: {
+    maxHeight: 320,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  dayCard: {
+    border: `1px solid ${colors.surfaceBorder}`,
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    background: 'rgba(255,255,255,0.03)',
+  },
+  dayHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  dayName: { color: colors.text, fontWeight: typography.weights.black, fontSize: typography.sizes.sm },
+  dayAddBtn: {
+    borderRadius: radii.md,
+    border: `1px solid ${colors.primaryBorder}`,
+    background: 'rgba(255,59,48,0.08)',
+    color: colors.primary,
+    padding: `4px ${spacing.sm}px`,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+  },
+  dayEmpty: { color: colors.textTertiary, fontSize: typography.sizes.xs },
+  dayExerciseList: { display: 'flex', flexDirection: 'column', gap: 6 },
+  dayExerciseRow: {
+    display: 'grid',
+    gridTemplateColumns: '28px 1fr 68px 52px 52px',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rowRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.sm,
+    border: 'none',
+    background: 'rgba(255,59,48,0.14)',
+    color: colors.primary,
+    fontSize: typography.sizes.lg,
+    lineHeight: '28px',
+    padding: 0,
+  },
+  rowMeta: { minWidth: 0 },
+  rowName: { color: colors.text, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  rowSub: { color: colors.textTertiary, fontSize: '0.65rem' },
+  rowInput: {
+    width: '100%',
+    borderRadius: radii.sm,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    padding: '4px 6px',
+    fontSize: typography.sizes.xs,
+  },
   actions: { display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' },
   cancel: {
     borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px`,

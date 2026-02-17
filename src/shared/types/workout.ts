@@ -23,6 +23,15 @@ export interface WorkoutDay {
 export interface CustomWorkoutInput {
   name: string;
   days: number;
+  dayExercises?: {
+    name?: string;
+    exercises: {
+      exercise: Exercise;
+      sets: number;
+      reps: number;
+      weightKg: number;
+    }[];
+  }[];
 }
 
 export interface SetLog {

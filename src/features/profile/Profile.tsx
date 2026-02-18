@@ -12,6 +12,7 @@ import {
   StorageKeys,
 } from '@/shared/storage';
 import { processProfilePhoto } from '@/shared/utils/imageProcessing';
+import { formatVolume } from '@/shared/utils';
 
 interface ProfileProps {
   profile: UserProfile;
@@ -147,7 +148,7 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
         </div>
         <div style={S.sumCard}>
           <div style={S.sumLabel}>VOLUME</div>
-          <div style={S.sumVal}>{(totalVolume / 1000).toFixed(0)}t</div>
+          <div style={S.sumVal}>{formatVolume(totalVolume, { abbreviated: true })}</div>
         </div>
         <div style={S.sumCard}>
           <div style={S.sumLabel}>PRs</div>

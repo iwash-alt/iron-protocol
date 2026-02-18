@@ -5,7 +5,7 @@ import { useNutrition } from '@/features/nutrition/nutrition.context';
 import { useProgress } from './progress.context';
 import { MiniChart, Icon } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { WATER_GOAL } from '@/shared/utils';
+import { WATER_GOAL, formatVolume } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { generateWeeklyInsights } from '@/analytics/insights';
@@ -33,10 +33,6 @@ function isNewPR(dateStr: string | undefined): boolean {
   const now = new Date();
   const diff = (now.getTime() - prDate.getTime()) / 86400000;
   return diff <= 7;
-}
-
-function formatVolume(vol: number): string {
-  return vol >= 1000 ? `${(vol / 1000).toFixed(1)}t` : `${Math.round(vol)}kg`;
 }
 
 interface DashboardProps {
@@ -105,11 +101,10 @@ export function Dashboard({
         <div style={S.sumCard}>
           <div style={S.sumLabel}>WORKOUTS</div>
           <div style={S.sumVal}>{workout.workoutHistory.length}</div>
-          {volData.length > 1 && <MiniChart data={volData} type="bar" height={35} />}
         </div>
         <div style={S.sumCard}>
           <div style={S.sumLabel}>VOLUME</div>
-          <div style={S.sumVal}>{(totalVol / 1000).toFixed(0)}t</div>
+          <div style={S.sumVal}>{formatVolume(totalVol, { abbreviated: true })}</div>
         </div>
         <div style={S.sumCard}>
           <div style={S.sumLabel}>STREAK</div>
@@ -127,6 +122,58 @@ export function Dashboard({
           {workout.weekCount >= 4 && <span style={S.weekWarning}> {'\u00B7'} Deload recommended</span>}
         </div>
       )}
+
+      {/* Weekly Volume chart */}
+      {volData.length > 1 && (() => {
+        const recentAvg = volData.reduce((a, b) => a + b, 0) / volData.length;
+        const olderWorkouts = workout.workoutHistory.slice(0, -7);
+        const olderVols = olderWorkouts.slice(-28).map(w => w.totalVolumeKg || 0);
+        const olderAvg = olderVols.length > 0
+          ? olderVols.reduce((a, b) => a + b, 0) / olderVols.length
+          : recentAvg;
+        const pctChange = olderAvg > 0
+          ? Math.round(((recentAvg - olderAvg) / olderAvg) * 100)
+          : 0;
+        const maxVol = Math.max(...volData);
+
+        return (
+          <div style={S.chartBox}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+              <h3 style={S.chartTitle}>{'\u{1F4CA}'} Weekly Volume</h3>
+              {olderVols.length > 0 && (
+                <span style={{
+                  fontSize: typography.sizes.sm,
+                  color: pctChange >= 0 ? colors.success : colors.primary,
+                  fontWeight: typography.weights.bold,
+                }}>
+                  {pctChange >= 0 ? '+' : ''}{pctChange}% vs avg
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: spacing.sm }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column' as const,
+                justifyContent: 'space-between',
+                height: 60,
+                width: 40,
+                flexShrink: 0,
+              }}>
+                <span style={{ fontSize: typography.sizes.xs, color: colors.textTertiary, textAlign: 'right' as const }}>
+                  {formatVolume(maxVol, { abbreviated: true })}
+                </span>
+                <span style={{ fontSize: typography.sizes.xs, color: colors.textTertiary, textAlign: 'right' as const }}>
+                  0
+                </span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <MiniChart data={volData} type="bar" height={60} />
+              </div>
+            </div>
+            <div style={S.chartLabels}><span>7 workouts ago</span><span>Latest</span></div>
+          </div>
+        );
+      })()}
 
       {/* Intelligence cards (Pro) or upgrade prompt (Free) */}
       {isPro ? (
@@ -294,7 +341,7 @@ export function Dashboard({
                 <div><div style={S.recentDay}>{w.dayName}</div><div style={S.recentDate}>{w.date}</div></div>
                 <div style={S.recentStats}>
                   <span style={S.recentPct}>{w.completionPercent}%</span>
-                  <span style={S.recentVol}>{(w.totalVolumeKg / 1000).toFixed(1)}t</span>
+                  <span style={S.recentVol}>{formatVolume(w.totalVolumeKg)}</span>
                 </div>
               </div>
             ))}

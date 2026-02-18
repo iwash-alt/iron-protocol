@@ -2,3 +2,5 @@ export { calculate1RM, getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } f
 export type { WarmupSet } from './calculations';
 export { getTodayKey, getWeekNumber, getGreeting, getLast7Days } from './date';
 export { playRestComplete } from './audio';
+export { formatVolume, formatVolumeDelta, formatPctChange, computeMuscleVolumeBreakdown } from './format';
+export type { MuscleVolumeEntry } from './format';

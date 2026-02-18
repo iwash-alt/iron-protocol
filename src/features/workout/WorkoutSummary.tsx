@@ -5,9 +5,12 @@
  */
 
 import React from 'react';
-import type { PlanExercise, SetLog } from '@/shared/types';
+import type { PlanExercise, SetLog, WorkoutLog } from '@/shared/types';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
+import { formatVolume, formatVolumeDelta, formatPctChange, computeMuscleVolumeBreakdown } from '@/shared/utils';
+import type { MuscleVolumeEntry } from '@/shared/utils';
+import { findExerciseByName } from '@/data/exercises';
 
 export interface WorkoutSummaryData {
   dayName: string;
@@ -20,6 +23,12 @@ export interface WorkoutSummaryData {
   setsCompleted: number;
   setsPlanned: number;
   avgRPE: number;
+  /** Volume from the previous session of the same day type */
+  previousVolumeKg: number | null;
+  /** Label for comparison, e.g. "last Push Day" */
+  previousDayLabel: string | null;
+  /** Raw set logs for muscle breakdown computation */
+  sets: SetLog[];
 }
 
 interface ExerciseSummary {
@@ -48,6 +57,7 @@ export function buildWorkoutSummary(
   currentLog: SetLog[],
   startedAt: number | null,
   completionPercent: number,
+  workoutHistory: WorkoutLog[],
 ): WorkoutSummaryData {
   const now = Date.now();
   const durationSeconds = startedAt ? Math.round((now - startedAt) / 1000) : 0;
@@ -77,6 +87,12 @@ export function buildWorkoutSummary(
     ? Math.round((currentLog.reduce((sum, s) => sum + s.rpe, 0) / currentLog.length) * 10) / 10
     : 0;
 
+  // Find previous session with same day name for comparison
+  const previousSession = workoutHistory
+    .slice()
+    .reverse()
+    .find(w => w.dayName === dayName);
+
   return {
     dayName,
     date: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
@@ -88,6 +104,9 @@ export function buildWorkoutSummary(
     setsCompleted,
     setsPlanned,
     avgRPE,
+    previousVolumeKg: previousSession?.totalVolumeKg ?? null,
+    previousDayLabel: previousSession ? `last ${previousSession.dayName}` : null,
+    sets: currentLog,
   };
 }
 
@@ -102,6 +121,23 @@ function formatDuration(seconds: number): string {
 
 export function WorkoutSummary({ summary, onDone }: Props) {
   const { photo: profilePhoto } = useProfilePhoto();
+
+  // Compute muscle volume breakdown
+  const muscleBreakdown: MuscleVolumeEntry[] = React.useMemo(() => {
+    const lookupMuscle = (name: string): string =>
+      findExerciseByName(name)?.muscle ?? 'Other';
+    return computeMuscleVolumeBreakdown(summary.sets, lookupMuscle);
+  }, [summary.sets]);
+
+  // Volume comparison helpers
+  const hasPrevious = summary.previousVolumeKg !== null && summary.previousVolumeKg > 0;
+  const volumeDelta = hasPrevious ? summary.totalVolumeKg - summary.previousVolumeKg! : 0;
+  const volumePct = hasPrevious
+    ? Math.round((volumeDelta / summary.previousVolumeKg!) * 100)
+    : 0;
+  const maxVol = hasPrevious
+    ? Math.max(summary.totalVolumeKg, summary.previousVolumeKg!)
+    : summary.totalVolumeKg;
 
   return (
     <div style={ss.overlay}>
@@ -186,10 +222,17 @@ export function WorkoutSummary({ summary, onDone }: Props) {
             <div style={ss.statBox}>
               <div style={ss.statLabel}>VOLUME</div>
               <div style={ss.statValue}>
-                {summary.totalVolumeKg >= 1000
-                  ? `${(summary.totalVolumeKg / 1000).toFixed(1)}t`
-                  : `${summary.totalVolumeKg.toLocaleString()}kg`}
+                {formatVolume(summary.totalVolumeKg)}
               </div>
+              {hasPrevious && (
+                <div style={{
+                  fontSize: typography.sizes.xs,
+                  color: volumeDelta >= 0 ? colors.success : colors.primary,
+                  marginTop: 4,
+                }}>
+                  {formatVolumeDelta(volumeDelta)} vs {summary.previousDayLabel} ({formatPctChange(volumePct)})
+                </div>
+              )}
             </div>
             <div style={ss.statBox}>
               <div style={ss.statLabel}>SETS</div>
@@ -208,6 +251,70 @@ export function WorkoutSummary({ summary, onDone }: Props) {
             </div>
           </div>
         </div>
+
+        {/* Visual comparison bar: today vs last session */}
+        {hasPrevious && (
+          <div style={ss.section}>
+            <div style={ss.sectionTitle}>VS LAST SESSION</div>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: spacing.sm }}>
+              <div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: typography.sizes.sm,
+                  marginBottom: 4,
+                }}>
+                  <span style={{ color: colors.text, fontWeight: typography.weights.bold }}>Today</span>
+                  <span style={{ color: colors.text }}>{formatVolume(summary.totalVolumeKg)}</span>
+                </div>
+                <div style={ss.barTrack}>
+                  <div style={{
+                    ...ss.barFillToday,
+                    width: `${maxVol > 0 ? (summary.totalVolumeKg / maxVol) * 100 : 0}%`,
+                  }} />
+                </div>
+              </div>
+              <div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: typography.sizes.sm,
+                  marginBottom: 4,
+                }}>
+                  <span style={{ color: colors.textTertiary }}>Last time</span>
+                  <span style={{ color: colors.textTertiary }}>{formatVolume(summary.previousVolumeKg!)}</span>
+                </div>
+                <div style={ss.barTrack}>
+                  <div style={{
+                    ...ss.barFillPrev,
+                    width: `${maxVol > 0 ? (summary.previousVolumeKg! / maxVol) * 100 : 0}%`,
+                  }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Volume Breakdown by muscle group */}
+        {muscleBreakdown.length > 0 && (
+          <div style={ss.section}>
+            <div style={ss.sectionTitle}>VOLUME BREAKDOWN</div>
+            {muscleBreakdown.map(entry => (
+              <div key={entry.muscle} style={ss.breakdownRow}>
+                <span style={ss.breakdownMuscle}>{entry.muscle}</span>
+                <div style={ss.breakdownBarTrack}>
+                  <div style={{ ...ss.breakdownBarFill, width: `${entry.pct}%` }} />
+                </div>
+                <span style={ss.breakdownVol}>{formatVolume(entry.volumeKg)}</span>
+                <span style={ss.breakdownPct}>{entry.pct}%</span>
+              </div>
+            ))}
+            <div style={ss.breakdownTotal}>
+              <span>Total</span>
+              <span style={{ fontWeight: typography.weights.black }}>{formatVolume(summary.totalVolumeKg)}</span>
+            </div>
+          </div>
+        )}
 
         {/* Done button */}
         <button onClick={onDone} style={ss.doneBtn}>DONE</button>
@@ -371,5 +478,71 @@ const ss: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xl,
     boxShadow: `0 4px 15px ${colors.primaryGlow}`,
     marginTop: spacing.sm,
+  },
+  barTrack: {
+    height: 8,
+    borderRadius: 4,
+    background: colors.surfaceHover,
+    overflow: 'hidden' as const,
+  },
+  barFillToday: {
+    height: '100%',
+    borderRadius: 4,
+    background: colors.success,
+    transition: 'width 0.3s ease',
+  },
+  barFillPrev: {
+    height: '100%',
+    borderRadius: 4,
+    background: colors.textTertiary,
+    transition: 'width 0.3s ease',
+  },
+  breakdownRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  breakdownMuscle: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    width: 80,
+    flexShrink: 0,
+  },
+  breakdownBarTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    background: colors.surfaceHover,
+    overflow: 'hidden' as const,
+  },
+  breakdownBarFill: {
+    height: '100%',
+    borderRadius: 3,
+    background: colors.primary,
+  },
+  breakdownVol: {
+    fontSize: typography.sizes.sm,
+    color: colors.text,
+    fontWeight: typography.weights.bold,
+    width: 70,
+    textAlign: 'right' as const,
+    flexShrink: 0,
+  },
+  breakdownPct: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    width: 32,
+    textAlign: 'right' as const,
+    flexShrink: 0,
+  },
+  breakdownTotal: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: typography.sizes.md,
+    color: colors.text,
+    paddingTop: spacing.sm,
+    borderTop: `1px solid ${colors.surfaceBorder}`,
+    marginTop: spacing.xs,
   },
 };

@@ -9,7 +9,7 @@ import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
-import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL } from '@/shared/utils';
+import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL, formatVolume } from '@/shared/utils';
 import { workoutTemplates } from '@/data/templates';
 import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
@@ -338,6 +338,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       workout.currentLog,
       workoutStartedAt.current,
       workout.progress(),
+      workout.workoutHistory,
     );
 
     workout.endWorkout(force);
@@ -511,6 +512,22 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
           const isFirstExercise = index === 0;
           const isLastExercise = index === plan.dayExercises.length - 1;
 
+          // Current exercise volume from logged sets
+          const currentExVol = workout.currentLog
+            .filter(s => s.exerciseName === pe.exercise.name)
+            .reduce((sum, s) => sum + s.weightKg * s.reps, 0);
+
+          // Ghost/target: volume from last session of same day
+          const previousSession = workout.workoutHistory
+            .slice()
+            .reverse()
+            .find(w => w.dayName === plan.currentDay?.name);
+          const previousExVol = previousSession
+            ? previousSession.sets
+                .filter(s => s.exerciseName === pe.exercise.name)
+                .reduce((sum, s) => sum + s.weightKg * s.reps, 0)
+            : 0;
+
           return (
             <div key={pe.id} style={{ ...S.exCard, ...(isDone ? S.exDone : {}) }}>
               <div style={S.exHeader}>
@@ -565,8 +582,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </div>
               )}
 
-              {/* Stats grid with inline editable weight + reps (Change 1) */}
-              <div style={S.stats}>
+              {/* Stats grid with inline editable weight + reps */}
+              <div style={{ ...S.stats, gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 <div style={S.stat}>
                   <div style={S.statLabel}>SETS</div>
                   <div style={S.statVal}>{done}/{pe.sets}</div>
@@ -598,6 +615,19 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                       suffix="kg"
                       onChange={val => plan.updateExercise(pe.id, { weightKg: val })}
                     />
+                  )}
+                </div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>VOLUME</div>
+                  <div style={S.statVal}>{formatVolume(currentExVol, { abbreviated: true })}</div>
+                  {previousExVol > 0 && (
+                    <div style={{
+                      fontSize: typography.sizes.xs,
+                      color: currentExVol >= previousExVol ? colors.success : colors.textTertiary,
+                      marginTop: 2,
+                    }}>
+                      / {formatVolume(previousExVol, { abbreviated: true })}
+                    </div>
                   )}
                 </div>
               </div>
@@ -791,7 +821,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                               </span>
                             </div>
                           ))}
-                          <div style={ehStyles.sessionVolume}>Volume: {sessionVol >= 1000 ? `${(sessionVol / 1000).toFixed(1)}t` : `${Math.round(sessionVol)}kg`}</div>
+                          <div style={ehStyles.sessionVolume}>Volume: {formatVolume(sessionVol)}</div>
                         </div>
                       );
                     })}

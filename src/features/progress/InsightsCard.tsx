@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import type { WeeklyInsight } from '@/analytics/insights';
 import { MiniChart } from '@/shared/components';
 import { colors, radii, typography, spacing } from '@/shared/theme/tokens';
+import { formatVolume } from '@/shared/utils';
 
 interface InsightsCardProps {
   insight: WeeklyInsight;
@@ -75,9 +76,9 @@ export function InsightsCard({ insight }: InsightsCardProps) {
           <div style={styles.section}>
             <div style={styles.sectionTitle}>Volume</div>
             <div style={styles.volCompare}>
-              <span>This week: <strong>{(insight.volumeThisWeek / 1000).toFixed(1)}t</strong></span>
+              <span>This week: <strong>{formatVolume(insight.volumeThisWeek)}</strong></span>
               <span style={{ color: colors.textTertiary }}>
-                Avg: {(insight.volumeAverage / 1000).toFixed(1)}t
+                Avg: {formatVolume(insight.volumeAverage)}
               </span>
             </div>
           </div>

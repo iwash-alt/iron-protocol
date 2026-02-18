@@ -13,6 +13,7 @@
  */
 
 import type { WorkoutLog, ExerciseHistory } from '@/shared/types';
+import { formatVolume } from '@/shared/utils';
 
 // ── Result types ────────────────────────────────────────────────────────────
 
@@ -163,7 +164,7 @@ export function calculateFatigueScore(
     name: 'Volume Drop',
     contribution: Math.round(volumeScore * W_VOLUME_DROP),
     detail: prevWeekVol > 0
-      ? `This week: ${(thisWeekVol / 1000).toFixed(1)}t vs prev: ${(prevWeekVol / 1000).toFixed(1)}t`
+      ? `This week: ${formatVolume(thisWeekVol)} vs prev: ${formatVolume(prevWeekVol)}`
       : 'Not enough history for comparison',
   });
 

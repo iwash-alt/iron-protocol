@@ -6,6 +6,8 @@ interface IconProps {
 }
 
 const iconPaths = {
+  home: <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1m-4 0h4" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"/>,
+  'home-filled': <><path d="M3 12l9-9 9 9" strokeWidth="2.5" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10" fill="currentColor" stroke="currentColor" strokeWidth="1"/></>,
   dumbbell: <path d="M6.5 6.5L17.5 17.5M6 12L12 6M12 18L18 12M3 9L9 3M15 21L21 15" strokeWidth="2" stroke="currentColor" fill="none"/>,
   // Filled variant for active bottom nav
   'dumbbell-filled': <><path d="M6.5 6.5L17.5 17.5M6 12L12 6M12 18L18 12M3 9L9 3M15 21L21 15" strokeWidth="3" stroke="currentColor" fill="none" strokeLinecap="round"/></>,

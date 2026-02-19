@@ -19,12 +19,13 @@ const Dashboard = lazy(() => import('@/features/progress/Dashboard').then((m) =>
 const Profile = lazy(() => import('@/features/profile/Profile').then((m) => ({ default: m.Profile })));
 const QuickWorkoutList = lazy(() => import('@/features/quick-workout/QuickWorkoutList').then((m) => ({ default: m.QuickWorkoutList })));
 const QuickWorkoutActive = lazy(() => import('@/features/quick-workout/QuickWorkoutActive').then((m) => ({ default: m.QuickWorkoutActive })));
+const HomeTab = lazy(() => import('@/features/home/HomeTab').then((m) => ({ default: m.HomeTab })));
 
-type TabId = 'workout' | 'dashboard' | 'quick' | 'profile';
-const TAB_ORDER: TabId[] = ['workout', 'dashboard', 'quick', 'profile'];
+type TabId = 'home' | 'workout' | 'dashboard' | 'quick' | 'profile';
+const TAB_ORDER: TabId[] = ['home', 'workout', 'dashboard', 'quick', 'profile'];
 
 export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; onProfileUpdate: (p: UserProfile) => void }) {
-  const [activeTab, setActiveTab] = useState<TabId>('workout');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
   const [quickWorkout, setQuickWorkout] = useState<QuickTemplate | null>(null);
   const [showMeasurements, setShowMeasurements] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -125,6 +126,7 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
 
         <Suspense fallback={<LoadingSpinner />}>
           <div className={transitionClass} key={activeTab}>
+            {activeTab === 'home' && <HomeTab profile={profile} onNavigateToWorkout={() => handleTabSwitch('workout')} />}
             {activeTab === 'workout' && <WorkoutView profile={profile} />}
             {activeTab === 'dashboard' && (
               <Dashboard
@@ -152,6 +154,7 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
 
 function BottomNav({ active, onSelect }: { active: TabId; onSelect: (tab: TabId) => void }) {
   const tabs = useMemo(() => ([
+    { id: 'home' as const, label: 'Home', icon: 'home' as const, iconActive: 'home-filled' as const },
     { id: 'workout' as const, label: 'Workout', icon: 'dumbbell' as const, iconActive: 'dumbbell-filled' as const },
     { id: 'dashboard' as const, label: 'Dashboard', icon: 'chart' as const, iconActive: 'chart-filled' as const },
     { id: 'quick' as const, label: 'Quick', icon: 'lightning-outline' as const, iconActive: 'lightning' as const },

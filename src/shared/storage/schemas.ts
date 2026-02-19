@@ -109,3 +109,23 @@ export const entitlementStoreSchema = z.object({
   trials: z.array(trialStateSchema),
   promos: z.array(promoUnlockSchema),
 });
+
+// ── Quick workout customization schemas ─────────────────────
+
+const quickExerciseConfigSchema = z.object({
+  name: z.string().min(1),
+  sets: z.number().int().positive(),
+  reps: z.union([z.number().int().positive(), z.null()]),
+  durationSeconds: z.union([z.number().positive(), z.null()]),
+});
+
+const quickTemplateCustomizationSchema = z.object({
+  templateId: z.string().min(1),
+  exercises: z.array(quickExerciseConfigSchema).min(1),
+  lastModified: z.string(),
+});
+
+export const quickCustomizationsSchema = z.record(
+  z.string(),
+  quickTemplateCustomizationSchema,
+);

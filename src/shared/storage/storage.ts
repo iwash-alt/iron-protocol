@@ -5,6 +5,7 @@ import type { BodyMeasurement } from '@/shared/types';
 import type { NutritionHistory } from '@/shared/types';
 import type { EntitlementStore } from '@/shared/types';
 import type { PlanExercise, WorkoutDay } from '@/shared/types';
+import type { QuickTemplateCustomizations } from '@/data/quick-templates';
 import {
   userProfileSchema,
   workoutLogSchema,
@@ -14,6 +15,7 @@ import {
   bodyMeasurementSchema,
   nutritionHistorySchema,
   entitlementStoreSchema,
+  quickCustomizationsSchema,
 } from './schemas';
 
 const STORAGE_VERSION_KEY = 'ironStorageVersion';
@@ -33,6 +35,7 @@ export const StorageKeys = {
   PROFILE_PHOTO: 'iron_profile_photo',
   PROGRESS_PHOTOS: 'iron_progress_photos',
   TRAINING_PLAN: 'iron_training_plan',
+  QUICK_CUSTOMIZATIONS: 'ironQuickCustomizations',
 } as const;
 
 
@@ -311,6 +314,16 @@ export function loadEntitlementStore(): EntitlementStore | null {
 
 export function saveEntitlementStore(store: EntitlementStore): void {
   safeSave(StorageKeys.ENTITLEMENTS, store);
+}
+
+// === Quick Workout Customizations ===
+
+export function loadQuickCustomizations(): QuickTemplateCustomizations {
+  return safeLoad(StorageKeys.QUICK_CUSTOMIZATIONS, quickCustomizationsSchema) ?? {};
+}
+
+export function saveQuickCustomizations(data: QuickTemplateCustomizations): void {
+  safeSave(StorageKeys.QUICK_CUSTOMIZATIONS, data);
 }
 
 // === Profile Photo ===

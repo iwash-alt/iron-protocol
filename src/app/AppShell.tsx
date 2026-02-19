@@ -139,7 +139,7 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
                 onToggleDemo={demoMode.setEnabled}
               />
             )}
-            {activeTab === 'quick' && <QuickWorkoutList onSelect={setQuickWorkout} onClose={() => handleTabSwitch('workout')} inline />}
+            {activeTab === 'quick' && <QuickWorkoutList onStart={setQuickWorkout} onClose={() => handleTabSwitch('workout')} inline />}
             {activeTab === 'profile' && <Profile profile={profile} onProfileUpdate={onProfileUpdate} />}
           </div>
         </Suspense>

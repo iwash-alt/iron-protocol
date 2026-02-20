@@ -60,6 +60,12 @@ export const S: Record<string, CSSProperties> = {
   exList: { display: 'flex', flexDirection: 'column', gap: spacing.md },
   exCard: { padding: spacing.lg, borderRadius: 18, background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, transition: 'all 0.2s' },
   exDone: { background: colors.successSurface, border: `1px solid ${colors.successBorder}` },
+  exInProgress: { borderLeft: '3px solid rgba(52,199,89,0.5)' },
+  setCountAnimate: { animation: 'setCountPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' },
+  progressDots: { display: 'flex', gap: 4, justifyContent: 'center', marginTop: 4 },
+  progressDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', transition: 'all 0.2s ease' },
+  progressDotFilled: { background: colors.success, animation: 'dotFill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both' },
+  exFinalFlash: { animation: 'greenFlash 0.35s ease, cardCompleteSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' },
   exHeader: { display: 'flex', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.md },
   exTags: { display: 'flex', gap: spacing.sm, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' },
   muscleTag: { fontSize: '0.6rem', fontWeight: typography.weights.black, padding: `4px 10px`, borderRadius: radii.sm, background: colors.surfaceBorder, color: colors.textSecondary, letterSpacing: '0.03em' },
@@ -793,4 +799,23 @@ export const globalCss = `
   /* Tab transition classes */
   .tab-enter-right { animation: tabSlideLeft 0.25s ease both; }
   .tab-enter-left { animation: tabSlideRight 0.25s ease both; }
+
+  /* Set completion micro-interactions */
+  @keyframes setCountPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes dotFill {
+    0% { transform: scale(0.3); opacity: 0.3; }
+    60% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes cardCompleteSlide {
+    0% { transform: translateX(0); }
+    30% { transform: translateX(-10px); }
+    100% { transform: translateX(0); }
+  }
 `;

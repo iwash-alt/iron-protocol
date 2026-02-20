@@ -3,15 +3,13 @@ import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } 
 import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isLowerBody } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
-import { useNutrition } from '@/features/nutrition/nutrition.context';
 import { useTimer, getAdaptiveRest } from '@/shared/hooks';
 import { Icon, MiniChart } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
-import { getWarmupSets, formatTime, getProteinGoal, WATER_GOAL, formatVolume } from '@/shared/utils';
+import { getWarmupSets, formatTime, formatVolume } from '@/shared/utils';
 import { workoutTemplates } from '@/data/templates';
-import { proteinSources } from '@/data/protein-sources';
 import type { UserProfile } from '@/shared/types';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
@@ -211,7 +209,6 @@ const ie: Record<string, React.CSSProperties> = {
 export function WorkoutView({ profile }: WorkoutViewProps) {
   const plan = usePlan();
   const workout = useWorkout();
-  const nutrition = useNutrition();
   const timer = useTimer();
   const { canAccess } = useTier();
   const isPro = canAccess('analytics_advanced');
@@ -223,7 +220,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [editingExercise, setEditingExercise] = useState<PlanExercise | null>(null);
   const [showRPE, setShowRPE] = useState<{ exerciseId: string; setNum: number; exercise: PlanExercise } | null>(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
-  const [showNutrition, setShowNutrition] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCustomWorkout, setShowCustomWorkout] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
@@ -272,8 +268,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!isPro || workout.workoutHistory.length < 2) return null;
     return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
   }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
-
-  const proteinGoal = getProteinGoal(profile.weight);
 
   const completeSet = (pe: PlanExercise) => {
     const done = workout.completedSets[pe.id] || 0;
@@ -456,15 +450,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   return (
     <>
       {celebrate && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🏆</div><div style={S.celebTitle}>GREAT WORK!</div></div></div>}
-
-      {/* Nutrition bar */}
-      <div style={S.nutritionBar}>
-        <div style={S.nutritionItem} onClick={() => setShowNutrition(true)}>
-          <span style={S.nutritionIcon}>💧</span>
-          <span style={S.nutritionValue}>{nutrition.todayWater}/{WATER_GOAL}</span>
-          <button onClick={e => { e.stopPropagation(); nutrition.addWater(); }} style={S.addBtn}>+</button>
-        </div>
-      </div>
 
       {/* Day tabs */}
       <div style={S.tabs}>
@@ -718,38 +703,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             })}
             <button onClick={() => setEditingExercise(null)} style={S.editDone}>DONE</button>
             <button onClick={() => { plan.removeExercise(editingExercise.id); setEditingExercise(null); }} style={S.editRemove}>REMOVE EXERCISE</button>
-          </div>
-        </div>
-      )}
-
-      {/* Nutrition Modal */}
-      {showNutrition && (
-        <div style={S.overlay} onClick={() => setShowNutrition(false)}>
-          <div style={S.nutritionModal} onClick={e => e.stopPropagation()}>
-            <h3 style={S.nutritionTitle}>Today's Nutrition</h3>
-            <div style={S.nutritionSection}>
-              <div style={S.nutritionSectionHeader}><span>💧 Water</span><span style={S.nutritionProgress}>{nutrition.todayWater}/{WATER_GOAL}</span></div>
-              <div style={S.waterTrack}>
-                {[...Array(WATER_GOAL)].map((_, i) => (
-                  <div key={i} style={{ ...S.waterGlass, background: i < nutrition.todayWater ? '#3B82F6' : 'rgba(255,255,255,0.08)' }} onClick={() => nutrition.setWaterTo(i + 1)} />
-                ))}
-              </div>
-              <button onClick={nutrition.addWater} style={S.addWaterBtn}>+ ADD GLASS</button>
-            </div>
-            <div style={S.nutritionSection}>
-              <div style={S.nutritionSectionHeader}><span>🥩 Protein</span><span style={S.nutritionProgress}>{nutrition.todayProtein}/{proteinGoal}g</span></div>
-              <div style={S.proteinBar}><div style={{ ...S.proteinFill, width: `${Math.min(100, (nutrition.todayProtein / proteinGoal) * 100)}%` }} /></div>
-              <div style={S.proteinGrid}>
-                {proteinSources.map(src => (
-                  <button key={src.name} onClick={() => nutrition.addProtein(src)} style={S.proteinBtn}>
-                    <span style={S.proteinBtnIcon}>{src.icon}</span>
-                    <span style={S.proteinBtnName}>{src.name}</span>
-                    <span style={S.proteinBtnVal}>+{src.protein}g</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <button onClick={() => setShowNutrition(false)} style={S.nutritionClose}>DONE</button>
           </div>
         </div>
       )}

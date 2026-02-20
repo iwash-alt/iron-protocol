@@ -1,3 +1,6 @@
+// DISABLED: Nutrition tracking removed from v2.
+// Will be re-enabled in a future release with meal planning.
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { ProteinSource, ProteinLogEntry, NutritionHistory } from '@/shared/types';

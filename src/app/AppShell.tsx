@@ -132,7 +132,6 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
               <Dashboard
                 profile={profile}
                 streak={currentStreak}
-                onOpenNutrition={() => undefined}
                 onOpenMeasurements={() => setShowMeasurements(true)}
                 onShowExerciseHistory={() => undefined}
                 demoMode={demoMode.enabled}

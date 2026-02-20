@@ -8,7 +8,7 @@ import { colors, spacing, typography } from '@/shared/theme/tokens';
 import {
   loadProfile, saveProfile,
   loadWorkoutHistory, loadExerciseHistory, loadPersonalRecords,
-  loadBodyMeasurements, loadNutritionHistory,
+  loadBodyMeasurements,
   StorageKeys,
 } from '@/shared/storage';
 import { processProfilePhoto } from '@/shared/utils/imageProcessing';
@@ -53,7 +53,6 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
       exerciseHistory: loadExerciseHistory(),
       personalRecords: loadPersonalRecords(),
       bodyMeasurements: loadBodyMeasurements(),
-      nutritionHistory: loadNutritionHistory(),
       exportDate: new Date().toISOString(),
       version: '2.0.0',
     };

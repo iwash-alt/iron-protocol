@@ -225,6 +225,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [justCompleted, setJustCompleted] = useState<{ exerciseId: string; setNum: number } | null>(null);
   const [customBuilderStep, setCustomBuilderStep] = useState<1 | 2 | 3 | 4>(1);
   const [customWorkoutDraft, setCustomWorkoutDraft] = useState<CustomWorkoutDraft>(EMPTY_CUSTOM_WORKOUT_DRAFT);
   const [selectedBuilderDayId, setSelectedBuilderDayId] = useState<string | null>(null);
@@ -286,6 +287,14 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     }
 
     workout.completeSet(exercise, rpe);
+
+    // Haptic feedback for set completion
+    navigator.vibrate?.(15);
+
+    // Trigger set completion animation
+    const completedSetNum = (workout.completedSets[exercise.id] || 0) + 1;
+    setJustCompleted({ exerciseId: exercise.id, setNum: completedSetNum });
+    setTimeout(() => setJustCompleted(null), TIMINGS.SET_COMPLETE_DURATION);
 
     // Adaptive rest timer (Pro) or default
     if (isPro) {
@@ -514,7 +523,12 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             : 0;
 
           return (
-            <div key={pe.id} style={{ ...S.exCard, ...(isDone ? S.exDone : {}) }}>
+            <div key={pe.id} style={{
+              ...S.exCard,
+              ...(isDone ? S.exDone : {}),
+              ...(done > 0 && !isDone ? S.exInProgress : {}),
+              ...(justCompleted?.exerciseId === pe.id && justCompleted.setNum === pe.sets ? S.exFinalFlash : {}),
+            }}>
               <div style={S.exHeader}>
                 <div>
                   <div style={S.exTags}>
@@ -571,7 +585,30 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               <div style={{ ...S.stats, gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 <div style={S.stat}>
                   <div style={S.statLabel}>SETS</div>
-                  <div style={S.statVal}>{done}/{pe.sets}</div>
+                  <div
+                    key={`sets-${pe.id}-${done}`}
+                    style={{
+                      ...S.statVal,
+                      ...(justCompleted?.exerciseId === pe.id ? S.setCountAnimate : {}),
+                    }}
+                  >
+                    {done}/{pe.sets}
+                  </div>
+                  <div style={S.progressDots}>
+                    {Array.from({ length: pe.sets }, (_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          ...S.progressDot,
+                          ...(i < done ? {
+                            ...S.progressDotFilled,
+                            animationDelay: justCompleted?.exerciseId === pe.id
+                              ? `${i * 50}ms` : '0ms',
+                          } : {}),
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <div style={S.stat}>
                   <div style={S.statLabel}>REPS</div>
@@ -623,7 +660,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                   pe.weightKg,
                 );
                 return (
-                  <div style={progressionBannerStyles[banner.tone]}>
+                  <div style={{ ...progressionBannerStyles[banner.tone], animation: 'fadeInUp 0.35s ease both' }}>
                     <span style={progressionBannerStyles.icon}>{banner.icon}</span>
                     <div>
                       <div style={progressionBannerStyles.label}>{banner.label}</div>
@@ -632,6 +669,19 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                   </div>
                 );
               })()}
+
+              {isDone && justCompleted?.exerciseId === pe.id && (
+                <div style={{
+                  textAlign: 'center' as const,
+                  padding: '14px',
+                  color: colors.success,
+                  fontWeight: typography.weights.black,
+                  fontSize: typography.sizes.lg,
+                  animation: 'setComplete 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }}>
+                  <Icon name="check" size={24} /> ALL SETS COMPLETE
+                </div>
+              )}
 
               {!isDone && (
                 <button

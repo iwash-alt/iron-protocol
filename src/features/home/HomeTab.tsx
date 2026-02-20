@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import type { UserProfile } from '@/shared/types';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import type { UserProfile, WorkoutLog } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useWorkoutStreak } from '@/shared/hooks';
@@ -53,7 +53,11 @@ export function HomeTab({ profile, onNavigateToWorkout }: HomeTabProps) {
 
   return (
     <div>
-      <CalendarStrip todayKey={todayKey} workoutDates={workoutDates} />
+      <CalendarStrip
+        todayKey={todayKey}
+        workoutDates={workoutDates}
+        workoutHistory={workout.workoutHistory}
+      />
 
       {/* Greeting */}
       <div style={hs.greeting}>
@@ -179,40 +183,209 @@ export function HomeTab({ profile, onNavigateToWorkout }: HomeTabProps) {
 
 // ── Calendar Strip ──────────────────────────────────────────────────────────
 
-function CalendarStrip({ todayKey, workoutDates }: { todayKey: string; workoutDates: Set<string> }) {
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const SWIPE_THRESHOLD = 50;
+
+interface CalendarStripProps {
+  todayKey: string;
+  workoutDates: Set<string>;
+  workoutHistory: WorkoutLog[];
+}
+
+function CalendarStrip({ todayKey, workoutDates, workoutHistory }: CalendarStripProps) {
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const touchStartX = useRef(0);
+
   const weekDays = useMemo(() => {
     const today = new Date(todayKey + 'T12:00:00');
     const dayOfWeek = today.getDay();
     const monday = new Date(today);
-    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + weekOffset * 7);
 
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
       const key = d.toISOString().split('T')[0];
-      const label = ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i];
       const dayNum = d.getDate();
-      return { key, label, dayNum, isToday: key === todayKey, hasWorkout: workoutDates.has(key) };
+      const isFuture = key > todayKey;
+      return {
+        key,
+        label: DAY_LABELS[i],
+        dayNum,
+        isToday: key === todayKey,
+        hasWorkout: workoutDates.has(key),
+        isFuture,
+      };
     });
-  }, [todayKey, workoutDates]);
+  }, [todayKey, workoutDates, weekOffset]);
+
+  const monthLabel = useMemo(() => {
+    const first = new Date(weekDays[0].key + 'T12:00:00');
+    const last = new Date(weekDays[6].key + 'T12:00:00');
+    const firstMonth = MONTH_NAMES[first.getMonth()];
+    const lastMonth = MONTH_NAMES[last.getMonth()];
+    const firstYear = first.getFullYear();
+    const lastYear = last.getFullYear();
+
+    if (firstYear !== lastYear) {
+      return `${firstMonth} ${firstYear} – ${lastMonth} ${lastYear}`;
+    }
+    if (firstMonth !== lastMonth) {
+      return `${firstMonth} – ${lastMonth} ${firstYear}`;
+    }
+    return `${firstMonth} ${firstYear}`;
+  }, [weekDays]);
+
+  const selectedWorkout = useMemo(() => {
+    if (!selectedDate) return null;
+    return workoutHistory.find((w) => w.date === selectedDate) ?? null;
+  }, [selectedDate, workoutHistory]);
+
+  const handlePrevWeek = useCallback(() => {
+    setWeekOffset((o) => o - 1);
+  }, []);
+
+  const handleNextWeek = useCallback(() => {
+    setWeekOffset((o) => Math.min(o + 1, 0));
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > SWIPE_THRESHOLD) {
+      if (delta > 0) {
+        setWeekOffset((o) => o - 1);
+      } else {
+        setWeekOffset((o) => Math.min(o + 1, 0));
+      }
+    }
+  }, []);
+
+  const handleDayTap = useCallback((day: { key: string; hasWorkout: boolean }) => {
+    if (day.hasWorkout) {
+      setSelectedDate(day.key);
+    }
+  }, []);
 
   return (
-    <div style={hs.calStrip}>
-      {weekDays.map((day) => (
-        <div
-          key={day.key}
-          style={{
-            ...hs.calDay,
-            ...(day.isToday ? hs.calDayToday : {}),
-          }}
-        >
-          <span style={hs.calLabel}>{day.label}</span>
-          <span style={{ fontWeight: day.isToday ? typography.weights.black : typography.weights.medium, fontSize: typography.sizes.lg }}>
-            {day.dayNum}
-          </span>
-          {day.hasWorkout && <span style={hs.calDot} />}
+    <>
+      <div style={hs.calSticky}>
+        {/* Month header */}
+        <div style={hs.calHeader}>
+          <button style={hs.calHeaderBtn} onClick={handlePrevWeek} aria-label="Previous week">
+            <Icon name="chevron-left" size={16} />
+          </button>
+          <span style={hs.calHeaderLabel}>{monthLabel}</span>
+          <button
+            style={{ ...hs.calHeaderBtn, ...(weekOffset >= 0 ? { opacity: 0.2, pointerEvents: 'none' as const } : {}) }}
+            onClick={handleNextWeek}
+            aria-label="Next week"
+          >
+            <Icon name="chevron-right" size={16} />
+          </button>
         </div>
-      ))}
+
+        {/* Day cells */}
+        <div
+          style={hs.calStrip}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {weekDays.map((day) => (
+            <div
+              key={day.key}
+              style={{
+                ...hs.calDay,
+                ...(day.isToday ? hs.calDayToday : {}),
+                ...(day.isFuture ? { opacity: 0.3 } : {}),
+                ...(day.hasWorkout && !day.isFuture ? { cursor: 'pointer' } : {}),
+              }}
+              onClick={() => handleDayTap(day)}
+            >
+              <span style={hs.calLabel}>{day.label}</span>
+              <span style={{ fontWeight: day.isToday ? typography.weights.black : typography.weights.medium, fontSize: typography.sizes.lg }}>
+                {day.dayNum}
+              </span>
+              {day.hasWorkout && <span style={hs.calDot} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {selectedWorkout && selectedDate && (
+        <WorkoutSummarySheet
+          date={selectedDate}
+          workout={selectedWorkout}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Workout Summary Bottom Sheet ────────────────────────────────────────────
+
+function WorkoutSummarySheet({ date, workout, onClose }: { date: string; workout: WorkoutLog; onClose: () => void }) {
+  const exerciseSummaries = useMemo(() => {
+    const map = new Map<string, { sets: number; topWeight: number; topReps: number }>();
+    for (const set of workout.sets) {
+      const existing = map.get(set.exerciseName);
+      if (existing) {
+        existing.sets++;
+        if (set.weightKg > existing.topWeight || (set.weightKg === existing.topWeight && set.reps > existing.topReps)) {
+          existing.topWeight = set.weightKg;
+          existing.topReps = set.reps;
+        }
+      } else {
+        map.set(set.exerciseName, { sets: 1, topWeight: set.weightKg, topReps: set.reps });
+      }
+    }
+    return Array.from(map.entries());
+  }, [workout.sets]);
+
+  return (
+    <div style={hs.sheetOverlay} onClick={onClose}>
+      <div className="modal-sheet" style={hs.sheetContainer} onClick={(e) => e.stopPropagation()}>
+        <div style={hs.sheetHandle} />
+        <div style={hs.sheetDate}>{formatDate(date)}</div>
+        <div style={hs.sheetDayName}>{workout.dayName}</div>
+
+        <div style={hs.sheetStatsRow}>
+          <div style={hs.sheetStat}>
+            <div style={hs.sheetStatValue}>{formatVolume(workout.totalVolumeKg, { abbreviated: true })}</div>
+            <div style={hs.sheetStatLabel}>Volume</div>
+          </div>
+          <div style={hs.sheetStat}>
+            <div style={{ ...hs.sheetStatValue, color: workout.completionPercent >= 100 ? colors.success : colors.warning }}>
+              {Math.round(workout.completionPercent)}%
+            </div>
+            <div style={hs.sheetStatLabel}>Completed</div>
+          </div>
+          <div style={hs.sheetStat}>
+            <div style={hs.sheetStatValue}>{workout.sets.length}</div>
+            <div style={hs.sheetStatLabel}>Sets</div>
+          </div>
+        </div>
+
+        {exerciseSummaries.length > 0 && (
+          <div style={hs.sheetExercises}>
+            <div style={hs.sectionLabel}>EXERCISES</div>
+            {exerciseSummaries.map(([name, info]) => (
+              <div key={name} style={hs.sheetExItem}>
+                <span style={hs.sheetExName}>{name}</span>
+                <span style={hs.sheetExDetail}>
+                  {info.sets}s · {info.topWeight}kg × {info.topReps}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -236,8 +409,16 @@ function formatDate(dateStr: string): string {
 // ── Styles ──────────────────────────────────────────────────────────────────
 
 const hs: Record<string, React.CSSProperties> = {
-  // Calendar
-  calStrip: { display: 'flex', justifyContent: 'space-between', gap: spacing.xs, marginBottom: spacing.lg, padding: spacing.sm, borderRadius: radii.xl, background: colors.surface, border: `1px solid ${colors.surfaceBorder}` },
+  // Calendar — sticky wrapper
+  calSticky: { position: 'sticky', top: 0, zIndex: 10, background: colors.background, paddingTop: spacing.sm, paddingBottom: spacing.xs, marginLeft: -spacing.xl, marginRight: -spacing.xl, paddingLeft: spacing.xl, paddingRight: spacing.xl },
+
+  // Calendar — header
+  calHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  calHeaderLabel: { fontSize: typography.sizes.sm, fontWeight: typography.weights.bold, color: colors.textSecondary, letterSpacing: '0.05em' },
+  calHeaderBtn: { background: 'none', border: 'none', color: colors.textSecondary, padding: spacing.sm, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 36, minHeight: 36, borderRadius: radii.md },
+
+  // Calendar — strip & day cells
+  calStrip: { display: 'flex', justifyContent: 'space-between', gap: spacing.xs, padding: spacing.sm, borderRadius: radii.xl, background: colors.surface, border: `1px solid ${colors.surfaceBorder}` },
   calDay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flex: 1, padding: `${spacing.sm}px 0`, borderRadius: radii.md, position: 'relative' },
   calDayToday: { background: colors.primarySurface, border: `1px solid ${colors.primaryBorder}` },
   calLabel: { fontSize: typography.sizes.xs, color: colors.textTertiary, fontWeight: typography.weights.bold },
@@ -285,4 +466,19 @@ const hs: Record<string, React.CSSProperties> = {
   ghostCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${spacing.lg}px ${spacing.xl}px`, borderRadius: radii.xl, background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, marginBottom: spacing.lg },
   ghostScore: { fontSize: typography.sizes['3xl'], fontWeight: typography.weights.black, marginTop: 4 },
   ghostStreak: { color: colors.warning },
+
+  // Workout Summary Sheet
+  sheetOverlay: { position: 'fixed', inset: 0, background: colors.overlay, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'flex-end' },
+  sheetContainer: { width: '100%', background: 'linear-gradient(180deg, #1a1a1a 0%, #111 100%)', borderRadius: '20px 20px 0 0', padding: `${spacing.xl}px`, paddingBottom: 'max(24px, env(safe-area-inset-bottom))', maxHeight: '70vh', overflowY: 'auto' },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: `0 auto ${spacing.lg}px` },
+  sheetDate: { fontSize: typography.sizes.sm, color: colors.textTertiary, fontWeight: typography.weights.bold, letterSpacing: '0.05em' },
+  sheetDayName: { fontSize: typography.sizes['5xl'], fontWeight: typography.weights.black, margin: `${spacing.xs}px 0 ${spacing.lg}px` },
+  sheetStatsRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: spacing.sm, marginBottom: spacing.xl },
+  sheetStat: { textAlign: 'center', padding: `${spacing.md}px ${spacing.sm}px`, borderRadius: radii.lg, background: colors.surface, border: `1px solid ${colors.surfaceBorder}` },
+  sheetStatValue: { fontSize: typography.sizes['3xl'], fontWeight: typography.weights.black },
+  sheetStatLabel: { fontSize: typography.sizes.xs, color: colors.textTertiary, fontWeight: typography.weights.bold, letterSpacing: '0.05em', marginTop: 2 },
+  sheetExercises: { marginTop: spacing.md },
+  sheetExItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${spacing.sm}px 0`, borderBottom: `1px solid ${colors.surfaceBorder}` },
+  sheetExName: { fontSize: typography.sizes.base, fontWeight: typography.weights.bold, color: colors.text },
+  sheetExDetail: { fontSize: typography.sizes.sm, color: colors.textSecondary },
 };

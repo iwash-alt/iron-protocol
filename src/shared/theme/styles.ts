@@ -102,9 +102,24 @@ export const S: Record<string, CSSProperties> = {
 
   // Quick workout list
   quickList: { display: 'flex', flexDirection: 'column', gap: 10 },
-  quickCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: spacing.xl - 6, background: colors.surface, border: `1px solid ${colors.surfaceHover}`, borderRadius: radii.xl, cursor: 'pointer', color: colors.text, textAlign: 'left' },
+  quickCard: { display: 'flex', flexDirection: 'column', padding: spacing.xl - 6, background: colors.surface, border: `1px solid ${colors.surfaceHover}`, borderRadius: radii.xl, cursor: 'pointer', color: colors.text, textAlign: 'left', transition: 'all 0.2s' },
+  quickCardExpanded: { background: 'rgba(255,255,255,0.05)', border: `1px solid ${colors.primaryBorder}` },
+  quickCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
   quickName: { fontSize: typography.sizes.xl, fontWeight: typography.weights.bold },
-  quickMeta: { fontSize: typography.sizes.base, color: colors.textSecondary, marginTop: 2 },
+  quickMeta: { fontSize: typography.sizes.base, color: colors.textSecondary, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  quickDiffBadge: { padding: `2px ${spacing.sm}px`, borderRadius: radii.sm, fontSize: typography.sizes.xs, fontWeight: typography.weights.black, letterSpacing: '0.05em', textTransform: 'uppercase' },
+  quickCustomBadge: { fontSize: typography.sizes.xs, color: colors.info, fontWeight: typography.weights.bold },
+  quickChevron: { transition: 'transform 0.2s ease', color: colors.textSecondary, flexShrink: 0 },
+  quickExpandedBody: { marginTop: spacing.md, paddingTop: spacing.md, borderTop: `1px solid ${colors.surfaceHover}` },
+  quickExRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: `${spacing.sm}px 0`, gap: spacing.sm },
+  quickExName: { fontSize: typography.sizes.base, fontWeight: typography.weights.medium, flex: 1, minWidth: 0 },
+  quickExDetail: { fontSize: typography.sizes.sm, color: colors.textSecondary, whiteSpace: 'nowrap' },
+  quickExControls: { display: 'flex', alignItems: 'center', gap: 4 },
+  quickAdjustBtn: { width: 28, height: 28, borderRadius: radii.sm, border: 'none', background: colors.surfaceHover, color: colors.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: typography.sizes.lg, fontWeight: typography.weights.bold },
+  quickRemoveBtn: { width: 28, height: 28, borderRadius: radii.sm, border: 'none', background: 'rgba(255,59,48,0.15)', color: colors.primary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  quickStartBtn: { width: '100%', padding: `${spacing.md}px`, borderRadius: radii.lg, border: 'none', background: colors.primaryGradient, color: colors.text, cursor: 'pointer', fontWeight: typography.weights.black, fontSize: typography.sizes.xl, marginTop: spacing.md, boxShadow: `0 4px 15px ${colors.primaryGlow}` },
+  quickResetBtn: { width: '100%', padding: spacing.sm, background: 'transparent', border: 'none', color: colors.textTertiary, fontSize: typography.sizes.sm, cursor: 'pointer', marginTop: spacing.sm, textDecoration: 'underline' },
+  quickAddExBtn: { width: '100%', padding: `${spacing.md}px`, borderRadius: radii.xl, border: '1px dashed rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: colors.textSecondary, cursor: 'pointer', fontWeight: typography.weights.bold, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, fontSize: typography.sizes.base, marginTop: spacing.sm },
 
   // Deload
   deloadBox: { background: 'linear-gradient(180deg, #1a1a1a 0%, #151515 100%)', borderRadius: radii.pill, padding: spacing.xxl, textAlign: 'center', maxWidth: 340, border: `1px solid ${colors.surfaceHover}` },

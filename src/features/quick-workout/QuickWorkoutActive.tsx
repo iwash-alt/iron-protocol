@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Exercise } from '@/shared/types';
 import { Icon } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { findExerciseByName } from '@/data/exercises';
-import type { QuickTemplate } from '@/data/quick-templates';
+import type { QuickTemplate, QuickExerciseConfig } from '@/data/quick-templates';
 
 interface QuickWorkoutActiveProps {
   template: QuickTemplate;
@@ -11,18 +11,43 @@ interface QuickWorkoutActiveProps {
   onCancel: () => void;
 }
 
+interface ResolvedQuickExercise {
+  exercise: Exercise;
+  config: QuickExerciseConfig;
+}
+
 type Phase = 'countdown' | 'active';
+
+function getWorkDuration(config: QuickExerciseConfig): number {
+  return config.durationSeconds ?? 40;
+}
+
+function formatTarget(config: QuickExerciseConfig): string {
+  if (config.durationSeconds !== null) {
+    return `${config.durationSeconds}s`;
+  }
+  return `${config.reps} REPS`;
+}
 
 export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWorkoutActiveProps) {
   const [phase, setPhase] = useState<Phase>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [exerciseIndex, setExerciseIndex] = useState(0);
-  const [timer, setTimer] = useState(40);
   const [isRest, setIsRest] = useState(false);
 
-  const resolvedExercises = template.exercises
-    .map(name => findExerciseByName(name))
-    .filter((e): e is Exercise => e !== undefined);
+  const resolvedExercises = useMemo<ResolvedQuickExercise[]>(() =>
+    template.exercises
+      .map(config => {
+        const exercise = findExerciseByName(config.name);
+        return exercise ? { exercise, config } : null;
+      })
+      .filter((e): e is ResolvedQuickExercise => e !== null),
+  [template.exercises]);
+
+  const initialDuration = resolvedExercises.length > 0
+    ? getWorkDuration(resolvedExercises[0].config)
+    : 40;
+  const [timer, setTimer] = useState(initialDuration);
 
   // Countdown phase
   useEffect(() => {
@@ -45,9 +70,10 @@ export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWork
         if (prev <= 1) {
           if (isRest) {
             if (exerciseIndex < resolvedExercises.length - 1) {
-              setExerciseIndex(i => i + 1);
+              const nextIndex = exerciseIndex + 1;
+              setExerciseIndex(nextIndex);
               setIsRest(false);
-              return 40;
+              return getWorkDuration(resolvedExercises[nextIndex].config);
             }
             onComplete();
             return 0;
@@ -59,7 +85,7 @@ export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWork
       });
     }, 1000);
     return () => clearTimeout(t);
-  }, [phase, timer, isRest, exerciseIndex, resolvedExercises.length, onComplete]);
+  }, [phase, timer, isRest, exerciseIndex, resolvedExercises, onComplete]);
 
   if (phase === 'countdown') {
     return (
@@ -77,7 +103,7 @@ export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWork
     );
   }
 
-  const currentExercise = resolvedExercises[exerciseIndex];
+  const current = resolvedExercises[exerciseIndex];
 
   return (
     <div style={S.container}>
@@ -87,7 +113,7 @@ export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWork
           <button onClick={onCancel} style={S.iconBtn}><Icon name="close" /></button>
         </div>
         <div style={S.qaDots}>
-          {resolvedExercises.map((_, i) => (
+          {resolvedExercises.map((_entry, i) => (
             <div key={i} style={{ ...S.qaDot, background: i < exerciseIndex ? '#34C759' : i === exerciseIndex ? '#FF3B30' : '#333' }} />
           ))}
         </div>
@@ -96,7 +122,12 @@ export function QuickWorkoutActive({ template, onComplete, onCancel }: QuickWork
             <div style={S.qaTime}>{timer}</div>
             <div style={S.qaLabel}>{isRest ? 'REST' : 'WORK'}</div>
           </div>
-          <h3 style={S.qaExName}>{isRest ? 'Get Ready...' : currentExercise?.name?.toUpperCase()}</h3>
+          <h3 style={S.qaExName}>{isRest ? 'Get Ready...' : current?.exercise.name?.toUpperCase()}</h3>
+          {!isRest && current && (
+            <p style={{ color: '#888', fontSize: '1.1rem', marginTop: 8, textAlign: 'center' }}>
+              {formatTarget(current.config)}
+            </p>
+          )}
         </div>
       </div>
       <style>{globalCss}</style>

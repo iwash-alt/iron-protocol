@@ -4,3 +4,4 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { FeatureGate } from './FeatureGate';
 
 export { LoadingSpinner } from './LoadingSpinner';
+export { ExerciseBrowserModal } from './ExerciseBrowserModal';

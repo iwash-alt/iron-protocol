@@ -11,6 +11,7 @@ export {
   loadLastWorkoutWeek, saveLastWorkoutWeek,
   loadTrainingPlan, saveTrainingPlan,
   loadEntitlementStore, saveEntitlementStore,
+  loadQuickCustomizations, saveQuickCustomizations,
   loadProfilePhoto, saveProfilePhoto, removeProfilePhoto,
   loadProgressPhotos, saveProgressPhotos, addProgressPhoto, deleteProgressPhoto, getProgressPhotosStorageInfo,
   StorageKeys,

@@ -1,11 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import type { UserProfile, ExercisePR } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
-import { useNutrition } from '@/features/nutrition/nutrition.context';
 import { useProgress } from './progress.context';
 import { MiniChart, Icon } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { WATER_GOAL, formatVolume } from '@/shared/utils';
+import { formatVolume } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { generateWeeklyInsights } from '@/analytics/insights';
@@ -38,7 +37,6 @@ function isNewPR(dateStr: string | undefined): boolean {
 interface DashboardProps {
   profile: UserProfile;
   streak: number;
-  onOpenNutrition: () => void;
   onOpenMeasurements: () => void;
   onShowExerciseHistory: (name: string) => void;
   demoMode: boolean;
@@ -48,14 +46,12 @@ interface DashboardProps {
 export function Dashboard({
   profile,
   streak,
-  onOpenNutrition,
   onOpenMeasurements,
   onShowExerciseHistory,
   demoMode,
   onToggleDemo,
 }: DashboardProps) {
   const workout = useWorkout();
-  const nutrition = useNutrition();
   const progress = useProgress();
   const { canAccess } = useTier();
   const isPro = canAccess('analytics_advanced');
@@ -312,24 +308,6 @@ export function Dashboard({
         ) : (
           <ProgressPhotos currentWeight={profile.weight} />
         )}
-      </div>
-
-      <div style={S.chartBox}>
-        <h3 style={S.chartTitle}>{'\u{1F37D}\uFE0F'} Today's Nutrition</h3>
-        <div style={S.nutritionCards}>
-          <div style={S.nutritionCard} onClick={onOpenNutrition}>
-            <div style={S.nutritionCardHeader}><span style={{ fontSize: '1.25rem' }}>{'\u{1F4A7}'}</span><span style={S.nutritionCardTitle}>Water</span></div>
-            <div style={S.nutritionCardValue}>{nutrition.todayWater}<span style={S.nutritionCardUnit}>/{WATER_GOAL}</span></div>
-            <div style={S.miniProgress}><div style={{ ...S.miniProgressFill, width: `${(nutrition.todayWater / WATER_GOAL) * 100}%`, background: '#3B82F6' }} /></div>
-            <button onClick={e => { e.stopPropagation(); nutrition.addWater(); }} style={S.nutritionCardBtn}>+ ADD</button>
-          </div>
-        </div>
-      </div>
-
-      <div style={S.chartBox}>
-        <h3 style={S.chartTitle}>{'\u{1F4CA}'} Hydration (7 Days)</h3>
-        <MiniChart data={Object.values(nutrition.nutritionHistory).slice(-7).map(d => d.water).length ? Object.values(nutrition.nutritionHistory).slice(-7).map(d => d.water) : [0]} color="#3B82F6" height={60} />
-        <div style={S.chartLabels}><span>7 days ago</span><span>Today</span></div>
       </div>
 
       {workout.workoutHistory.length > 0 && (

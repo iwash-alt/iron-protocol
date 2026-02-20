@@ -7,7 +7,6 @@ import { DemoModeProvider } from '@/shared/demo/DemoModeContext';
 import { PlanProvider, usePlan } from '@/features/training-plan/PlanContext';
 import { WorkoutProvider } from '@/features/workout/WorkoutContext';
 import type { ProgressionResult } from '@/training/progression';
-import { NutritionProvider } from '@/features/nutrition/nutrition.context';
 import { ProgressProvider } from '@/features/progress/progress.context';
 import { Onboarding } from '@/features/onboarding/Onboarding';
 import { InstallBanner } from '@/features/pwa/InstallBanner';
@@ -72,12 +71,10 @@ export default function App() {
           <DemoModeProvider>
             <PlanProvider profile={profile}>
               <WorkoutPlanBridge>
-                <NutritionProvider>
-                  <ProgressProvider>
-                    <AppShell profile={profile} onProfileUpdate={setProfile} />
-                    <InstallBanner />
-                  </ProgressProvider>
-                </NutritionProvider>
+                <ProgressProvider>
+                  <AppShell profile={profile} onProfileUpdate={setProfile} />
+                  <InstallBanner />
+                </ProgressProvider>
               </WorkoutPlanBridge>
             </PlanProvider>
           </DemoModeProvider>

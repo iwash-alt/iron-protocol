@@ -1,5 +1,5 @@
 import type { BodyMeasurement, ExerciseHistory, NutritionHistory, PersonalRecords, GlobalPRs, ExercisePR, WorkoutLog } from '@/shared/types';
-import { calculate1RM, getTodayKey, getWeekNumber } from '@/shared/utils';
+import { calculate1RM, getWeekNumber } from '@/shared/utils';
 
 export interface DemoData {
   workoutHistory: WorkoutLog[];
@@ -226,37 +226,11 @@ function generateBodyMeasurements(): BodyMeasurement[] {
   return measurements;
 }
 
-function generateNutritionHistory(): NutritionHistory {
-  const rand = lcg(777);
-  const history: NutritionHistory = {};
-  for (let i = 0; i < 30; i += 1) {
-    const date = addDays(new Date(), -i);
-    const key = dateKey(date);
-    history[key] = {
-      water: Math.floor(randomBetween(rand, 8, 13)),
-      protein: Math.floor(randomBetween(rand, 140, 210)),
-      proteinLog: [
-        { name: 'Whey Shake', protein: 28, icon: '\u{1F964}', time: '08:15' },
-        { name: 'Chicken Breast', protein: 45, icon: '\u{1F357}', time: '12:30' },
-        { name: 'Greek Yogurt', protein: 20, icon: '\u{1F963}', time: '16:00' },
-      ],
-    };
-  }
-  return history;
-}
-
 export function generateDemoData(): DemoData {
   const { workoutHistory, exerciseHistory, personalRecords, globalPRs } = generateWorkoutHistory();
   const bodyMeasurements = generateBodyMeasurements();
-  const nutritionHistory = generateNutritionHistory();
   const weekCount = 24;
   const lastWorkoutWeek = getWeekNumber();
-
-  // ensure today's nutrition exists
-  const today = getTodayKey();
-  if (!nutritionHistory[today]) {
-    nutritionHistory[today] = { water: 10, protein: 180, proteinLog: [] };
-  }
 
   return {
     workoutHistory,
@@ -264,7 +238,7 @@ export function generateDemoData(): DemoData {
     personalRecords,
     globalPRs,
     bodyMeasurements,
-    nutritionHistory,
+    nutritionHistory: {},
     weekCount,
     lastWorkoutWeek,
   };

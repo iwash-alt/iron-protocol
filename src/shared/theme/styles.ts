@@ -50,11 +50,15 @@ export const S: Record<string, CSSProperties> = {
   progTrack: { height: 8, background: colors.surfaceHover, borderRadius: 4, overflow: 'hidden' },
   progFill: { height: '100%', background: colors.primaryGradient, borderRadius: 4, transition: 'width 0.3s ease' },
 
-  // Rest timer
-  restBanner: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderRadius: radii.xxl, background: 'rgba(255,149,0,0.1)', border: `1px solid ${colors.warningBorder}`, marginBottom: spacing.lg },
-  restLabel: { fontSize: typography.sizes.sm, color: colors.warning, fontWeight: typography.weights.black, letterSpacing: '0.05em' },
-  restTime: { fontSize: typography.sizes['6xl'], fontWeight: typography.weights.black, color: colors.text },
-  skipBtn: { padding: `${spacing.sm + 2}px ${spacing.lg}px`, borderRadius: radii.md, border: 'none', background: 'rgba(255,255,255,0.1)', color: colors.text, cursor: 'pointer', fontWeight: typography.weights.bold, fontSize: typography.sizes.base },
+  // Rest timer — sticky banner
+  restBanner: { position: 'sticky', top: 0, zIndex: 20, background: 'linear-gradient(180deg, rgba(20,20,20,0.98) 0%, rgba(15,15,15,0.95) 100%)', backdropFilter: 'blur(12px)', padding: `${spacing.md}px ${spacing.lg}px ${spacing.md}px`, marginLeft: -spacing.lg, marginRight: -spacing.lg, paddingLeft: spacing.lg, paddingRight: spacing.lg, borderBottom: `1px solid ${colors.warningBorder}`, marginBottom: spacing.lg },
+  restTimerRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  restLabel: { fontSize: typography.sizes.xs, color: colors.warning, fontWeight: typography.weights.black, letterSpacing: '0.08em', textTransform: 'uppercase' as const },
+  restTime: { fontSize: typography.sizes['7xl'], fontWeight: typography.weights.black, color: colors.warning, letterSpacing: '0.08em' },
+  restProgressTrack: { height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden', marginBottom: spacing.sm },
+  restProgressFill: { height: '100%', background: colors.warning, borderRadius: 2, transition: 'width 1s linear' },
+  restNextPreview: { fontSize: typography.sizes.sm, color: colors.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  skipBtn: { padding: `${spacing.sm + 2}px ${spacing.lg}px`, borderRadius: radii.md, border: `1px solid ${colors.warningBorder}`, background: 'rgba(255,149,0,0.12)', color: colors.warning, cursor: 'pointer', fontWeight: typography.weights.black, fontSize: typography.sizes.base, letterSpacing: '0.05em' },
 
   // Exercise list
   exList: { display: 'flex', flexDirection: 'column', gap: spacing.md },
@@ -817,5 +821,17 @@ export const globalCss = `
     0% { transform: translateX(0); }
     30% { transform: translateX(-10px); }
     100% { transform: translateX(0); }
+  }
+
+  /* Rest timer banner animations */
+  @keyframes restBannerSlideUp {
+    from { transform: translateY(0); opacity: 1; max-height: 120px; }
+    to { transform: translateY(-100%); opacity: 0; max-height: 0; }
+  }
+
+  @keyframes restCardPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,149,0,0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 0 12px 4px rgba(255,149,0,0.2); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,149,0,0); }
   }
 `;

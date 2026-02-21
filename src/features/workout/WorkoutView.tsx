@@ -209,7 +209,6 @@ const ie: Record<string, React.CSSProperties> = {
 export function WorkoutView({ profile }: WorkoutViewProps) {
   const plan = usePlan();
   const workout = useWorkout();
-  const timer = useTimer();
   const { canAccess } = useTier();
   const isPro = canAccess('analytics_advanced');
 
@@ -226,6 +225,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState(false);
   const [justCompleted, setJustCompleted] = useState<{ exerciseId: string; setNum: number } | null>(null);
+  const [restTimerEnding, setRestTimerEnding] = useState(false);
+  const [restPulseTarget, setRestPulseTarget] = useState<string | null>(null);
   const [customBuilderStep, setCustomBuilderStep] = useState<1 | 2 | 3 | 4>(1);
   const [customWorkoutDraft, setCustomWorkoutDraft] = useState<CustomWorkoutDraft>(EMPTY_CUSTOM_WORKOUT_DRAFT);
   const [selectedBuilderDayId, setSelectedBuilderDayId] = useState<string | null>(null);
@@ -236,6 +237,27 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [exMuscle, setExMuscle] = useState<MuscleFilter>('All');
 
   const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
+
+  // Ref to hold the current "next exercise" ID for the timer complete callback
+  const nextExerciseIdRef = useRef<string | null>(null);
+
+  const handleTimerComplete = useCallback(() => {
+    // Brief vibration on timer end
+    navigator.vibrate?.(100);
+
+    // Pulse the next exercise card
+    const targetId = nextExerciseIdRef.current;
+    if (targetId) {
+      setRestPulseTarget(targetId);
+      setTimeout(() => setRestPulseTarget(null), TIMINGS.REST_PULSE_DURATION);
+    }
+
+    // Slide-up collapse animation
+    setRestTimerEnding(true);
+    setTimeout(() => setRestTimerEnding(false), TIMINGS.REST_BANNER_COLLAPSE);
+  }, []);
+
+  const timer = useTimer(handleTimerComplete);
 
   useEffect(() => {
     if (!showAddExercise && !showSwap && !showExerciseHistory) return;
@@ -269,6 +291,48 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!isPro || workout.workoutHistory.length < 2) return null;
     return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
   }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
+
+  // Derive "next exercise" info for the rest timer banner
+  const nextExerciseInfo = useMemo(() => {
+    const timerId = workout.restTimerFor;
+    if (!timerId) return null;
+
+    const exercises = plan.dayExercises;
+    const currentIndex = exercises.findIndex(pe => pe.id === timerId);
+    if (currentIndex === -1) return null;
+
+    const current = exercises[currentIndex];
+    const done = workout.completedSets[current.id] || 0;
+
+    // Still has sets remaining on the same exercise
+    if (done < current.sets) {
+      const weight = current.exercise.isBodyweight ? 'BW' : `${current.weightKg}kg`;
+      return {
+        id: current.id,
+        text: `${current.exercise.name} \u2014 Set ${done + 1} \u2014 ${weight} \u00d7 ${current.reps}`,
+      };
+    }
+
+    // All sets done — find next incomplete exercise
+    for (let i = currentIndex + 1; i < exercises.length; i++) {
+      const pe = exercises[i];
+      const peDone = workout.completedSets[pe.id] || 0;
+      if (peDone < pe.sets) {
+        const weight = pe.exercise.isBodyweight ? 'BW' : `${pe.weightKg}kg`;
+        return {
+          id: pe.id,
+          text: `${pe.exercise.name} \u2014 Set ${peDone + 1} \u2014 ${weight} \u00d7 ${pe.reps}`,
+        };
+      }
+    }
+
+    return null; // All exercises complete
+  }, [workout.restTimerFor, workout.completedSets, plan.dayExercises]);
+
+  // Keep the ref in sync for the timer complete callback
+  useEffect(() => {
+    nextExerciseIdRef.current = nextExerciseInfo?.id ?? null;
+  }, [nextExerciseInfo]);
 
   const completeSet = (pe: PlanExercise) => {
     const done = workout.completedSets[pe.id] || 0;
@@ -476,11 +540,30 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         <div style={S.progTrack}><div style={{ ...S.progFill, width: `${prog}%` }} /></div>
       </div>
 
-      {/* Rest timer */}
-      {timer.isActive && (
-        <div style={S.restBanner}>
-          <div><div style={S.restLabel}>{timer.label || 'REST TIME'}</div><div style={S.restTime}>{formatTime(timer.seconds)}</div></div>
-          <button onClick={timer.skip} style={S.skipBtn}>SKIP</button>
+      {/* Rest timer — sticky banner with progress bar & next preview */}
+      {(timer.isActive || restTimerEnding) && (
+        <div style={{
+          ...S.restBanner,
+          ...(restTimerEnding ? { animation: 'restBannerSlideUp 0.3s ease-out forwards' } : {}),
+        }}>
+          <div style={S.restTimerRow}>
+            <div>
+              <div style={S.restLabel}>{timer.label || 'REST'}</div>
+              <div style={S.restTime}>{formatTime(timer.seconds)}</div>
+            </div>
+            <button onClick={timer.skip} style={S.skipBtn}>SKIP</button>
+          </div>
+          <div style={S.restProgressTrack}>
+            <div style={{
+              ...S.restProgressFill,
+              width: timer.totalSeconds > 0 ? `${(timer.seconds / timer.totalSeconds) * 100}%` : '0%',
+            }} />
+          </div>
+          {nextExerciseInfo && (
+            <div style={S.restNextPreview}>
+              Next: {nextExerciseInfo.text}
+            </div>
+          )}
         </div>
       )}
 
@@ -528,6 +611,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
               ...(isDone ? S.exDone : {}),
               ...(done > 0 && !isDone ? S.exInProgress : {}),
               ...(justCompleted?.exerciseId === pe.id && justCompleted.setNum === pe.sets ? S.exFinalFlash : {}),
+              ...(restPulseTarget === pe.id ? { animation: 'restCardPulse 0.5s ease-out' } : {}),
             }}>
               <div style={S.exHeader}>
                 <div>

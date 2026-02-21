@@ -4,6 +4,7 @@ import type { RPEValue, PlanExercise } from '@/shared/types';
 
 export function useTimer(onComplete?: () => void) {
   const [seconds, setSeconds] = useState(0);
+  const [totalSeconds, setTotalSeconds] = useState(0);
   const [label, setLabel] = useState<string | null>(null);
   const activeRef = useRef(false);
 
@@ -25,16 +26,18 @@ export function useTimer(onComplete?: () => void) {
 
   const start = useCallback((duration: number, timerLabel?: string) => {
     setSeconds(duration);
+    setTotalSeconds(duration);
     setLabel(timerLabel ?? null);
   }, []);
 
   const skip = useCallback(() => {
     activeRef.current = false;
     setSeconds(0);
+    setTotalSeconds(0);
     setLabel(null);
   }, []);
 
-  return { seconds, start, skip, isActive: seconds > 0, label };
+  return { seconds, totalSeconds, start, skip, isActive: seconds > 0, label };
 }
 
 // ── Adaptive Rest Timer ─────────────────────────────────────────────────────

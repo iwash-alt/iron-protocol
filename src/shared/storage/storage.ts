@@ -256,6 +256,13 @@ export function saveLastWorkoutWeek(week: number): void {
   localStorage.setItem(StorageKeys.LAST_WORKOUT_WEEK, week.toString());
 }
 
+export function clearAllStorage(): void {
+  Object.values(StorageKeys).forEach((key) => {
+    localStorage.removeItem(key);
+  });
+  localStorage.removeItem(STORAGE_VERSION_KEY);
+}
+
 function normalizeTrainingPlanState(parsed: unknown): TrainingPlanState | null {
   if (!parsed || typeof parsed !== 'object') return null;
 

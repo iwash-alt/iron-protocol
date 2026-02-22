@@ -9,7 +9,7 @@ import {
   loadProfile, saveProfile,
   loadWorkoutHistory, loadExerciseHistory, loadPersonalRecords,
   loadBodyMeasurements,
-  StorageKeys,
+  clearAllStorage,
 } from '@/shared/storage';
 import { processProfilePhoto } from '@/shared/utils/imageProcessing';
 import { formatVolume } from '@/shared/utils';
@@ -66,8 +66,7 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   }, []);
 
   const handleReset = useCallback(() => {
-    Object.values(StorageKeys).forEach(key => localStorage.removeItem(key));
-    localStorage.removeItem('ironStorageVersion');
+    clearAllStorage();
     window.location.reload();
   }, []);
 

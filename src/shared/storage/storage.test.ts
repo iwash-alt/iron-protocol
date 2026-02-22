@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadTrainingPlan, StorageKeys } from './storage';
+import { clearAllStorage, loadTrainingPlan, StorageKeys } from './storage';
 
 describe('loadTrainingPlan', () => {
   beforeEach(() => {
@@ -33,5 +33,25 @@ describe('loadTrainingPlan', () => {
     expect(plan?.dayIndex).toBe(1);
     expect(plan?.exercises).toHaveLength(1);
     expect(plan?.exercises[0].dayId).toBe('d2');
+  });
+});
+
+describe('clearAllStorage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('removes all known storage keys and version key', () => {
+    Object.values(StorageKeys).forEach((key) => {
+      localStorage.setItem(key, 'mock');
+    });
+    localStorage.setItem('ironStorageVersion', '3');
+
+    clearAllStorage();
+
+    Object.values(StorageKeys).forEach((key) => {
+      expect(localStorage.getItem(key)).toBeNull();
+    });
+    expect(localStorage.getItem('ironStorageVersion')).toBeNull();
   });
 });

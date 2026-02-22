@@ -201,6 +201,12 @@ const ie: Record<string, React.CSSProperties> = {
   display: {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.black,
+    textAlign: 'center' as const,
+    textDecoration: 'underline',
+    textDecorationColor: 'rgba(255,255,255,0.35)',
+    textUnderlineOffset: 5,
+    textDecorationThickness: 1,
+    minWidth: 58,
   },
 };
 
@@ -599,54 +605,95 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             .slice()
             .reverse()
             .find(w => w.dayName === plan.currentDay?.name);
-          const previousExVol = previousSession
-            ? previousSession.sets
-                .filter(s => s.exerciseName === pe.exercise.name)
-                .reduce((sum, s) => sum + s.weightKg * s.reps, 0)
+
+          const movementType = pe.exercise.type.charAt(0).toUpperCase() + pe.exercise.type.slice(1);
+          const metadata = `${pe.exercise.muscle} • ${movementType} • ${pe.exercise.equipment}`;
+          const previousExerciseSets = previousSession
+            ? previousSession.sets.filter(s => s.exerciseName === pe.exercise.name)
+            : [];
+          const ghostData = previousExerciseSets.length > 0
+            ? {
+                sets: previousExerciseSets.length,
+                weightKg: previousExerciseSets[0].weightKg,
+                reps: previousExerciseSets[0].reps,
+                volume: previousExerciseSets.reduce((sum, s) => sum + s.weightKg * s.reps, 0),
+              }
+            : null;
+          const showGhost = isPro && ghostData !== null;
+          const youVolumeRatio = showGhost
+            ? Math.min(100, Math.round((currentExVol / Math.max(ghostData?.volume ?? 1, 1)) * 100))
             : 0;
+          const ghostVolumeRatio = showGhost
+            ? Math.min(100, Math.round(((ghostData?.volume ?? 0) / Math.max(currentExVol, ghostData?.volume ?? 0, 1)) * 100))
+            : 0;
+
+          if (isDone) {
+            const progression = !pe.exercise.isBodyweight && pe.id in workout.progressions
+              ? formatProgressionBanner(workout.progressions[pe.id], pe.weightKg)
+              : null;
+
+            return (
+              <div key={pe.id} style={{ ...S.exCard, ...S.exCardCompleted }}>
+                <div style={S.completedTitleRow}>
+                  <Icon name="check" size={14} />
+                  <h3 style={S.exNameDone}>{pe.exercise.name}</h3>
+                </div>
+                <div style={S.completedSummaryRow}>
+                  {pe.exercise.isBodyweight ? 'BW' : `${pe.weightKg}kg`} x {pe.reps} x {pe.sets}
+                  {' '}| Volume: {formatVolume(currentExVol)}
+                </div>
+                {progression && (
+                  <div style={S.completedProgressionRow}>
+                    ↑ {progression.label}
+                  </div>
+                )}
+              </div>
+            );
+          }
 
           return (
             <div key={pe.id} style={{
               ...S.exCard,
-              ...(isDone ? S.exDone : {}),
-              ...(done > 0 && !isDone ? S.exInProgress : {}),
+              ...(done > 0 ? S.exInProgress : {}),
               ...(justCompleted?.exerciseId === pe.id && justCompleted.setNum === pe.sets ? S.exFinalFlash : {}),
               ...(restPulseTarget === pe.id ? { animation: 'restCardPulse 0.5s ease-out' } : {}),
             }}>
               <div style={S.exHeader}>
-                <div>
-                  <div style={S.exTags}>
-                    <span style={S.muscleTag}>{pe.exercise.muscle}</span>
-                    {isDone && <span style={S.doneTag}><Icon name="check" size={12} /> Done</span>}
-                  </div>
-                  <h3 style={{ ...S.exName, color: isDone ? '#34C759' : '#fff' }}>{pe.exercise.name}</h3>
-                  <div style={orderStyles.row}>
-                    <button
-                      onClick={() => plan.reorderDayExercises(index, index - 1)}
-                      disabled={isFirstExercise}
-                      style={{ ...orderStyles.button, ...(isFirstExercise ? orderStyles.buttonDisabled : {}) }}
-                      aria-label={`Move ${pe.exercise.name} up`}
-                      title="Move up"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      onClick={() => plan.reorderDayExercises(index, index + 1)}
-                      disabled={isLastExercise}
-                      style={{ ...orderStyles.button, ...(isLastExercise ? orderStyles.buttonDisabled : {}) }}
-                      aria-label={`Move ${pe.exercise.name} down`}
-                      title="Move down"
-                    >
-                      ↓
-                    </button>
-                  </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={S.exName}>{pe.exercise.name}</h3>
+                  <div style={S.exMeta}>{metadata}</div>
+                </div>
+                <div style={S.exActions}>
+                  <button onClick={() => setShowSwap(pe)} style={S.swapBtn}><Icon name="swap" size={16} /></button>
+                  <button onClick={() => setShowHowTo(pe.exercise)} style={howToBtn}>?</button>
+                </div>
+              </div>
+
+              <div style={S.exSecondaryActions}>
+                <div style={orderStyles.row}>
+                  <button
+                    onClick={() => plan.reorderDayExercises(index, index - 1)}
+                    disabled={isFirstExercise}
+                    style={{ ...orderStyles.button, ...(isFirstExercise ? orderStyles.buttonDisabled : {}) }}
+                    aria-label={`Move ${pe.exercise.name} up`}
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => plan.reorderDayExercises(index, index + 1)}
+                    disabled={isLastExercise}
+                    style={{ ...orderStyles.button, ...(isLastExercise ? orderStyles.buttonDisabled : {}) }}
+                    aria-label={`Move ${pe.exercise.name} down`}
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
                 </div>
                 <div style={S.exActions}>
                   {hasHistory && <button onClick={() => setShowExerciseHistory(pe.exercise.name)} style={S.historyBtn}><Icon name="history" size={16} /></button>}
                   {!pe.exercise.isBodyweight && <button onClick={() => setShowWarmup(isWarmupOpen ? null : pe.id)} style={isWarmupOpen ? S.warmupBtnActive : S.warmupBtn}><Icon name="fire" size={16} /></button>}
                   <button onClick={() => setEditingExercise(pe)} style={S.editBtn}><Icon name="edit" size={16} /></button>
-                  <button onClick={() => setShowSwap(pe)} style={S.swapBtn}><Icon name="swap" size={16} /></button>
-                  <button onClick={() => setShowHowTo(pe.exercise)} style={howToBtn}>?</button>
                 </div>
               </div>
 
@@ -665,8 +712,36 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </div>
               )}
 
-              {/* Stats grid with inline editable weight + reps */}
-              <div style={{ ...S.stats, gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              <div style={S.stats}>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>WEIGHT</div>
+                  {pe.exercise.isBodyweight ? (
+                    <div style={S.statVal}>BW</div>
+                  ) : (
+                    <InlineEdit
+                      value={pe.weightKg}
+                      step={2.5}
+                      min={0}
+                      max={500}
+                      inputMode="decimal"
+                      color={colors.primary}
+                      suffix="kg"
+                      onChange={val => plan.updateExercise(pe.id, { weightKg: val })}
+                    />
+                  )}
+                </div>
+                <div style={S.stat}>
+                  <div style={S.statLabel}>REPS</div>
+                  <InlineEdit
+                    value={pe.reps}
+                    step={1}
+                    min={pe.repsMin ?? 1}
+                    max={pe.repsMax ?? 30}
+                    inputMode="numeric"
+                    color={colors.text}
+                    onChange={val => plan.updateExercise(pe.id, { reps: val })}
+                  />
+                </div>
                 <div style={S.stat}>
                   <div style={S.statLabel}>SETS</div>
                   <div
@@ -694,88 +769,33 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                     ))}
                   </div>
                 </div>
-                <div style={S.stat}>
-                  <div style={S.statLabel}>REPS</div>
-                  <InlineEdit
-                    value={pe.reps}
-                    step={1}
-                    min={pe.repsMin ?? 1}
-                    max={pe.repsMax ?? 30}
-                    inputMode="numeric"
-                    color={colors.text}
-                    onChange={val => plan.updateExercise(pe.id, { reps: val })}
-                  />
-                </div>
-                <div style={S.stat}>
-                  <div style={S.statLabel}>WEIGHT</div>
-                  {pe.exercise.isBodyweight ? (
-                    <div style={S.statVal}>BW</div>
-                  ) : (
-                    <InlineEdit
-                      value={pe.weightKg}
-                      step={2.5}
-                      min={0}
-                      max={500}
-                      inputMode="decimal"
-                      color={colors.primary}
-                      suffix="kg"
-                      onChange={val => plan.updateExercise(pe.id, { weightKg: val })}
-                    />
-                  )}
-                </div>
-                <div style={S.stat}>
-                  <div style={S.statLabel}>VOLUME</div>
-                  <div style={S.statVal}>{formatVolume(currentExVol, { abbreviated: true })}</div>
-                  {previousExVol > 0 && (
-                    <div style={{
-                      fontSize: typography.sizes.xs,
-                      color: currentExVol >= previousExVol ? colors.success : colors.textTertiary,
-                      marginTop: 2,
-                    }}>
-                      / {formatVolume(previousExVol, { abbreviated: true })}
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {isDone && !pe.exercise.isBodyweight && pe.id in workout.progressions && (() => {
-                const banner = formatProgressionBanner(
-                  workout.progressions[pe.id],
-                  pe.weightKg,
-                );
-                return (
-                  <div style={{ ...progressionBannerStyles[banner.tone], animation: 'fadeInUp 0.35s ease both' }}>
-                    <span style={progressionBannerStyles.icon}>{banner.icon}</span>
-                    <div>
-                      <div style={progressionBannerStyles.label}>{banner.label}</div>
-                      <div style={progressionBannerStyles.subtext}>{banner.subtext}</div>
+              {showGhost && (
+                <div style={S.ghostSection}>
+                  <div style={S.ghostSummary}>
+                    👻 Ghost: {ghostData?.weightKg}kg x {ghostData?.reps} x {ghostData?.sets} — {formatVolume(ghostData?.volume ?? 0)}
+                  </div>
+                  <div style={S.ghostBars}>
+                    <div style={S.ghostBarRow}>
+                      <span style={S.ghostBarLabel}>You</span>
+                      <div style={S.ghostTrack}><div style={{ ...S.ghostFillYou, width: `${youVolumeRatio}%` }} /></div>
+                    </div>
+                    <div style={S.ghostBarRow}>
+                      <span style={S.ghostBarLabel}>Ghost</span>
+                      <div style={S.ghostTrack}><div style={{ ...S.ghostFillGhost, width: `${ghostVolumeRatio}%` }} /></div>
                     </div>
                   </div>
-                );
-              })()}
-
-              {isDone && justCompleted?.exerciseId === pe.id && (
-                <div style={{
-                  textAlign: 'center' as const,
-                  padding: '14px',
-                  color: colors.success,
-                  fontWeight: typography.weights.black,
-                  fontSize: typography.sizes.lg,
-                  animation: 'setComplete 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                }}>
-                  <Icon name="check" size={24} /> ALL SETS COMPLETE
                 </div>
               )}
 
-              {!isDone && (
-                <button
-                  onClick={() => completeSet(pe)}
-                  disabled={timer.isActive && workout.restTimerFor === pe.id}
-                  style={{ ...S.completeBtn, ...(timer.isActive && workout.restTimerFor === pe.id ? S.completeBtnOff : {}) }}
-                >
-                  {timer.isActive && workout.restTimerFor === pe.id ? `RESTING... ${formatTime(timer.seconds)}` : `COMPLETE SET ${done + 1}`}
-                </button>
-              )}
+              <button
+                onClick={() => completeSet(pe)}
+                disabled={timer.isActive && workout.restTimerFor === pe.id}
+                style={{ ...S.completeBtn, ...(timer.isActive && workout.restTimerFor === pe.id ? S.completeBtnOff : {}) }}
+              >
+                {timer.isActive && workout.restTimerFor === pe.id ? `RESTING... ${formatTime(timer.seconds)}` : `▲ COMPLETE SET ${done + 1}`}
+              </button>
             </div>
           );
         })}
@@ -1604,20 +1624,3 @@ const templatesCustomStyles: Record<string, React.CSSProperties> = {
   create: { borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold },
 };
 
-const progressionBannerBase: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: spacing.sm,
-  padding: `${spacing.sm + 2}px ${spacing.md}px`,
-  borderRadius: radii.lg,
-  marginBottom: spacing.md,
-};
-
-const progressionBannerStyles: Record<string, React.CSSProperties> = {
-  success: { ...progressionBannerBase, background: colors.successSurface, border: `1px solid ${colors.successBorder}` },
-  warning: { ...progressionBannerBase, background: colors.warningSurface, border: `1px solid ${colors.warningBorder}` },
-  neutral: { ...progressionBannerBase, background: colors.surface, border: `1px solid ${colors.surfaceBorder}` },
-  icon: { fontSize: typography.sizes['3xl'], fontWeight: typography.weights.black, lineHeight: '1.2', flexShrink: 0 },
-  label: { fontSize: typography.sizes.md, fontWeight: typography.weights.bold, color: colors.text },
-  subtext: { fontSize: typography.sizes.sm, color: colors.textSecondary, marginTop: 2 },
-};

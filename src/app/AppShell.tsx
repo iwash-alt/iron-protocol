@@ -1,6 +1,6 @@
-import React, { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { Icon, LoadingSpinner, WorkoutSkeleton, DashboardSkeleton, QuickWorkoutSkeleton, HomeSkeleton, ProfileSkeleton } from '@/shared/components';
+import { Icon, LoadingSpinner, useToast, HomeSkeleton, WorkoutSkeleton, DashboardSkeleton, QuickWorkoutSkeleton, ProfileSkeleton } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { colors } from '@/shared/theme/tokens';
 import { getGreeting } from '@/shared/utils';
@@ -28,7 +28,6 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [quickWorkout, setQuickWorkout] = useState<QuickTemplate | null>(null);
   const [showMeasurements, setShowMeasurements] = useState(false);
-  const [celebrate, setCelebrate] = useState(false);
   const [tabTransition, setTabTransition] = useState<'left' | 'right' | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +38,27 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
   const { photo: profilePhoto } = useProfilePhoto();
   const { currentStreak } = useWorkoutStreak(workout.workoutHistory);
   const pr = usePRCelebration(workout.newPR, workout.dismissPR);
+  const { newPR: prData, clearCelebration } = pr;
+  const { showToast } = useToast();
+
+  // PR celebration → toast
+  const prevPRRef = useRef<typeof prData>(null);
+  useEffect(() => {
+    if (prData && prData !== prevPRRef.current) {
+      prevPRRef.current = prData;
+      showToast({ type: 'success', message: `🔥 NEW PR — ${prData.name}: ${prData.value}` });
+      clearCelebration();
+    }
+  }, [prData, clearCelebration, showToast]);
+
+  // Demo mode enabled → toast
+  const prevDemoRef = useRef(false);
+  useEffect(() => {
+    if (!prevDemoRef.current && demoMode.enabled) {
+      showToast({ type: 'info', message: 'Ghost data loaded' });
+    }
+    prevDemoRef.current = demoMode.enabled;
+  }, [demoMode.enabled, showToast]);
 
   const handleTabSwitch = useCallback((tab: TabId) => {
     if (tab === activeTab) return;
@@ -86,8 +106,7 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
         template={quickWorkout}
         onComplete={() => {
           setQuickWorkout(null);
-          setCelebrate(true);
-          window.setTimeout(() => setCelebrate(false), TIMINGS.CELEBRATION_DURATION);
+          showToast({ type: 'success', message: '🏆 Workout complete!' });
         }}
         onCancel={() => setQuickWorkout(null)}
       />
@@ -97,19 +116,6 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
 
   return (
     <div style={S.container}>
-      {celebrate && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🏆</div><div style={S.celebTitle}>GREAT WORK!</div></div></div>}
-      {pr.showCelebration && pr.newPR && (
-        <div style={S.prCelebrate} onClick={pr.clearCelebration}>
-          <div style={S.prCelebrateContent}>
-            <div style={S.prCelebrateEmoji}>🔥</div>
-            <div style={S.prCelebrateTitle}>NEW PR!</div>
-            <div style={{ color: '#888', marginTop: 8 }}>{pr.newPR.name}</div>
-            <div style={{ color: colors.primary, fontSize: '2.5rem', fontWeight: 800 }}>{pr.newPR.value}</div>
-            <div style={{ color: '#555', fontSize: '0.8rem' }}>{pr.newPR.category}</div>
-          </div>
-        </div>
-      )}
-
       <header style={{ ...S.header, paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
         <div style={S.headerLeft}>{profilePhoto ? <img src={profilePhoto} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${colors.primaryBorder}` }} /> : <div style={S.logo}><Icon name="dumbbell" size={22} /></div>}<div><h1 style={S.title}>IRON PROTOCOL</h1><p style={S.welcome}>Good {getGreeting()}, {profile.name?.split(' ')[0]}</p></div></div>
         <div style={S.streak}><Icon name="flame" size={16} /> {currentStreak}</div>

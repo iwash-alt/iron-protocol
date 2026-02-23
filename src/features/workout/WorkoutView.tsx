@@ -3,7 +3,7 @@ import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } 
 import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isLowerBody } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
-import { useTimer, getAdaptiveRest } from '@/shared/hooks';
+import { useTimer, getAdaptiveRest, useSwipeNavigation } from '@/shared/hooks';
 import { Icon, MiniChart, EmptyState } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
@@ -98,6 +98,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [justCompleted, setJustCompleted] = useState<{ exerciseId: string; setNum: number } | null>(null);
   const [restTimerEnding, setRestTimerEnding] = useState(false);
   const [restPulseTarget, setRestPulseTarget] = useState<string | null>(null);
+  const [dayAnimKey, setDayAnimKey] = useState(0);
+  const [dayAnimClass, setDayAnimClass] = useState('');
   const [customBuilderStep, setCustomBuilderStep] = useState<1 | 2 | 3 | 4>(1);
   const [customWorkoutDraft, setCustomWorkoutDraft] = useState<CustomWorkoutDraft>(EMPTY_CUSTOM_WORKOUT_DRAFT);
   const [selectedBuilderDayId, setSelectedBuilderDayId] = useState<string | null>(null);
@@ -162,6 +164,18 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!isPro || workout.workoutHistory.length < 2) return null;
     return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
   }, [isPro, workout.workoutHistory, workout.exerciseHistory]);
+
+  // Per-day completion status for pill indicators
+  const dayStatuses = useMemo(() => {
+    return plan.days.map(d => {
+      const dayExs = plan.exercises.filter(pe => pe.dayId === d.id);
+      const total = dayExs.reduce((sum, pe) => sum + pe.sets, 0);
+      const done = dayExs.reduce((sum, pe) => sum + (workout.completedSets[pe.id] || 0), 0);
+      if (total === 0 || done === 0) return 'none' as const;
+      if (done >= total) return 'complete' as const;
+      return 'partial' as const;
+    });
+  }, [plan.days, plan.exercises, workout.completedSets]);
 
   // Derive "next exercise" info for the rest timer banner
   const nextExerciseInfo = useMemo(() => {
@@ -380,9 +394,24 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   };
 
   const handleDayChange = (index: number) => {
+    if (index === plan.dayIndex) return;
+    const animClass = index > plan.dayIndex ? 'tab-enter-right' : 'tab-enter-left';
     plan.setDayIndex(index);
     workout.resetWorkoutState();
+    setDayAnimKey(prev => prev + 1);
+    setDayAnimClass(animClass);
+    setTimeout(() => setDayAnimClass(''), 250);
   };
+
+  const swipe = useSwipeNavigation({
+    enabled: plan.days.length > 1,
+    onSwipeLeft: () => {
+      if (plan.dayIndex < plan.days.length - 1) handleDayChange(plan.dayIndex + 1);
+    },
+    onSwipeRight: () => {
+      if (plan.dayIndex > 0) handleDayChange(plan.dayIndex - 1);
+    },
+  });
 
   const prog = workout.progress();
 
@@ -407,13 +436,32 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         />
       ) : (
       <>
-      {/* Day tabs */}
+      {/* Day pills */}
       <div style={S.tabs}>
-        {plan.days.map((d, i) => (
-          <button key={d.id} onClick={() => handleDayChange(i)} style={{ ...S.tab, ...(plan.dayIndex === i ? S.tabActive : {}) }}>
-            {d.name.toUpperCase()}
-          </button>
-        ))}
+        {plan.days.map((d, i) => {
+          const isActive = plan.dayIndex === i;
+          const status = dayStatuses[i];
+          return (
+            <button
+              key={d.id}
+              onClick={() => handleDayChange(i)}
+              style={{ ...S.tab, ...(isActive ? S.tabActive : {}), position: 'relative' }}
+            >
+              {d.name.toUpperCase()}
+              {status !== 'none' && (
+                <span style={{
+                  position: 'absolute',
+                  top: 5,
+                  right: 6,
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: status === 'complete' ? '#34C759' : '#FF9500',
+                }} />
+              )}
+            </button>
+          );
+        })}
         <button onClick={() => setShowTemplates(true)} style={S.tabSettings}>⚙️</button>
       </div>
 
@@ -461,7 +509,15 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         />
       )}
 
-      {/* Exercise list */}
+      {/* Exercise list — animated on day change, swipeable between days */}
+      <div
+        key={dayAnimKey}
+        className={dayAnimClass}
+        style={{ transform: `translateX(${swipe.swipeOffset}px)` }}
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
       <div style={S.exList}>
         {plan.dayExercises.map((pe, index) => {
           const done = workout.completedSets[pe.id] || 0;
@@ -514,6 +570,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         <button onClick={() => setShowAddExercise(true)} style={S.addExerciseBtn}>
           <Icon name="plus" size={18} /> ADD EXERCISE
         </button>
+      </div>
       </div>
 
       {Object.keys(workout.completedSets).length > 0 && (

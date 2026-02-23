@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { Icon, LoadingSpinner, useToast } from '@/shared/components';
+import { Icon, LoadingSpinner, useToast, HomeSkeleton, WorkoutSkeleton, DashboardSkeleton, QuickWorkoutSkeleton, ProfileSkeleton } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { colors } from '@/shared/theme/tokens';
 import { getGreeting } from '@/shared/utils';

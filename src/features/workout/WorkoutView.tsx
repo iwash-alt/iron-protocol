@@ -4,7 +4,7 @@ import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isL
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useTimer, getAdaptiveRest } from '@/shared/hooks';
-import { Icon, MiniChart } from '@/shared/components';
+import { Icon, MiniChart, EmptyState } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
@@ -64,6 +64,16 @@ const EMPTY_CUSTOM_WORKOUT_DRAFT: CustomWorkoutDraft = {
   days: [{ id: 'draft-day-1', name: '', exercises: [] }],
 };
 
+
+const DumbbellIllustration = (
+  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+    <rect x="8" y="26" width="8" height="12" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="4" y="22" width="8" height="20" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="48" y="26" width="8" height="12" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="52" y="22" width="8" height="20" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <line x1="16" y1="32" x2="48" y2="32" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+  </svg>
+);
 
 // ── WorkoutView ───────────────────────────────────────────────────────────────
 
@@ -385,6 +395,18 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     <>
       {celebrate && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🏆</div><div style={S.celebTitle}>GREAT WORK!</div></div></div>}
 
+      {plan.days.length === 0 ? (
+        <EmptyState
+          illustration={DumbbellIllustration}
+          title="No workout planned for today"
+          subtitle="Pick a template or build your own"
+          actions={[
+            { label: 'Choose Template', onClick: () => setShowTemplates(true) },
+            { label: 'Build Custom', onClick: () => { resetCustomWorkoutBuilder(); setShowCustomWorkout(true); }, variant: 'ghost' },
+          ]}
+        />
+      ) : (
+      <>
       {/* Day tabs */}
       <div style={S.tabs}>
         {plan.days.map((d, i) => (
@@ -498,6 +520,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         <button onClick={() => handleEndWorkout()} style={S.finishBtn}>
           {prog >= 100 ? 'FINISH WORKOUT' : 'END WORKOUT EARLY'}
         </button>
+      )}
+      </>
       )}
 
       {/* === Modals === */}

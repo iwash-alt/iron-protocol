@@ -38,8 +38,8 @@ export const S: Record<string, CSSProperties> = {
 
   // Tabs
   tabs: { display: 'flex', gap: spacing.sm, marginBottom: spacing.lg, overflowX: 'auto', paddingBottom: 4 },
-  tab: { padding: `${spacing.sm + 2}px ${spacing.lg}px`, borderRadius: radii.pill, border: `1px solid ${colors.surfaceHover}`, background: colors.surface, color: colors.textSecondary, cursor: 'pointer', fontSize: typography.sizes.sm, fontWeight: typography.weights.bold, whiteSpace: 'nowrap', transition: 'all 0.2s' },
-  tabActive: { background: colors.primarySurface, border: `1px solid ${colors.primaryBorder}`, color: colors.text },
+  tab: { padding: `${spacing.sm + 2}px ${spacing.lg}px`, borderRadius: radii.pill, border: '1px solid transparent', background: 'transparent', color: colors.textSecondary, cursor: 'pointer', fontSize: typography.sizes.sm, fontWeight: typography.weights.bold, whiteSpace: 'nowrap', transition: 'all 0.2s' },
+  tabActive: { background: colors.primary, border: `1px solid ${colors.primary}`, color: '#fff' },
   tabSettings: { width: 40, height: 40, borderRadius: radii.pill, border: `1px solid ${colors.surfaceHover}`, background: colors.surface, color: colors.textSecondary, cursor: 'pointer', fontSize: '1rem', flexShrink: 0 },
 
   // Progress bar

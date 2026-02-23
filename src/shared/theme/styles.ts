@@ -62,46 +62,8 @@ export const S: Record<string, CSSProperties> = {
 
   // Exercise list
   exList: { display: 'flex', flexDirection: 'column', gap: spacing.md },
-  exCard: { padding: spacing.lg, borderRadius: 18, background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, transition: 'all 0.2s' },
-  exDone: { background: colors.successSurface, border: `1px solid ${colors.successBorder}` },
-  exInProgress: { borderLeft: '3px solid rgba(52,199,89,0.5)' },
-  setCountAnimate: { animation: 'setCountPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' },
-  progressDots: { display: 'flex', gap: 4, justifyContent: 'center', marginTop: 4 },
-  progressDot: { width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', transition: 'all 0.2s ease' },
-  progressDotFilled: { background: colors.success, animation: 'dotFill 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both' },
-  exFinalFlash: { animation: 'greenFlash 0.35s ease, cardCompleteSlide 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)' },
-  exHeader: { display: 'flex', justifyContent: 'space-between', gap: spacing.md, marginBottom: spacing.md },
-  exTags: { display: 'flex', gap: spacing.sm, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' },
-  muscleTag: { fontSize: '0.6rem', fontWeight: typography.weights.black, padding: `4px 10px`, borderRadius: radii.sm, background: colors.surfaceBorder, color: colors.textSecondary, letterSpacing: '0.03em' },
-  doneTag: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6rem', fontWeight: typography.weights.black, padding: `4px 10px`, borderRadius: radii.sm, background: `rgba(52,199,89,0.15)`, color: colors.success },
-  exName: { fontSize: typography.sizes.xl, fontWeight: typography.weights.bold, margin: 0 },
-  exActions: { display: 'flex', gap: 6 },
-  historyBtn: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.surfaceHover}`, background: colors.surface, color: colors.textSecondary, cursor: 'pointer' },
-  warmupBtn: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.warningBorder}`, background: 'rgba(255,149,0,0.08)', color: colors.warning, cursor: 'pointer' },
-  warmupBtnActive: { padding: spacing.sm, borderRadius: radii.md, border: '1px solid rgba(255,149,0,0.4)', background: colors.warningSurface, color: colors.warning, cursor: 'pointer' },
-  editBtn: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.infoBorder}`, background: 'rgba(59,130,246,0.08)', color: colors.info, cursor: 'pointer' },
-  swapBtn: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.surfaceHover}`, background: colors.surface, color: colors.textSecondary, cursor: 'pointer' },
-  playBtn: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid rgba(255,59,48,0.25)`, background: 'rgba(255,59,48,0.08)', color: colors.primary, cursor: 'pointer' },
-
-  // Warmup
-  warmupBox: { marginTop: spacing.md, padding: spacing.xl - 6, borderRadius: radii.lg, background: 'rgba(255,149,0,0.08)', border: '1px solid rgba(255,149,0,0.2)' },
-  warmupTitle: { fontSize: typography.sizes.sm, fontWeight: typography.weights.black, color: colors.warning, marginBottom: 10, letterSpacing: '0.05em' },
-  warmupGrid: { display: 'flex', flexDirection: 'column', gap: spacing.sm },
-  warmupRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: typography.sizes.md, color: '#ddd' },
-  warmupLabel: { color: colors.warning, fontWeight: typography.weights.bold },
-  warmupVal: { fontWeight: typography.weights.bold },
-
-  // Stats grid
-  stats: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: spacing.sm, marginTop: spacing.md, marginBottom: spacing.xl - 6 },
-  stat: { padding: `${spacing.sm + 2}px ${spacing.sm}px`, borderRadius: radii.lg, background: colors.surface, border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' },
-  statLabel: { fontSize: typography.sizes.xs, color: colors.textTertiary, fontWeight: typography.weights.black, marginBottom: 4, letterSpacing: '0.03em' },
-  statVal: { fontSize: typography.sizes.xl, fontWeight: typography.weights.black, color: colors.text },
-  statValRed: { fontSize: typography.sizes.xl, fontWeight: typography.weights.black, color: colors.primary },
-  statValGreen: { fontSize: typography.sizes.xl, fontWeight: typography.weights.black, color: colors.success },
 
   // Buttons
-  completeBtn: { width: '100%', padding: '14px', borderRadius: radii.xl, border: 'none', background: colors.primaryGradient, color: colors.text, cursor: 'pointer', fontWeight: typography.weights.black, fontSize: typography.sizes.lg, boxShadow: `0 4px 15px ${colors.primaryGlow}` },
-  completeBtnOff: { background: 'rgba(255,255,255,0.05)', color: colors.textTertiary, cursor: 'not-allowed', boxShadow: 'none' },
   addExerciseBtn: { width: '100%', padding: '14px', borderRadius: radii.xl, border: '1px dashed rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: colors.textSecondary, cursor: 'pointer', fontWeight: typography.weights.bold, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, fontSize: typography.sizes.lg },
   finishBtn: { width: '100%', padding: '16px', borderRadius: radii.xxl, border: 'none', background: colors.successGradient, color: colors.text, cursor: 'pointer', fontWeight: typography.weights.black, fontSize: typography.sizes.xl, marginTop: spacing.lg, boxShadow: `0 4px 15px ${colors.successGlow}` },
 

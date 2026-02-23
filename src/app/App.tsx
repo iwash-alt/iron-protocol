@@ -21,8 +21,13 @@ runMigrations();
 function dismissSplash() {
   const splash = document.getElementById('splash');
   if (!splash) return;
-  splash.classList.add('hide');
-  window.setTimeout(() => splash.remove(), TIMINGS.ANIMATION_SLOW);
+  const splashStart = (window as Window & { __splashStart?: number }).__splashStart ?? Date.now();
+  const elapsed = Date.now() - splashStart;
+  const delay = Math.max(0, 300 - elapsed);
+  window.setTimeout(() => {
+    splash.classList.add('hide');
+    window.setTimeout(() => splash.remove(), TIMINGS.ANIMATION_FAST);
+  }, delay);
 }
 
 function useHashRoute() {

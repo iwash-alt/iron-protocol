@@ -43,6 +43,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <title>Iron Protocol</title>
+    <script>window.__splashStart = Date.now();</script>
 
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -63,20 +64,12 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        transition: opacity 0.4s ease, visibility 0.4s ease;
+        transition: opacity 0.15s ease, visibility 0.15s ease;
       }
       #splash.hide {
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
-      }
-
-      /* Dumbbell icon */
-      .splash-icon {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 24px;
-        animation: splashPulse 2s ease-in-out infinite;
       }
 
       /* Wordmark */
@@ -87,54 +80,29 @@
         letter-spacing: 6px;
         color: #fff;
         text-transform: uppercase;
-        animation: splashPulse 2s ease-in-out infinite;
       }
 
-      /* Loading bar */
-      .splash-loader {
-        margin-top: 32px;
-        width: 120px;
-        height: 3px;
-        background: rgba(255,255,255,0.08);
-        border-radius: 2px;
-        overflow: hidden;
-      }
-      .splash-loader-bar {
-        width: 40%;
-        height: 100%;
-        background: #FF3B30;
-        border-radius: 2px;
-        animation: splashLoad 1.2s ease-in-out infinite;
+      /* Red pulse ring */
+      .splash-pulse {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: 2px solid #FF3B30;
+        margin-top: 24px;
+        animation: splashRingPulse 0.8s ease-in-out infinite;
       }
 
-      @keyframes splashPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-      }
-      @keyframes splashLoad {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(350%); }
+      @keyframes splashRingPulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; box-shadow: 0 0 0 0 rgba(255,59,48,0); }
+        50%       { transform: scale(1.1); opacity: 1; box-shadow: 0 0 12px 4px rgba(255,59,48,0.3); }
       }
     </style>
   </head>
   <body>
     <!-- Splash Screen (visible while JS loads) -->
     <div id="splash">
-      <svg class="splash-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <g transform="translate(32,32)">
-          <rect x="-24" y="-14" width="6" height="28" rx="2" fill="#FF3B30"/>
-          <rect x="18" y="-14" width="6" height="28" rx="2" fill="#FF3B30"/>
-          <rect x="-18" y="-10" width="5" height="20" rx="2" fill="#FF3B30" opacity="0.75"/>
-          <rect x="13" y="-10" width="5" height="20" rx="2" fill="#FF3B30" opacity="0.75"/>
-          <rect x="-13" y="-2" width="26" height="4" rx="2" fill="#fff" opacity="0.9"/>
-          <rect x="-27" y="-2" width="3" height="4" rx="1.5" fill="#fff" opacity="0.5"/>
-          <rect x="24" y="-2" width="3" height="4" rx="1.5" fill="#fff" opacity="0.5"/>
-        </g>
-      </svg>
       <div class="splash-wordmark">Iron Protocol</div>
-      <div class="splash-loader">
-        <div class="splash-loader-bar"></div>
-      </div>
+      <div class="splash-pulse"></div>
     </div>
 
     <noscript>You need to enable JavaScript to run this app.</noscript>

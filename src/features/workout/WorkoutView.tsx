@@ -395,7 +395,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
   const handleDayChange = (index: number) => {
     if (index === plan.dayIndex) return;
-    const animClass = index > plan.dayIndex ? 'tab-enter-right' : 'tab-enter-left';
+    const animClass = index > plan.dayIndex ? 'day-enter-right' : 'day-enter-left';
     plan.setDayIndex(index);
     workout.resetWorkoutState();
     setDayAnimKey(prev => prev + 1);

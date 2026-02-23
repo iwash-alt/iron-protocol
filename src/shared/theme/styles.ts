@@ -712,6 +712,11 @@ export const globalCss = `
     to { opacity: 1; transform: translateY(0); }
   }
 
+  @keyframes skeletonPulse {
+    0%, 100% { background: #1a1a1a; }
+    50%       { background: #222; }
+  }
+
   @keyframes slideUp {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
@@ -762,9 +767,42 @@ export const globalCss = `
     animation: slideDown 0.25s ease-in both;
   }
 
-  /* Tab transition classes */
-  .tab-enter-right { animation: tabSlideLeft 0.25s ease both; }
-  .tab-enter-left { animation: tabSlideRight 0.25s ease both; }
+  /* Day navigation — keeps spatial slide metaphor (used by WorkoutView) */
+  .day-enter-right { animation: tabSlideLeft 0.2s ease both; }
+  .day-enter-left  { animation: tabSlideRight 0.2s ease both; }
+
+  /* Tab transitions — cross-fade (no spatial relationship between tabs) */
+  @keyframes tabFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes tabChildIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .tab-enter-right,
+  .tab-enter-left {
+    animation: tabFadeIn 150ms ease both;
+  }
+
+  .tab-enter-right > *,
+  .tab-enter-left > * {
+    animation: tabChildIn 200ms ease both;
+    animation-fill-mode: both;
+  }
+
+  .tab-enter-right > *:nth-child(1),
+  .tab-enter-left > *:nth-child(1) { animation-delay: 0ms; }
+  .tab-enter-right > *:nth-child(2),
+  .tab-enter-left > *:nth-child(2) { animation-delay: 80ms; }
+  .tab-enter-right > *:nth-child(3),
+  .tab-enter-left > *:nth-child(3) { animation-delay: 160ms; }
+  .tab-enter-right > *:nth-child(4),
+  .tab-enter-left > *:nth-child(4) { animation-delay: 240ms; }
+  .tab-enter-right > *:nth-child(5),
+  .tab-enter-left > *:nth-child(5) { animation-delay: 320ms; }
 
   /* Set completion micro-interactions */
   @keyframes setCountPop {

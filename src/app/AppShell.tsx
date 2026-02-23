@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { Icon, LoadingSpinner } from '@/shared/components';
+import { Icon, LoadingSpinner, WorkoutSkeleton, DashboardSkeleton, QuickWorkoutSkeleton, HomeSkeleton, ProfileSkeleton } from '@/shared/components';
 import { S, globalCss } from '@/shared/theme/styles';
 import { colors } from '@/shared/theme/tokens';
 import { getGreeting } from '@/shared/utils';
@@ -124,11 +124,19 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
       >
         {activeTab === 'dashboard' && (pull.pullDistance > 0 || isRefreshing) && <div style={{ ...S.pullRefresh, height: isRefreshing ? 50 : Math.min(pull.pullDistance, 60) }}><span style={{ ...S.pullRefreshSpinner, animation: isRefreshing ? 'pullRefreshSpin 0.8s linear infinite' : 'none' }}><Icon name="refresh" size={22} /></span></div>}
 
-        <Suspense fallback={<LoadingSpinner />}>
-          <div className={transitionClass} key={activeTab}>
-            {activeTab === 'home' && <HomeTab profile={profile} onNavigateToWorkout={() => handleTabSwitch('workout')} />}
-            {activeTab === 'workout' && <WorkoutView profile={profile} />}
-            {activeTab === 'dashboard' && (
+        <div className={transitionClass} key={activeTab}>
+          {activeTab === 'home' && (
+            <Suspense fallback={<HomeSkeleton />}>
+              <HomeTab profile={profile} onNavigateToWorkout={() => handleTabSwitch('workout')} />
+            </Suspense>
+          )}
+          {activeTab === 'workout' && (
+            <Suspense fallback={<WorkoutSkeleton />}>
+              <WorkoutView profile={profile} />
+            </Suspense>
+          )}
+          {activeTab === 'dashboard' && (
+            <Suspense fallback={<DashboardSkeleton />}>
               <Dashboard
                 profile={profile}
                 streak={currentStreak}
@@ -137,11 +145,19 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
                 demoMode={demoMode.enabled}
                 onToggleDemo={demoMode.setEnabled}
               />
-            )}
-            {activeTab === 'quick' && <QuickWorkoutList onStart={setQuickWorkout} onClose={() => handleTabSwitch('workout')} inline />}
-            {activeTab === 'profile' && <Profile profile={profile} onProfileUpdate={onProfileUpdate} />}
-          </div>
-        </Suspense>
+            </Suspense>
+          )}
+          {activeTab === 'quick' && (
+            <Suspense fallback={<QuickWorkoutSkeleton />}>
+              <QuickWorkoutList onStart={setQuickWorkout} onClose={() => handleTabSwitch('workout')} inline />
+            </Suspense>
+          )}
+          {activeTab === 'profile' && (
+            <Suspense fallback={<ProfileSkeleton />}>
+              <Profile profile={profile} onProfileUpdate={onProfileUpdate} />
+            </Suspense>
+          )}
+        </div>
       </main>
 
       {showMeasurements && <MeasurementsModal currentWeight={profile.weight} onSave={(data) => { progress.saveMeasurement(data); setShowMeasurements(false); }} onClose={() => setShowMeasurements(false)} />}

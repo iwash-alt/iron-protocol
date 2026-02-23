@@ -4,7 +4,7 @@ import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isL
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useTimer, getAdaptiveRest, useSwipeNavigation } from '@/shared/hooks';
-import { Icon, MiniChart, EmptyState } from '@/shared/components';
+import { Icon, MiniChart, EmptyState, useToast } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
@@ -16,8 +16,7 @@ import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { evaluateSuggestions } from '@/training/suggestions';
 
-import type { WorkoutSuggestion } from '@/training/suggestions';
-import { SuggestionToast } from './SuggestionToast';
+import type { SuggestionEvent } from '@/training/suggestions';
 import { ReadinessCheck, getTodayReadiness } from '@/features/readiness/ReadinessCheck';
 import type { ReadinessResult } from '@/features/readiness/ReadinessCheck';
 import { HowToModal } from '@/ui/modals/HowToModal';
@@ -26,6 +25,18 @@ import type { WorkoutSummaryData } from './WorkoutSummary';
 
 
 type ExerciseDataModule = typeof import('@/data/exercises');
+
+// ── Suggestion logging (persisted for future ML training) ─────────────────────
+const SUGGESTION_LOG_KEY = 'ironSuggestionLog';
+
+function logSuggestionEvent(event: SuggestionEvent): void {
+  try {
+    const raw = localStorage.getItem(SUGGESTION_LOG_KEY);
+    const log: SuggestionEvent[] = raw ? (JSON.parse(raw) as SuggestionEvent[]) : [];
+    log.push(event);
+    localStorage.setItem(SUGGESTION_LOG_KEY, JSON.stringify(log.slice(-200)));
+  } catch { /* ignore */ }
+}
 
 /** Map a raw MuscleGroup (e.g. 'Lats') to its curated filter value (e.g. 'Back') */
 function toCuratedMuscle(raw: string): MuscleFilter {
@@ -94,7 +105,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [showCustomWorkout, setShowCustomWorkout] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showExerciseHistory, setShowExerciseHistory] = useState<string | null>(null);
-  const [celebrate, setCelebrate] = useState(false);
   const [justCompleted, setJustCompleted] = useState<{ exerciseId: string; setNum: number } | null>(null);
   const [restTimerEnding, setRestTimerEnding] = useState(false);
   const [restPulseTarget, setRestPulseTarget] = useState<string | null>(null);
@@ -148,7 +158,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   }, [exerciseData, exSearch, exEquipment, exMuscle]);
 
   // Intelligence features (Pro only)
-  const [activeSuggestion, setActiveSuggestion] = useState<WorkoutSuggestion | null>(null);
+  const { showToast, dismissToast } = useToast();
+  const activeSuggestionToastId = useRef<string | null>(null);
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
   const [showReadinessCheck, setShowReadinessCheck] = useState<boolean>(() => {
     if (!isPro) return false;
@@ -264,14 +275,36 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       );
       const newSuggestion = suggestions.find(s => !dismissedSuggestionIds.has(s.id));
       if (newSuggestion) {
-        setActiveSuggestion(newSuggestion);
+        if (activeSuggestionToastId.current) dismissToast(activeSuggestionToastId.current);
+        const suggestion = newSuggestion;
+        setDismissedSuggestionIds(prev => new Set([...prev, suggestion.id]));
+        activeSuggestionToastId.current = showToast({
+          type: 'suggestion',
+          message: suggestion.message,
+          actions: [
+            {
+              label: 'GOT IT',
+              primary: true,
+              onClick: () => {
+                logSuggestionEvent({ suggestion, outcome: 'accepted', respondedAt: Date.now() });
+                activeSuggestionToastId.current = null;
+              },
+            },
+            {
+              label: 'DISMISS',
+              onClick: () => {
+                logSuggestionEvent({ suggestion, outcome: 'dismissed', respondedAt: Date.now() });
+                activeSuggestionToastId.current = null;
+              },
+            },
+          ],
+        });
       }
     }
 
     const setNum = (workout.completedSets[exercise.id] || 0) + 1;
     if (setNum === exercise.sets) {
-      setCelebrate(true);
-      setTimeout(() => setCelebrate(false), TIMINGS.CELEBRATION_DURATION);
+      showToast({ type: 'success', message: '✅ All sets complete!' });
     }
     setShowRPE(null);
   };
@@ -281,6 +314,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       setShowEndConfirm(true);
       return;
     }
+
+    const endedEarly = force && workout.progress() < 100;
 
     // Capture summary BEFORE endWorkout resets state
     const summary = buildWorkoutSummary(
@@ -299,6 +334,10 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
     // Show summary instead of celebrate animation
     setSummaryData(summary);
+
+    if (endedEarly) {
+      showToast({ type: 'warning', message: 'Workout ended early' });
+    }
   };
 
   const handleSummaryDone = () => {
@@ -422,8 +461,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
   return (
     <>
-      {celebrate && <div style={S.celebrate}><div style={S.celebContent}><div style={{ fontSize: 48 }}>🏆</div><div style={S.celebTitle}>GREAT WORK!</div></div></div>}
-
       {plan.days.length === 0 ? (
         <EmptyState
           illustration={DumbbellIllustration}
@@ -496,17 +533,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             </div>
           )}
         </div>
-      )}
-
-      {/* Mid-workout suggestion toast (Pro) */}
-      {activeSuggestion && (
-        <SuggestionToast
-          suggestion={activeSuggestion}
-          onDismiss={() => {
-            setDismissedSuggestionIds(prev => new Set([...prev, activeSuggestion.id]));
-            setActiveSuggestion(null);
-          }}
-        />
       )}
 
       {/* Exercise list — animated on day change, swipeable between days */}

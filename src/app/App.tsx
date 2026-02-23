@@ -1,6 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { ErrorBoundary, LoadingSpinner } from '@/shared/components';
+import { ErrorBoundary, LoadingSpinner, ToastProvider } from '@/shared/components';
 import { TIMINGS } from '@/shared/constants/timings';
 import { loadProfile, runMigrations, saveProfile } from '@/shared/storage';
 import { DemoModeProvider } from '@/shared/demo/DemoModeContext';
@@ -66,6 +66,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ToastProvider>
       <EntitlementProvider>
         <ProfilePhotoProvider>
           <DemoModeProvider>
@@ -80,6 +81,7 @@ export default function App() {
           </DemoModeProvider>
         </ProfilePhotoProvider>
       </EntitlementProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

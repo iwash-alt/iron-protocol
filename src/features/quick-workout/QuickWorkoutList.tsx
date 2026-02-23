@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Icon, ExerciseBrowserModal } from '@/shared/components';
+import { Icon, ExerciseBrowserModal, EmptyState } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
-import { colors } from '@/shared/theme/tokens';
+import { colors, spacing } from '@/shared/theme/tokens';
 import { quickTemplates as defaultTemplates } from '@/data/quick-templates';
 import type { QuickTemplate, QuickExerciseConfig, Difficulty } from '@/data/quick-templates';
 import type { Exercise } from '@/shared/types';
@@ -84,7 +84,7 @@ export function QuickWorkoutList({ onStart, onClose, inline }: QuickWorkoutListP
 
   const handleRemove = useCallback((index: number) => {
     setEditingExercises(prev => {
-      if (!prev || prev.length <= 1) return prev;
+      if (!prev || prev.length === 0) return prev;
       const updated = prev.filter((_, i) => i !== index);
       dirtyRef.current = true;
       return updated;
@@ -168,51 +168,59 @@ export function QuickWorkoutList({ onStart, onClose, inline }: QuickWorkoutListP
               {/* Expanded body */}
               {isExpanded && editingExercises && (
                 <div style={S.quickExpandedBody}>
-                  {editingExercises.map((ex, idx) => (
-                    <div key={`${ex.name}-${idx}`} style={S.quickExRow}>
-                      <div style={S.quickExName}>{ex.name}</div>
-                      <div style={S.quickExDetail}>{formatExerciseDetail(ex)}</div>
-                      <div style={S.quickExControls}>
-                        <button
-                          style={S.quickAdjustBtn}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const field = ex.durationSeconds !== null ? 'durationSeconds' : 'reps';
-                            const step = field === 'durationSeconds' ? -5 : -1;
-                            handleAdjust(idx, field, step);
-                          }}
-                        >
-                          −
-                        </button>
-                        <button
-                          style={S.quickAdjustBtn}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const field = ex.durationSeconds !== null ? 'durationSeconds' : 'reps';
-                            const step = field === 'durationSeconds' ? 5 : 1;
-                            handleAdjust(idx, field, step);
-                          }}
-                        >
-                          +
-                        </button>
-                        <button
-                          style={{
-                            ...S.quickRemoveBtn,
-                            ...(editingExercises.length <= 1 ? { opacity: 0.3, cursor: 'not-allowed' } : {}),
-                          }}
-                          disabled={editingExercises.length <= 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemove(idx);
-                          }}
-                        >
-                          <Icon name="x" size={14} />
-                        </button>
+                  {editingExercises.length === 0 ? (
+                    <EmptyState
+                      illustration={<Icon name="plus" size={40} />}
+                      title="Add exercises to customise this workout"
+                      style={{ padding: `${spacing.lg}px ${spacing.sm}px` }}
+                    />
+                  ) : (
+                    editingExercises.map((ex, idx) => (
+                      <div key={`${ex.name}-${idx}`} style={S.quickExRow}>
+                        <div style={S.quickExName}>{ex.name}</div>
+                        <div style={S.quickExDetail}>{formatExerciseDetail(ex)}</div>
+                        <div style={S.quickExControls}>
+                          <button
+                            style={S.quickAdjustBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const field = ex.durationSeconds !== null ? 'durationSeconds' : 'reps';
+                              const step = field === 'durationSeconds' ? -5 : -1;
+                              handleAdjust(idx, field, step);
+                            }}
+                          >
+                            −
+                          </button>
+                          <button
+                            style={S.quickAdjustBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const field = ex.durationSeconds !== null ? 'durationSeconds' : 'reps';
+                              const step = field === 'durationSeconds' ? 5 : 1;
+                              handleAdjust(idx, field, step);
+                            }}
+                          >
+                            +
+                          </button>
+                          <button
+                            style={{
+                              ...S.quickRemoveBtn,
+                              ...(editingExercises.length === 0 ? { opacity: 0.3, cursor: 'not-allowed' } : {}),
+                            }}
+                            disabled={editingExercises.length === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemove(idx);
+                            }}
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
 
-                  {/* Add exercise button */}
+                  {/* Add exercise button — always visible */}
                   <button
                     style={S.quickAddExBtn}
                     onClick={(e) => {
@@ -223,7 +231,8 @@ export function QuickWorkoutList({ onStart, onClose, inline }: QuickWorkoutListP
                     <Icon name="plus" size={14} /> Add Exercise
                   </button>
 
-                  {/* Start button */}
+                  {/* Start button — hidden when no exercises */}
+                  {editingExercises.length > 0 && (
                   <button
                     style={S.quickStartBtn}
                     onClick={(e) => {
@@ -233,6 +242,7 @@ export function QuickWorkoutList({ onStart, onClose, inline }: QuickWorkoutListP
                   >
                     START WORKOUT
                   </button>
+                  )}
 
                   {/* Reset button (only if customized) */}
                   {customized && (

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { UserProfile, ExercisePR } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProgress } from './progress.context';
-import { MiniChart, Icon } from '@/shared/components';
+import { MiniChart, Icon, EmptyState } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { formatVolume } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
@@ -33,6 +33,16 @@ function isNewPR(dateStr: string | undefined): boolean {
   const diff = (now.getTime() - prDate.getTime()) / 86400000;
   return diff <= 7;
 }
+
+const ChartIllustration = (
+  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+    <rect x="8" y="40" width="10" height="16" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="22" y="28" width="10" height="28" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="36" y="20" width="10" height="36" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <rect x="50" y="32" width="10" height="24" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <line x1="8" y1="58" x2="60" y2="58" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
 
 interface DashboardProps {
   profile: UserProfile;
@@ -112,6 +122,14 @@ export function Dashboard({
         </div>
       </div>
 
+      {workout.workoutHistory.length === 0 && (
+        <EmptyState
+          illustration={ChartIllustration}
+          title="Train for a few days and your insights will appear here"
+          subtitle="Your first workout builds the foundation"
+        />
+      )}
+
       {workout.weekCount > 0 && (
         <div style={S.weekCard}>
           {'\u{1F4C5}'} Training Week {workout.weekCount}
@@ -189,81 +207,90 @@ export function Dashboard({
       )}
 
       {/* Enhanced Personal Records Board */}
-      {Object.keys(workout.personalRecords).length > 0 && (
-        <div style={S.chartBox}>
-          <h3 style={S.chartTitle}>{'\u{1F3C6}'} Personal Records</h3>
+      <div style={S.chartBox}>
+        <h3 style={S.chartTitle}>{'\u{1F3C6}'} Personal Records</h3>
 
-          {/* Muscle group filter tabs */}
-          <div style={prStyles.filterRow}>
-            {Object.keys(PR_FILTER_GROUPS).map(group => (
-              <button
-                key={group}
-                onClick={() => setPrFilter(group)}
-                style={{
-                  ...prStyles.filterBtn,
-                  ...(prFilter === group ? prStyles.filterBtnActive : {}),
-                }}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-
-          {/* Global PRs */}
-          {prFilter === 'All' && workout.globalPRs && (
-            <div style={prStyles.globalSection}>
-              <div style={prStyles.globalTitle}>GLOBAL RECORDS</div>
-              <div style={prStyles.globalGrid}>
-                {workout.globalPRs.highestSessionVolume && (
-                  <div style={prStyles.globalItem}>
-                    <div style={prStyles.globalLabel}>Session Volume</div>
-                    <div style={prStyles.globalValue}>{formatVolume(workout.globalPRs.highestSessionVolume.value)}</div>
-                    <div style={prStyles.globalDate}>{workout.globalPRs.highestSessionVolume.date}</div>
-                  </div>
-                )}
-                {workout.globalPRs.longestStreak && (
-                  <div style={prStyles.globalItem}>
-                    <div style={prStyles.globalLabel}>Longest Streak</div>
-                    <div style={prStyles.globalValue}>{workout.globalPRs.longestStreak.days}d</div>
-                    <div style={prStyles.globalDate}>ended {workout.globalPRs.longestStreak.endDate}</div>
-                  </div>
-                )}
-                {workout.globalPRs.mostSetsInWorkout && (
-                  <div style={prStyles.globalItem}>
-                    <div style={prStyles.globalLabel}>Most Sets</div>
-                    <div style={prStyles.globalValue}>{workout.globalPRs.mostSetsInWorkout.count}</div>
-                    <div style={prStyles.globalDate}>{workout.globalPRs.mostSetsInWorkout.date}</div>
-                  </div>
-                )}
-                {workout.globalPRs.highestAvgRPE && (
-                  <div style={prStyles.globalItem}>
-                    <div style={prStyles.globalLabel}>Toughest Avg RPE</div>
-                    <div style={prStyles.globalValue}>{workout.globalPRs.highestAvgRPE.value}</div>
-                    <div style={prStyles.globalDate}>{workout.globalPRs.highestAvgRPE.date}</div>
-                  </div>
-                )}
-              </div>
+        {Object.keys(workout.personalRecords).length > 0 ? (
+          <>
+            {/* Muscle group filter tabs */}
+            <div style={prStyles.filterRow}>
+              {Object.keys(PR_FILTER_GROUPS).map(group => (
+                <button
+                  key={group}
+                  onClick={() => setPrFilter(group)}
+                  style={{
+                    ...prStyles.filterBtn,
+                    ...(prFilter === group ? prStyles.filterBtnActive : {}),
+                  }}
+                >
+                  {group}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Per-exercise PRs */}
-          <div style={prStyles.exerciseList}>
-            {filteredPRs.map(([name, pr]) => (
-              <PRExerciseCard
-                key={name}
-                name={name}
-                pr={pr}
-                onClick={() => onShowExerciseHistory(name)}
-              />
-            ))}
-            {filteredPRs.length === 0 && (
-              <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '16px 0', fontSize: typography.sizes.md }}>
-                No PRs for this muscle group yet
-              </p>
+            {/* Global PRs */}
+            {prFilter === 'All' && workout.globalPRs && (
+              <div style={prStyles.globalSection}>
+                <div style={prStyles.globalTitle}>GLOBAL RECORDS</div>
+                <div style={prStyles.globalGrid}>
+                  {workout.globalPRs.highestSessionVolume && (
+                    <div style={prStyles.globalItem}>
+                      <div style={prStyles.globalLabel}>Session Volume</div>
+                      <div style={prStyles.globalValue}>{formatVolume(workout.globalPRs.highestSessionVolume.value)}</div>
+                      <div style={prStyles.globalDate}>{workout.globalPRs.highestSessionVolume.date}</div>
+                    </div>
+                  )}
+                  {workout.globalPRs.longestStreak && (
+                    <div style={prStyles.globalItem}>
+                      <div style={prStyles.globalLabel}>Longest Streak</div>
+                      <div style={prStyles.globalValue}>{workout.globalPRs.longestStreak.days}d</div>
+                      <div style={prStyles.globalDate}>ended {workout.globalPRs.longestStreak.endDate}</div>
+                    </div>
+                  )}
+                  {workout.globalPRs.mostSetsInWorkout && (
+                    <div style={prStyles.globalItem}>
+                      <div style={prStyles.globalLabel}>Most Sets</div>
+                      <div style={prStyles.globalValue}>{workout.globalPRs.mostSetsInWorkout.count}</div>
+                      <div style={prStyles.globalDate}>{workout.globalPRs.mostSetsInWorkout.date}</div>
+                    </div>
+                  )}
+                  {workout.globalPRs.highestAvgRPE && (
+                    <div style={prStyles.globalItem}>
+                      <div style={prStyles.globalLabel}>Toughest Avg RPE</div>
+                      <div style={prStyles.globalValue}>{workout.globalPRs.highestAvgRPE.value}</div>
+                      <div style={prStyles.globalDate}>{workout.globalPRs.highestAvgRPE.date}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
-          </div>
-        </div>
-      )}
+
+            {/* Per-exercise PRs */}
+            <div style={prStyles.exerciseList}>
+              {filteredPRs.map(([name, pr]) => (
+                <PRExerciseCard
+                  key={name}
+                  name={name}
+                  pr={pr}
+                  onClick={() => onShowExerciseHistory(name)}
+                />
+              ))}
+              {filteredPRs.length === 0 && (
+                <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '16px 0', fontSize: typography.sizes.md }}>
+                  No PRs for this muscle group yet
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <EmptyState
+            illustration={<Icon name="trophy" size={64} />}
+            title="Your records board is empty"
+            subtitle="Complete your first workout to set your baseline"
+            style={{ padding: `${spacing.xl}px ${spacing.md}px` }}
+          />
+        )}
+      </div>
 
       <div style={S.chartBox}>
         <div style={S.chartHeader}>

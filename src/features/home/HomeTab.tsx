@@ -59,6 +59,10 @@ export function HomeTab({ profile, onNavigateToWorkout }: HomeTabProps) {
         workoutHistory={workout.workoutHistory}
       />
 
+      {workoutDates.size === 0 && (
+        <p style={streakHintStyle}>Start a streak — log your first workout today</p>
+      )}
+
       {/* Greeting */}
       <div style={hs.greeting}>
         <h2 style={hs.greetingText}>Good {greeting}, {firstName}</h2>
@@ -180,6 +184,15 @@ export function HomeTab({ profile, onNavigateToWorkout }: HomeTabProps) {
     </div>
   );
 }
+
+const streakHintStyle: React.CSSProperties = {
+  textAlign: 'center',
+  fontSize: typography.sizes.sm,
+  color: colors.textTertiary,
+  marginTop: spacing.xs,
+  marginBottom: spacing.sm,
+  fontStyle: 'italic',
+};
 
 // ── Calendar Strip ──────────────────────────────────────────────────────────
 

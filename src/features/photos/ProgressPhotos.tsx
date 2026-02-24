@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { Icon } from '@/shared/components';
+import { Icon, useToast } from '@/shared/components';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import {
   loadProgressPhotos, addProgressPhoto, deleteProgressPhoto,
@@ -26,8 +26,8 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelection, setCompareSelection] = useState<ProgressPhoto[]>([]);
   const [showCompare, setShowCompare] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute when photos changes
   const storageInfo = useMemo(() => getProgressPhotosStorageInfo(), [photos.length]);
@@ -42,7 +42,6 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     setProcessing(true);
-    setError(null);
     try {
       const data = await processProgressPhoto(file);
       const thumbnail = await generateThumbnail(data);
@@ -59,16 +58,16 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
         setPhotos(loadProgressPhotos());
         setShowAddFlow(false);
       } else {
-        setError(result.message || 'Failed to save photo');
+        showToast({ type: 'warning', message: result.message || 'Failed to save photo' });
       }
     } catch (err) {
       console.error('Failed to process progress photo:', err);
-      setError('Failed to process photo. Please try again.');
+      showToast({ type: 'warning', message: 'Failed to process photo. Please try again.' });
     } finally {
       setProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [addPose, currentWeight]);
+  }, [addPose, currentWeight, showToast]);
 
   const handleDelete = useCallback((id: string) => {
     deleteProgressPhoto(id);
@@ -114,7 +113,7 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
       {/* Controls row */}
       <div style={ps.controls}>
         <button
-          onClick={() => { setShowAddFlow(true); setError(null); }}
+          onClick={() => { setShowAddFlow(true); }}
           style={ps.addBtn}
           disabled={storageInfo.count >= storageInfo.maxCount}
         >
@@ -234,8 +233,6 @@ export function ProgressPhotos({ currentWeight }: ProgressPhotosProps) {
 
             <label style={ps.fieldLabel}>Weight</label>
             <div style={ps.weightDisplay}>{currentWeight} kg</div>
-
-            {error && <div style={ps.errorMsg}>{error}</div>}
 
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -587,16 +584,6 @@ const ps: Record<string, React.CSSProperties> = {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
     marginBottom: spacing.lg,
-  },
-  errorMsg: {
-    padding: spacing.md,
-    borderRadius: radii.md,
-    background: 'rgba(255,59,48,0.1)',
-    border: `1px solid ${colors.primaryBorder}`,
-    color: colors.primary,
-    fontSize: typography.sizes.md,
-    marginBottom: spacing.md,
-    textAlign: 'center',
   },
   captureBtn: {
     width: '100%',

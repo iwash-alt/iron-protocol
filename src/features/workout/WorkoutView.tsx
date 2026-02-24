@@ -124,21 +124,31 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   // Ref to hold the current "next exercise" ID for the timer complete callback
   const nextExerciseIdRef = useRef<string | null>(null);
 
+  // Ref map: exerciseId → card DOM element for scroll-into-view
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const scrollToCard = useCallback((exerciseId: string, block: ScrollLogicalPosition = 'center') => {
+    const el = cardRefs.current.get(exerciseId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block });
+  }, []);
+
   const handleTimerComplete = useCallback(() => {
     // Brief vibration on timer end
     navigator.vibrate?.(100);
 
-    // Pulse the next exercise card
+    // Pulse the next exercise card and scroll it into center view
     const targetId = nextExerciseIdRef.current;
     if (targetId) {
       setRestPulseTarget(targetId);
       setTimeout(() => setRestPulseTarget(null), TIMINGS.REST_PULSE_DURATION);
+      scrollToCard(targetId, 'center');
     }
 
     // Slide-up collapse animation
     setRestTimerEnding(true);
     setTimeout(() => setRestTimerEnding(false), TIMINGS.REST_BANNER_COLLAPSE);
-  }, []);
+  }, [scrollToCard]);
 
   const timer = useTimer(handleTimerComplete);
 
@@ -307,6 +317,29 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       showToast({ type: 'success', message: '✅ All sets complete!' });
     }
     setShowRPE(null);
+
+    // Scroll to the next exercise card after set completion animation
+    // Compute synchronously — workout.completedSets hasn't updated yet
+    const newDoneCount = (workout.completedSets[exercise.id] || 0) + 1;
+    const exercises = plan.dayExercises;
+    const currentIndex = exercises.findIndex(pe => pe.id === exercise.id);
+    let scrollTargetId: string | null = null;
+    if (newDoneCount < exercise.sets) {
+      scrollTargetId = exercise.id;
+    } else {
+      for (let i = currentIndex + 1; i < exercises.length; i++) {
+        const pe = exercises[i];
+        if ((workout.completedSets[pe.id] || 0) < pe.sets) {
+          scrollTargetId = pe.id;
+          break;
+        }
+      }
+    }
+    if (scrollTargetId) {
+      const targetId = scrollTargetId;
+      // 'nearest' gives partial reveal below the sticky rest banner
+      setTimeout(() => scrollToCard(targetId, 'nearest'), TIMINGS.SET_COMPLETE_DURATION + 50);
+    }
   };
 
   const handleEndWorkout = (force = false) => {
@@ -334,6 +367,9 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
     // Show summary instead of celebrate animation
     setSummaryData(summary);
+
+    // Scroll to top so the summary overlay renders from the start
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (endedEarly) {
       showToast({ type: 'warning', message: 'Workout ended early' });
@@ -566,31 +602,38 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             : 0;
 
           return (
-            <ExerciseCard
+            <div
               key={pe.id}
-              exercise={pe}
-              index={index}
-              isFirst={index === 0}
-              isLast={index === plan.dayExercises.length - 1}
-              completedSets={done}
-              currentVolume={currentExVol}
-              previousVolume={previousExVol}
-              isWarmupOpen={showWarmup === pe.id}
-              hasHistory={hasHistory}
-              isResting={timer.isActive && workout.restTimerFor === pe.id}
-              restSeconds={timer.seconds}
-              justCompleted={justCompleted}
-              restPulseTarget={restPulseTarget}
-              progression={pe.id in workout.progressions ? workout.progressions[pe.id] : undefined}
-              onCompleteSet={completeSet}
-              onReorder={(from, to) => plan.reorderDayExercises(from, to)}
-              onUpdateExercise={(id, updates) => plan.updateExercise(id, updates)}
-              onShowWarmup={setShowWarmup}
-              onShowHistory={setShowExerciseHistory}
-              onShowEdit={setEditingExercise}
-              onShowSwap={setShowSwap}
-              onShowHowTo={setShowHowTo}
-            />
+              ref={(el) => {
+                if (el) cardRefs.current.set(pe.id, el);
+                else cardRefs.current.delete(pe.id);
+              }}
+            >
+              <ExerciseCard
+                exercise={pe}
+                index={index}
+                isFirst={index === 0}
+                isLast={index === plan.dayExercises.length - 1}
+                completedSets={done}
+                currentVolume={currentExVol}
+                previousVolume={previousExVol}
+                isWarmupOpen={showWarmup === pe.id}
+                hasHistory={hasHistory}
+                isResting={timer.isActive && workout.restTimerFor === pe.id}
+                restSeconds={timer.seconds}
+                justCompleted={justCompleted}
+                restPulseTarget={restPulseTarget}
+                progression={pe.id in workout.progressions ? workout.progressions[pe.id] : undefined}
+                onCompleteSet={completeSet}
+                onReorder={(from, to) => plan.reorderDayExercises(from, to)}
+                onUpdateExercise={(id, updates) => plan.updateExercise(id, updates)}
+                onShowWarmup={setShowWarmup}
+                onShowHistory={setShowExerciseHistory}
+                onShowEdit={setEditingExercise}
+                onShowSwap={setShowSwap}
+                onShowHowTo={setShowHowTo}
+              />
+            </div>
           );
         })}
         <button onClick={() => setShowAddExercise(true)} style={S.addExerciseBtn}>

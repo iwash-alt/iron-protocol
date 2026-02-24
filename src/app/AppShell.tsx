@@ -5,7 +5,6 @@ import { S, globalCss } from '@/shared/theme/styles';
 import { colors } from '@/shared/theme/tokens';
 import { getGreeting } from '@/shared/utils';
 import { useDemoMode } from '@/shared/demo/DemoModeContext';
-import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProgress } from '@/features/progress/progress.context';
 import { MeasurementsModal } from '@/features/progress/MeasurementsModal';
@@ -34,7 +33,6 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
   const demoMode = useDemoMode();
   const workout = useWorkout();
   const progress = useProgress();
-  const plan = usePlan();
   const { photo: profilePhoto } = useProfilePhoto();
   const { currentStreak } = useWorkoutStreak(workout.workoutHistory);
   const pr = usePRCelebration(workout.newPR, workout.dismissPR);

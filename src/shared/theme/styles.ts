@@ -787,22 +787,22 @@ export const globalCss = `
     animation: tabFadeIn 150ms ease both;
   }
 
-  .tab-enter-right > *,
-  .tab-enter-left > * {
+  .tab-enter-right > * > *,
+  .tab-enter-left > * > * {
     animation: tabChildIn 200ms ease both;
     animation-fill-mode: both;
   }
 
-  .tab-enter-right > *:nth-child(1),
-  .tab-enter-left > *:nth-child(1) { animation-delay: 0ms; }
-  .tab-enter-right > *:nth-child(2),
-  .tab-enter-left > *:nth-child(2) { animation-delay: 80ms; }
-  .tab-enter-right > *:nth-child(3),
-  .tab-enter-left > *:nth-child(3) { animation-delay: 160ms; }
-  .tab-enter-right > *:nth-child(4),
-  .tab-enter-left > *:nth-child(4) { animation-delay: 240ms; }
-  .tab-enter-right > *:nth-child(5),
-  .tab-enter-left > *:nth-child(5) { animation-delay: 320ms; }
+  .tab-enter-right > * > *:nth-child(1),
+  .tab-enter-left > * > *:nth-child(1) { animation-delay: 0ms; }
+  .tab-enter-right > * > *:nth-child(2),
+  .tab-enter-left > * > *:nth-child(2) { animation-delay: 100ms; }
+  .tab-enter-right > * > *:nth-child(3),
+  .tab-enter-left > * > *:nth-child(3) { animation-delay: 200ms; }
+  .tab-enter-right > * > *:nth-child(4),
+  .tab-enter-left > * > *:nth-child(4) { animation-delay: 300ms; }
+  .tab-enter-right > * > *:nth-child(5),
+  .tab-enter-left > * > *:nth-child(5) { animation-delay: 400ms; }
 
   /* Set completion micro-interactions */
   @keyframes setCountPop {

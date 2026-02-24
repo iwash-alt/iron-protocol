@@ -493,7 +493,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: status === 'complete' ? '#34C759' : '#FF9500',
+                  background: status === 'complete' ? '#34C759' : '#FFD60A',
                 }} />
               )}
             </button>

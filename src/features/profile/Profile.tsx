@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
-import { Icon } from '@/shared/components';
+import { Icon, useToast } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, typography } from '@/shared/theme/tokens';
 import {
@@ -32,6 +32,7 @@ function getInitials(name: string): string {
 export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   const workout = useWorkout();
   const { photo: profilePhoto, setPhoto, clearPhoto } = useProfilePhoto();
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ ...profile });
@@ -80,11 +81,12 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
       setPhoto(base64);
     } catch (err) {
       console.error('Failed to process photo:', err);
+      showToast({ type: 'warning', message: 'Failed to process photo. Please try again.' });
     } finally {
       setPhotoProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [setPhoto]);
+  }, [setPhoto, showToast]);
 
   const totalWorkouts = workout.workoutHistory.length;
   const totalVolume = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);

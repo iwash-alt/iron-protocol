@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
-  base: '/iron-protocol/',
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {

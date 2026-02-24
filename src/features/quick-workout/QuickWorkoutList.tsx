@@ -13,6 +13,17 @@ interface QuickWorkoutListProps {
   inline?: boolean;
 }
 
+const ExerciseListIllustration = (
+  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+    <line x1="12" y1="22" x2="44" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="12" y1="32" x2="40" y2="32" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="12" y1="42" x2="36" y2="42" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    <circle cx="50" cy="18" r="8" stroke="currentColor" strokeWidth="2"/>
+    <line x1="50" y1="14" x2="50" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="46" y1="18" x2="54" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
 const difficultyColors: Record<Difficulty, { bg: string; text: string }> = {
   easy: { bg: 'rgba(52,199,89,0.15)', text: colors.success },
   moderate: { bg: 'rgba(255,149,0,0.15)', text: colors.warning },
@@ -170,7 +181,7 @@ export function QuickWorkoutList({ onStart, onClose, inline }: QuickWorkoutListP
                 <div style={S.quickExpandedBody}>
                   {editingExercises.length === 0 ? (
                     <EmptyState
-                      illustration={<Icon name="plus" size={40} />}
+                      illustration={ExerciseListIllustration}
                       title="Add exercises to customise this workout"
                       style={{ padding: `${spacing.lg}px ${spacing.sm}px` }}
                     />

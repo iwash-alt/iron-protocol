@@ -44,6 +44,27 @@ const ChartIllustration = (
   </svg>
 );
 
+const TrophyIllustration = (
+  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+    <path d="M20 10 h24 v18 a12 12 0 0 1-24 0 Z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
+    <path d="M20 16 h-6 a6 6 0 0 0 0 12 h6" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
+    <path d="M44 16 h6 a6 6 0 0 1 0 12 h-6" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
+    <line x1="32" y1="40" x2="32" y2="50" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="22" y1="50" x2="42" y2="50" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const RulerIllustration = (
+  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
+    <rect x="8" y="24" width="48" height="16" rx="2" stroke="currentColor" strokeWidth="2.5"/>
+    <line x1="16" y1="24" x2="16" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="24" y1="24" x2="24" y2="36" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="32" y1="24" x2="32" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="40" y1="24" x2="40" y2="36" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <line x1="48" y1="24" x2="48" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
 interface DashboardProps {
   profile: UserProfile;
   streak: number;
@@ -284,7 +305,7 @@ export function Dashboard({
           </>
         ) : (
           <EmptyState
-            illustration={<Icon name="trophy" size={64} />}
+            illustration={TrophyIllustration}
             title="Your records board is empty"
             subtitle="Complete your first workout to set your baseline"
             style={{ padding: `${spacing.xl}px ${spacing.md}px` }}
@@ -330,7 +351,13 @@ export function Dashboard({
               </div>
             </>
           ) : (
-            <p style={S.emptyText}>Log measurements to track progress</p>
+            <EmptyState
+              illustration={RulerIllustration}
+              title="Log measurements to track progress"
+              subtitle="Track weight and body measurements over time"
+              actions={[{ label: 'Log Now', onClick: onOpenMeasurements }]}
+              style={{ padding: `${spacing.lg}px ${spacing.md}px` }}
+            />
           )
         ) : (
           <ProgressPhotos currentWeight={profile.weight} />

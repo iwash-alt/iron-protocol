@@ -12,7 +12,7 @@ import { MeasurementsModal } from '@/features/progress/MeasurementsModal';
 import type { QuickTemplate } from '@/data/quick-templates';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 import { TIMINGS } from '@/shared/constants/timings';
-import { usePRCelebration, usePullToRefresh, useSwipeNavigation, useWorkoutStreak } from '@/shared/hooks';
+import { usePRCelebration, usePullToRefresh, useWorkoutStreak } from '@/shared/hooks';
 
 const WorkoutView = lazy(() => import('@/features/workout/WorkoutView').then((m) => ({ default: m.WorkoutView })));
 const Dashboard = lazy(() => import('@/features/progress/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -69,24 +69,6 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
     window.setTimeout(() => setTabTransition(null), TIMINGS.ANIMATION_NORMAL);
   }, [activeTab]);
 
-  const swipe = useSwipeNavigation({
-    enabled: activeTab === 'workout',
-    onSwipeLeft: () => {
-      const next = plan.dayIndex + 1;
-      if (next < plan.days.length) {
-        plan.setDayIndex(next);
-        workout.resetWorkoutState();
-      }
-    },
-    onSwipeRight: () => {
-      const prev = plan.dayIndex - 1;
-      if (prev >= 0) {
-        plan.setDayIndex(prev);
-        workout.resetWorkoutState();
-      }
-    },
-  });
-
   const [isRefreshing, setIsRefreshing] = useState(false);
   const pull = usePullToRefresh({
     enabled: activeTab === 'dashboard',
@@ -123,10 +105,10 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
 
       <main
         ref={mainRef}
-        style={{ ...S.main, paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', transform: swipe.swipeOffset ? `translateX(${swipe.swipeOffset}px)` : undefined, transition: swipe.swipeOffset ? 'none' : 'transform 0.25s ease' }}
-        onTouchStart={activeTab === 'workout' ? swipe.onTouchStart : pull.onTouchStart}
-        onTouchMove={activeTab === 'workout' ? swipe.onTouchMove : pull.onTouchMove}
-        onTouchEnd={activeTab === 'workout' ? swipe.onTouchEnd : pull.onTouchEnd}
+        style={{ ...S.main, paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}
+        onTouchStart={pull.onTouchStart}
+        onTouchMove={pull.onTouchMove}
+        onTouchEnd={pull.onTouchEnd}
       >
         {activeTab === 'dashboard' && (pull.pullDistance > 0 || isRefreshing) && <div style={{ ...S.pullRefresh, height: isRefreshing ? 50 : Math.min(pull.pullDistance, 60) }}><span style={{ ...S.pullRefreshSpinner, animation: isRefreshing ? 'pullRefreshSpin 0.8s linear infinite' : 'none' }}><Icon name="refresh" size={22} /></span></div>}
 

@@ -16,15 +16,15 @@ export default function ExerciseEditModal({ exercise, onUpdate, onRemove, onClos
             <div style={S.editControls}>
               <button onClick={() => onUpdate(exercise.id, f,
                 Math.max(
-                  f === 'rest' ? 30 : f === 'weight' ? 0 : (f === 'reps' ? (exercise.repsMin ?? 1) : 1),
-                  exercise[f] - (f === 'weight' ? 2.5 : f === 'rest' ? 15 : 1)
+                  f === 'rest' ? 30 : f === 'weight' ? 0 : (f === 'reps' ? 1 : 1),
+                  exercise[f] - (f === 'weight' ? 0.5 : f === 'rest' ? 15 : 1)
                 )
               )} style={S.editBtn2}><Icon name="minus" size={16} /></button>
               <span style={S.editValue}>{exercise[f]}{f === 'rest' ? 's' : ''}</span>
               <button onClick={() => onUpdate(exercise.id, f,
                 Math.min(
-                  f === 'sets' ? 10 : (f === 'reps' ? (exercise.repsMax ?? 30) : f === 'rest' ? 300 : 500),
-                  exercise[f] + (f === 'weight' ? 2.5 : f === 'rest' ? 15 : 1)
+                  f === 'sets' ? 10 : (f === 'reps' ? 100 : f === 'rest' ? 300 : 500),
+                  exercise[f] + (f === 'weight' ? 0.5 : f === 'rest' ? 15 : 1)
                 )
               )} style={S.editBtn2}><Icon name="plus" size={16} /></button>
             </div>

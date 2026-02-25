@@ -681,9 +681,9 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             <h3 style={S.editTitle}>{editingExercise.exercise.name}</h3>
             {(['sets', 'reps', 'weightKg', 'restSeconds'] as const).map(f => {
               const label = f === 'sets' ? 'Sets' : f === 'reps' ? 'Reps' : f === 'weightKg' ? 'Weight (kg)' : 'Rest (sec)';
-              const step = f === 'weightKg' ? 2.5 : f === 'restSeconds' ? 15 : 1;
-              const min = f === 'restSeconds' ? 30 : f === 'weightKg' ? 0 : f === 'reps' ? (editingExercise.repsMin ?? 1) : 1;
-              const max = f === 'sets' ? 10 : f === 'reps' ? (editingExercise.repsMax ?? 30) : f === 'restSeconds' ? 300 : 500;
+              const step = f === 'weightKg' ? 0.5 : f === 'restSeconds' ? 15 : 1;
+              const min = f === 'restSeconds' ? 30 : f === 'weightKg' ? 0 : f === 'reps' ? 1 : 1;
+              const max = f === 'sets' ? 10 : f === 'reps' ? 100 : f === 'restSeconds' ? 300 : 500;
               return (
                 <div key={f} style={S.editField}>
                   <label style={S.editLabel}>{label}</label>
@@ -1104,7 +1104,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                             <input
                               type="number"
                               min={0}
-                              step={2.5}
+                              step={0.5}
                               value={de.weightKg}
                               onChange={e => updateDraftExerciseField(day.id, exerciseIndex, { weightKg: Math.max(0, Number(e.target.value)) })}
                               style={templatesCustomStyles.rowInput}

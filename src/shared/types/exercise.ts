@@ -49,8 +49,7 @@ export const EQUIPMENT_FILTER_OPTIONS = [
 export type EquipmentFilter = typeof EQUIPMENT_FILTER_OPTIONS[number] | 'All';
 
 export const MUSCLE_FILTER_OPTIONS = [
-  'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
-  'Quads', 'Hamstrings', 'Glutes', 'Calves', 'Core',
+  'Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core',
 ] as const;
 export type MuscleFilter = typeof MUSCLE_FILTER_OPTIONS[number] | 'All';
 
@@ -59,11 +58,7 @@ export const MUSCLE_FILTER_MAP: Record<typeof MUSCLE_FILTER_OPTIONS[number], rea
   Chest: ['Chest'],
   Back: ['Back', 'Lats'],
   Shoulders: ['Shoulders', 'Rear Delts'],
-  Biceps: ['Biceps'],
-  Triceps: ['Triceps'],
-  Quads: ['Quads'],
-  Hamstrings: ['Hamstrings'],
-  Glutes: ['Glutes'],
-  Calves: ['Calves'],
+  Arms: ['Biceps', 'Triceps'],
+  Legs: ['Quads', 'Hamstrings', 'Glutes', 'Calves'],
   Core: ['Core'],
 };

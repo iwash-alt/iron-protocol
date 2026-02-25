@@ -4,7 +4,7 @@ import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isL
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useTimer, getAdaptiveRest, useSwipeNavigation } from '@/shared/hooks';
-import { Icon, MiniChart, EmptyState, useToast } from '@/shared/components';
+import { Icon, MiniChart, EmptyState, useToast, FilterPills } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
@@ -829,34 +829,24 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 style={ebStyles.searchInput}
               />
 
-              {/* Dual filter dropdowns */}
-              <div style={ebStyles.filterRow}>
-                <select
-                  value={exEquipment}
-                  onChange={e => setExEquipment(e.target.value as EquipmentFilter)}
-                  style={ebStyles.select}
-                >
-                  <option value="All">All Equipment</option>
-                  {EQUIPMENT_FILTER_OPTIONS.map(eq => (
-                    <option key={eq} value={eq} style={ebStyles.option}>{eq}</option>
-                  ))}
-                </select>
-                <select
-                  value={exMuscle === 'All' ? defaultMuscle : exMuscle}
-                  onChange={e => setExMuscle(e.target.value as MuscleFilter)}
-                  style={ebStyles.select}
-                >
-                  <option value="All">All Muscles</option>
-                  {MUSCLE_FILTER_OPTIONS.map(m => (
-                    <option key={m} value={m} style={ebStyles.option}>{m}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Filter pills */}
+              <FilterPills
+                options={EQUIPMENT_FILTER_OPTIONS}
+                value={exEquipment}
+                onChange={v => setExEquipment(v as EquipmentFilter)}
+                allLabel="All Equipment"
+              />
+              <FilterPills
+                options={MUSCLE_FILTER_OPTIONS}
+                value={exMuscle === 'All' ? defaultMuscle : exMuscle}
+                onChange={v => setExMuscle(v as MuscleFilter)}
+                allLabel="All Muscles"
+              />
 
               {/* Result count */}
               <p style={ebStyles.resultCount}>
                 {swapResults.length > 0
-                  ? `${swapResults.length} exercise${swapResults.length !== 1 ? 's' : ''}`
+                  ? `${swapResults.length} exercises found`
                   : 'No exercises match these filters'}
               </p>
 
@@ -905,33 +895,23 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
             />
 
             {/* Dual filter dropdowns */}
-            <div style={ebStyles.filterRow}>
-              <select
-                value={exEquipment}
-                onChange={e => setExEquipment(e.target.value as EquipmentFilter)}
-                style={ebStyles.select}
-              >
-                <option value="All">All Equipment</option>
-                {EQUIPMENT_FILTER_OPTIONS.map(eq => (
-                  <option key={eq} value={eq} style={ebStyles.option}>{eq}</option>
-                ))}
-              </select>
-              <select
-                value={exMuscle}
-                onChange={e => setExMuscle(e.target.value as MuscleFilter)}
-                style={ebStyles.select}
-              >
-                <option value="All">All Muscles</option>
-                {MUSCLE_FILTER_OPTIONS.map(m => (
-                  <option key={m} value={m} style={ebStyles.option}>{m}</option>
-                ))}
-              </select>
-            </div>
+            <FilterPills
+              options={EQUIPMENT_FILTER_OPTIONS}
+              value={exEquipment}
+              onChange={v => setExEquipment(v as EquipmentFilter)}
+              allLabel="All Equipment"
+            />
+            <FilterPills
+              options={MUSCLE_FILTER_OPTIONS}
+              value={exMuscle}
+              onChange={v => setExMuscle(v as MuscleFilter)}
+              allLabel="All Muscles"
+            />
 
             {/* Result count */}
             <p style={ebStyles.resultCount}>
               {filteredExercises.length > 0
-                ? `${filteredExercises.length} exercise${filteredExercises.length !== 1 ? 's' : ''}`
+                ? `${filteredExercises.length} exercises found`
                 : 'No exercises match these filters'}
             </p>
 
@@ -1352,27 +1332,6 @@ const ebStyles: Record<string, React.CSSProperties> = {
     outline: 'none',
     marginBottom: spacing.sm,
     boxSizing: 'border-box' as const,
-  },
-  filterRow: {
-    display: 'flex',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  select: {
-    flex: 1,
-    padding: `${spacing.sm}px ${spacing.sm}px`,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: colors.surface,
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    cursor: 'pointer',
-    appearance: 'auto' as const,
-  },
-  option: {
-    background: '#111',
-    color: '#fff',
   },
   resultCount: {
     color: colors.textSecondary,

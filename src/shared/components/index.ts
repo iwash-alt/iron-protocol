@@ -8,6 +8,7 @@ export { WorkoutSkeleton, DashboardSkeleton, QuickWorkoutSkeleton, HomeSkeleton,
 export { InlineEdit } from './InlineEdit';
 export type { InlineEditProps } from './InlineEdit';
 export { ExerciseBrowserModal } from './ExerciseBrowserModal';
+export { FilterPills } from './FilterPills';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateCTAButton } from './EmptyState';
 export { ToastProvider, useToast } from './ToastProvider';

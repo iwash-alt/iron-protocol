@@ -112,7 +112,7 @@ describe('filterExercises', () => {
     });
 
     it('returns empty for impossible combination', () => {
-      const results = filterExercises({ equipment: 'EZ Bar', muscle: 'Calves' });
+      const results = filterExercises({ equipment: 'EZ Bar', muscle: 'Legs' });
       expect(results).toHaveLength(0);
     });
   });
@@ -128,11 +128,11 @@ describe('filterExercises', () => {
     });
 
     it('combines search with muscle filter', () => {
-      const results = filterExercises({ search: 'curl', muscle: 'Biceps' });
+      const results = filterExercises({ search: 'curl', muscle: 'Arms' });
       expect(results.length).toBeGreaterThan(0);
       results.forEach(ex => {
         expect(ex.name.toLowerCase()).toContain('curl');
-        expect(ex.muscle).toBe('Biceps');
+        expect(['Biceps', 'Triceps']).toContain(ex.muscle);
       });
     });
 

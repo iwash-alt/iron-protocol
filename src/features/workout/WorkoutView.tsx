@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } from '@/shared/types';
-import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP, isLowerBody } from '@/shared/types';
+import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useTimer, getAdaptiveRest, useSwipeNavigation } from '@/shared/hooks';
@@ -22,6 +22,7 @@ import type { ReadinessResult } from '@/features/readiness/ReadinessCheck';
 import { HowToModal } from '@/ui/modals/HowToModal';
 import { WorkoutSummary, buildWorkoutSummary } from './WorkoutSummary';
 import type { WorkoutSummaryData } from './WorkoutSummary';
+import { CustomWorkoutBuilder } from './CustomWorkoutBuilder';
 
 
 type ExerciseDataModule = typeof import('@/data/exercises');
@@ -49,31 +50,6 @@ function toCuratedMuscle(raw: string): MuscleFilter {
 interface WorkoutViewProps {
   profile: UserProfile;
 }
-
-interface CustomWorkoutDraftExercise {
-  exercise: Exercise;
-  sets: number;
-  reps: number;
-  weightKg: number;
-}
-
-interface CustomWorkoutDraftDay {
-  id: string;
-  name: string;
-  exercises: CustomWorkoutDraftExercise[];
-}
-
-interface CustomWorkoutDraft {
-  name: string;
-  daysPerWeek: number;
-  days: CustomWorkoutDraftDay[];
-}
-
-const EMPTY_CUSTOM_WORKOUT_DRAFT: CustomWorkoutDraft = {
-  name: 'Custom Program',
-  daysPerWeek: 1,
-  days: [{ id: 'draft-day-1', name: '', exercises: [] }],
-};
 
 
 const DumbbellIllustration = (
@@ -110,10 +86,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [restPulseTarget, setRestPulseTarget] = useState<string | null>(null);
   const [dayAnimKey, setDayAnimKey] = useState(0);
   const [dayAnimClass, setDayAnimClass] = useState('');
-  const [customBuilderStep, setCustomBuilderStep] = useState<1 | 2 | 3 | 4>(1);
-  const [customWorkoutDraft, setCustomWorkoutDraft] = useState<CustomWorkoutDraft>(EMPTY_CUSTOM_WORKOUT_DRAFT);
-  const [selectedBuilderDayId, setSelectedBuilderDayId] = useState<string | null>(null);
-
   // Exercise browser filter states (shared between Add and Swap modals)
   const [exSearch, setExSearch] = useState('');
   const [exEquipment, setExEquipment] = useState<EquipmentFilter>('All');
@@ -393,81 +365,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     setShowTemplates(false);
   };
 
-  const updateDraftExerciseField = (dayId: string, exerciseIndex: number, patch: Partial<CustomWorkoutDraftExercise>) => {
-    setCustomWorkoutDraft(prev => ({
-      ...prev,
-      days: prev.days.map(day => day.id === dayId
-        ? { ...day, exercises: day.exercises.map((ex, i) => i === exerciseIndex ? { ...ex, ...patch } : ex) }
-        : day),
-    }));
-  };
-
-  const removeDraftExercise = (dayId: string, exerciseIndex: number) => {
-    setCustomWorkoutDraft(prev => ({
-      ...prev,
-      days: prev.days.map(day => day.id === dayId
-        ? { ...day, exercises: day.exercises.filter((_, i) => i !== exerciseIndex) }
-        : day),
-    }));
-  };
-
-  const reorderDraftExercise = (dayId: string, fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex) return;
-    setCustomWorkoutDraft(prev => ({
-      ...prev,
-      days: prev.days.map(day => {
-        if (day.id !== dayId) return day;
-        const exercises = [...day.exercises];
-        const [moved] = exercises.splice(fromIndex, 1);
-        exercises.splice(toIndex, 0, moved);
-        return { ...day, exercises };
-      }),
-    }));
-  };
-
-  const resetCustomWorkoutBuilder = () => {
-    setCustomBuilderStep(1);
-    setSelectedBuilderDayId(null);
-    setCustomWorkoutDraft(EMPTY_CUSTOM_WORKOUT_DRAFT);
-  };
-
-  const handleCustomWorkoutDraftDaysChange = (daysPerWeek: number) => {
-    setCustomWorkoutDraft(prev => {
-      const nextDays = Array.from({ length: daysPerWeek }, (_, i) => {
-        const existing = prev.days[i];
-        return existing ?? {
-          id: `draft-day-${i + 1}`,
-          name: '',
-          exercises: [],
-        };
-      });
-      return { ...prev, daysPerWeek, days: nextDays };
-    });
-  };
-
-  const handleCreateCustomWorkout = () => {
-    const programName = customWorkoutDraft.name.trim() || 'Custom Program';
-    plan.createCustomWorkout({
-      name: programName,
-      days: customWorkoutDraft.daysPerWeek,
-      dayExercises: customWorkoutDraft.days.map((day, index) => ({
-        name: day.name.trim() || `Day ${index + 1}`,
-        exercises: day.exercises.map(de => ({
-          exercise: de.exercise,
-          sets: de.sets,
-          reps: de.reps,
-          weightKg: de.weightKg,
-        })),
-      })),
-    });
-    workout.resetWorkoutState();
-    setShowAddExercise(false);
-    setSelectedBuilderDayId(null);
-    setShowCustomWorkout(false);
-    setShowTemplates(false);
-    resetCustomWorkoutBuilder();
-  };
-
   const handleDayChange = (index: number) => {
     if (index === plan.dayIndex) return;
     const animClass = index > plan.dayIndex ? 'day-enter-right' : 'day-enter-left';
@@ -504,7 +401,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
           subtitle="Pick a template or build your own"
           actions={[
             { label: 'Choose Template', onClick: () => setShowTemplates(true) },
-            { label: 'Build Custom', onClick: () => { resetCustomWorkoutBuilder(); setShowCustomWorkout(true); }, variant: 'ghost' },
+            { label: 'Build Custom', onClick: () => setShowCustomWorkout(true), variant: 'ghost' },
           ]}
         />
       ) : (
@@ -880,10 +777,10 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* Add exercise modal (Dual Filter) */}
       {showAddExercise && (
-        <div style={S.overlay} onClick={() => { setShowAddExercise(false); setSelectedBuilderDayId(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
+        <div style={S.overlay} onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
           <div style={{ ...S.addExModal, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <h3 style={S.addExTitle}>Add Exercise</h3>
-            <p style={S.addExSub}>Add to {selectedBuilderDayId ? customWorkoutDraft.days.find(day => day.id === selectedBuilderDayId)?.name.trim() || 'Selected day' : plan.currentDay?.name}</p>
+            <p style={S.addExSub}>Add to {plan.currentDay?.name}</p>
 
             {/* Search bar */}
             <input
@@ -921,24 +818,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <button
                     onClick={() => {
-                      if (selectedBuilderDayId) {
-                        const lower = isLowerBody(ex.muscle);
-                        setCustomWorkoutDraft(prev => ({
-                          ...prev,
-                          days: prev.days.map(day => day.id === selectedBuilderDayId
-                            ? { ...day, exercises: [...day.exercises, {
-                                exercise: ex,
-                                sets: 3,
-                                reps: lower ? 8 : 10,
-                                weightKg: ex.isBodyweight ? 0 : 20,
-                              }] }
-                            : day),
-                        }));
-                      } else {
-                        plan.addExercise(ex);
-                      }
+                      plan.addExercise(ex);
                       setShowAddExercise(false);
-                      setSelectedBuilderDayId(null);
                       setExSearch(''); setExEquipment('All'); setExMuscle('All');
                     }}
                     style={{ ...S.addExItem, flex: 1 }}
@@ -956,7 +837,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </div>
               ))}
             </div>
-            <button onClick={() => { setShowAddExercise(false); setSelectedBuilderDayId(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }} style={S.addExCancel}>CANCEL</button>
+            <button onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }} style={S.addExCancel}>CANCEL</button>
           </div>
         </div>
       )}
@@ -979,231 +860,22 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </button>
               ))}
             </div>
-            <button onClick={() => { resetCustomWorkoutBuilder(); setShowCustomWorkout(true); }} style={templatesCustomStyles.launchBtn}>+ CREATE YOUR OWN WORKOUT</button>
+            <button onClick={() => setShowCustomWorkout(true)} style={launchCustomBtnStyle}>+ CREATE YOUR OWN WORKOUT</button>
             <button onClick={() => setShowTemplates(false)} style={S.templatesCancel}>CANCEL</button>
           </div>
         </div>
       )}
 
       {showCustomWorkout && (
-        <div
-          style={S.overlay}
-          onClick={() => {
+        <CustomWorkoutBuilder
+          onSave={(config) => {
+            plan.createCustomWorkout(config);
+            workout.resetWorkoutState();
             setShowCustomWorkout(false);
-            resetCustomWorkoutBuilder();
+            setShowTemplates(false);
           }}
-        >
-          <div style={templatesCustomStyles.modal} onClick={e => e.stopPropagation()}>
-            <div style={templatesCustomStyles.stepBadge}>Step {customBuilderStep} of 4</div>
-
-            {customBuilderStep === 1 && (
-              <>
-                <h3 style={templatesCustomStyles.title}>Name your program</h3>
-                <p style={templatesCustomStyles.sub}>Give your training program a name.</p>
-                <label style={templatesCustomStyles.label}>Program Name</label>
-                <input
-                  type="text"
-                  value={customWorkoutDraft.name}
-                  maxLength={32}
-                  onChange={e => setCustomWorkoutDraft(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Custom Program"
-                  style={templatesCustomStyles.input}
-                />
-              </>
-            )}
-
-            {customBuilderStep === 2 && (
-              <>
-                <h3 style={templatesCustomStyles.title}>How many days per week?</h3>
-                <p style={templatesCustomStyles.sub}>Select your training frequency.</p>
-                <select
-                  value={customWorkoutDraft.daysPerWeek}
-                  onChange={e => handleCustomWorkoutDraftDaysChange(Number(e.target.value))}
-                  style={templatesCustomStyles.select}
-                >
-                  {[1, 2, 3, 4, 5, 6, 7].map(day => (
-                    <option key={day} value={day} style={templatesCustomStyles.option}>{day} {day === 1 ? 'day' : 'days'}</option>
-                  ))}
-                </select>
-                <div style={templatesCustomStyles.dayPreviewList}>
-                  {customWorkoutDraft.days.map((day, index) => (
-                    <div key={day.id} style={templatesCustomStyles.dayPreviewCard}>
-                      <div style={templatesCustomStyles.dayPreviewTitle}>{day.name.trim() || `Day ${index + 1}`}</div>
-                      <div style={templatesCustomStyles.dayPreviewMeta}>{day.exercises.length} exercise{day.exercises.length === 1 ? '' : 's'}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {customBuilderStep === 3 && (
-              <>
-                <h3 style={templatesCustomStyles.title}>Name each day &amp; add exercises</h3>
-                <p style={templatesCustomStyles.sub}>Customize day names and pick exercises.</p>
-                <div style={templatesCustomStyles.dayCardsList}>
-                  {customWorkoutDraft.days.map((day, dayIndex) => (
-                    <div key={day.id} style={templatesCustomStyles.dayCard}>
-                      <input
-                        type="text"
-                        value={day.name}
-                        maxLength={32}
-                        placeholder={`Day ${dayIndex + 1}`}
-                        onChange={e => setCustomWorkoutDraft(prev => ({
-                          ...prev,
-                          days: prev.days.map(d => d.id === day.id ? { ...d, name: e.target.value } : d),
-                        }))}
-                        style={templatesCustomStyles.dayNameInput}
-                      />
-                      <div style={templatesCustomStyles.dayExerciseList}>
-                        {day.exercises.length === 0 ? (
-                          <div style={templatesCustomStyles.emptyExerciseText}>No exercises added yet.</div>
-                        ) : day.exercises.map((de, exerciseIndex) => (
-                          <div key={`${day.id}-${de.exercise.id}-${exerciseIndex}`} style={templatesCustomStyles.dayExerciseRow}>
-                            <div style={templatesCustomStyles.rowOrderBtns}>
-                              <button
-                                onClick={() => reorderDraftExercise(day.id, exerciseIndex, exerciseIndex - 1)}
-                                disabled={exerciseIndex === 0}
-                                style={{ ...templatesCustomStyles.rowOrderBtn, ...(exerciseIndex === 0 ? templatesCustomStyles.rowOrderBtnDisabled : {}) }}
-                                aria-label={`Move ${de.exercise.name} up`}
-                              >
-                                {'\u2191'}
-                              </button>
-                              <button
-                                onClick={() => reorderDraftExercise(day.id, exerciseIndex, exerciseIndex + 1)}
-                                disabled={exerciseIndex === day.exercises.length - 1}
-                                style={{ ...templatesCustomStyles.rowOrderBtn, ...(exerciseIndex === day.exercises.length - 1 ? templatesCustomStyles.rowOrderBtnDisabled : {}) }}
-                                aria-label={`Move ${de.exercise.name} down`}
-                              >
-                                {'\u2193'}
-                              </button>
-                            </div>
-                            <div style={templatesCustomStyles.rowMeta}>
-                              <div style={templatesCustomStyles.rowName}>{de.exercise.name}</div>
-                              <div style={templatesCustomStyles.rowSub}>{de.exercise.muscle}</div>
-                            </div>
-                            <input
-                              type="number"
-                              min={1}
-                              step={1}
-                              value={de.sets}
-                              onChange={e => updateDraftExerciseField(day.id, exerciseIndex, { sets: Math.max(1, Number(e.target.value)) })}
-                              style={templatesCustomStyles.rowInput}
-                              aria-label="Sets"
-                              title="Sets"
-                            />
-                            <input
-                              type="number"
-                              min={1}
-                              step={1}
-                              value={de.reps}
-                              onChange={e => updateDraftExerciseField(day.id, exerciseIndex, { reps: Math.max(1, Number(e.target.value)) })}
-                              style={templatesCustomStyles.rowInput}
-                              aria-label="Reps"
-                              title="Reps"
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.5}
-                              value={de.weightKg}
-                              onChange={e => updateDraftExerciseField(day.id, exerciseIndex, { weightKg: Math.max(0, Number(e.target.value)) })}
-                              style={templatesCustomStyles.rowInput}
-                              aria-label="Weight (kg)"
-                              title="Weight (kg)"
-                            />
-                            <button
-                              onClick={() => removeDraftExercise(day.id, exerciseIndex)}
-                              style={templatesCustomStyles.rowRemoveBtn}
-                              aria-label={`Remove ${de.exercise.name}`}
-                            >
-                              {'\u00D7'}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      {day.exercises.length > 0 && (
-                        <div style={templatesCustomStyles.rowHeaderLabels}>
-                          <span style={templatesCustomStyles.rowHeaderSpacer} />
-                          <span style={templatesCustomStyles.rowHeaderLabel}>Sets</span>
-                          <span style={templatesCustomStyles.rowHeaderLabel}>Reps</span>
-                          <span style={templatesCustomStyles.rowHeaderLabel}>kg</span>
-                          <span style={templatesCustomStyles.rowHeaderRemoveSpacer} />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          setSelectedBuilderDayId(day.id);
-                          setShowAddExercise(true);
-                        }}
-                        style={templatesCustomStyles.addExerciseBtn}
-                      >
-                        + Add Exercise
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {customBuilderStep === 4 && (
-              <>
-                <h3 style={templatesCustomStyles.title}>Review your program</h3>
-                <p style={templatesCustomStyles.sub}>Confirm everything looks good before saving.</p>
-                <div style={templatesCustomStyles.summaryHeader}>{customWorkoutDraft.name.trim() || 'Custom Program'}</div>
-                <div style={templatesCustomStyles.summarySubHeader}>{customWorkoutDraft.daysPerWeek} day{customWorkoutDraft.daysPerWeek === 1 ? '' : 's'} per week</div>
-                <div style={templatesCustomStyles.summaryList}>
-                  {customWorkoutDraft.days.map((day, index) => (
-                    <div key={day.id} style={templatesCustomStyles.summaryDayCard}>
-                      <div style={templatesCustomStyles.summaryDayTitle}>{day.name.trim() || `Day ${index + 1}`}</div>
-                      {day.exercises.length === 0 ? (
-                        <div style={templatesCustomStyles.emptyExerciseText}>No exercises selected</div>
-                      ) : day.exercises.map((de, ei) => (
-                        <div key={`${day.id}-${de.exercise.id}-summary-${ei}`} style={templatesCustomStyles.summaryExerciseRow}>
-                          <span>{de.exercise.name}</span>
-                          <span style={templatesCustomStyles.summaryDefaults}>
-                            {de.sets} set{de.sets !== 1 ? 's' : ''} {'\u00B7'} {de.reps} rep{de.reps !== 1 ? 's' : ''} {'\u00B7'} {de.weightKg}kg
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            <div style={templatesCustomStyles.actions}>
-              <button
-                onClick={() => {
-                  if (customBuilderStep === 1) {
-                    setShowCustomWorkout(false);
-                    resetCustomWorkoutBuilder();
-                    return;
-                  }
-                  setCustomBuilderStep((customBuilderStep - 1) as 1 | 2 | 3 | 4);
-                }}
-                style={templatesCustomStyles.cancel}
-              >
-                {customBuilderStep === 1 ? 'Cancel' : 'Back'}
-              </button>
-
-              {customBuilderStep < 4 ? (
-                <button
-                  onClick={() => setCustomBuilderStep((customBuilderStep + 1) as 1 | 2 | 3 | 4)}
-                  style={templatesCustomStyles.create}
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  onClick={handleCreateCustomWorkout}
-                  style={templatesCustomStyles.create}
-                >
-                  Save Program
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+          onCancel={() => setShowCustomWorkout(false)}
+        />
       )}
 
       {/* Deload alert */}
@@ -1344,57 +1016,9 @@ const ebStyles: Record<string, React.CSSProperties> = {
 
 
 
-const templatesCustomStyles: Record<string, React.CSSProperties> = {
-  launchBtn: {
-    width: '100%', borderRadius: radii.md, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary,
-    fontWeight: typography.weights.black, fontSize: typography.sizes.sm, padding: `${spacing.sm}px ${spacing.md}px`, marginTop: spacing.sm, marginBottom: spacing.sm,
-  },
-  modal: { width: 'min(92vw, 420px)', borderRadius: radii.xl, background: colors.surface, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.lg },
-  title: { color: colors.text, margin: 0, marginBottom: spacing.xs, fontSize: typography.sizes.xl },
-  sub: { color: colors.textSecondary, marginTop: 0, marginBottom: spacing.md, fontSize: typography.sizes.sm },
-  label: { display: 'block', color: colors.textSecondary, marginBottom: 6, fontSize: typography.sizes.xs, textTransform: 'uppercase', letterSpacing: '0.06em' },
-  input: { width: '100%', boxSizing: 'border-box', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, marginBottom: spacing.md },
-  select: { width: '100%', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: colors.surface, color: colors.text, marginBottom: spacing.md },
-  option: { background: '#111', color: '#fff' },
-  stepBadge: { display: 'inline-block', fontSize: typography.sizes.xs, fontWeight: typography.weights.black, color: colors.textSecondary, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: '0.08em' },
-  dayPreviewList: { display: 'flex', flexDirection: 'column', gap: spacing.xs, marginBottom: spacing.sm },
-  dayPreviewCard: { padding: spacing.sm, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.03)' },
-  dayPreviewTitle: { color: colors.text, fontWeight: typography.weights.bold },
-  dayPreviewMeta: { color: colors.textSecondary, fontSize: typography.sizes.xs, marginTop: 2 },
-  dayCards: { maxHeight: 320, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: spacing.sm, marginBottom: spacing.md },
-  dayCardsList: { display: 'flex', flexDirection: 'column', gap: spacing.sm, maxHeight: '45vh', overflowY: 'auto', paddingRight: 2, marginBottom: spacing.sm },
-  dayCard: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.sm, background: 'rgba(255,255,255,0.03)' },
-  dayHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs },
-  dayName: { color: colors.text, fontWeight: typography.weights.black, fontSize: typography.sizes.sm },
-  dayNameInput: { width: '100%', boxSizing: 'border-box', padding: `${spacing.sm}px ${spacing.md}px`, borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, marginBottom: spacing.sm },
-  dayAddBtn: { borderRadius: radii.sm, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary, padding: `4px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
-  dayExerciseList: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: spacing.sm },
-  dayEmpty: { color: colors.textTertiary, fontSize: typography.sizes.xs },
-  dayExerciseRow: { display: 'grid', gridTemplateColumns: '28px 1fr 52px 52px 60px 28px', alignItems: 'center', gap: 6 },
-  rowOrderBtns: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
-  rowOrderBtn: { width: 24, height: 16, borderRadius: radii.sm, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, fontSize: '0.6rem', lineHeight: 1, padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  rowOrderBtnDisabled: { opacity: 0.3, cursor: 'not-allowed' },
-  rowRemoveBtn: { width: 28, height: 28, borderRadius: radii.sm, border: 'none', background: 'rgba(255,59,48,0.14)', color: colors.primary, fontSize: typography.sizes.lg, lineHeight: '28px', padding: 0, cursor: 'pointer' },
-  rowHeaderLabels: { display: 'grid', gridTemplateColumns: '28px 1fr 52px 52px 60px 28px', gap: 6, marginBottom: 4 },
-  rowHeaderLabel: { color: colors.textTertiary, fontSize: '0.6rem', fontWeight: typography.weights.bold, textTransform: 'uppercase' as const, textAlign: 'center' as const },
-  rowHeaderSpacer: {},
-  rowHeaderRemoveSpacer: {},
-  rowMeta: { minWidth: 0 },
-  rowName: { color: colors.text, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  rowSub: { color: colors.textTertiary, fontSize: '0.65rem' },
-  rowInput: { width: '100%', borderRadius: radii.sm, border: `1px solid ${colors.surfaceBorder}`, background: 'rgba(255,255,255,0.06)', color: colors.text, padding: `${spacing.xs}px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
-  emptyExerciseText: { color: colors.textSecondary, fontSize: typography.sizes.xs },
-  exerciseItem: { color: colors.text, fontSize: typography.sizes.sm },
-  addExerciseBtn: { width: '100%', borderRadius: radii.md, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary, padding: `4px ${spacing.sm}px`, fontSize: typography.sizes.xs, fontWeight: typography.weights.bold },
-  summaryHeader: { color: colors.text, fontWeight: typography.weights.black, fontSize: typography.sizes.lg, marginBottom: 2 },
-  summarySubHeader: { color: colors.textSecondary, fontSize: typography.sizes.sm, marginBottom: spacing.sm },
-  summaryList: { display: 'flex', flexDirection: 'column', gap: spacing.sm, maxHeight: '46vh', overflowY: 'auto', marginBottom: spacing.sm, paddingRight: 2 },
-  summaryDayCard: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, padding: spacing.sm, background: 'rgba(255,255,255,0.03)' },
-  summaryDayTitle: { color: colors.text, fontWeight: typography.weights.bold, marginBottom: 6 },
-  summaryExerciseRow: { display: 'flex', justifyContent: 'space-between', gap: spacing.sm, color: colors.text, fontSize: typography.sizes.sm, marginBottom: 4 },
-  summaryDefaults: { color: colors.textSecondary, fontSize: typography.sizes.xs, whiteSpace: 'nowrap' },
-  actions: { display: 'flex', gap: spacing.sm, justifyContent: 'flex-end' },
-  cancel: { borderRadius: radii.md, border: `1px solid ${colors.surfaceBorder}`, background: 'transparent', color: colors.textSecondary, padding: `${spacing.sm}px ${spacing.md}px` },
-  create: { borderRadius: radii.md, border: 'none', background: colors.primary, color: '#fff', padding: `${spacing.sm}px ${spacing.md}px`, fontWeight: typography.weights.bold },
+/** Style for "CREATE YOUR OWN WORKOUT" button in template selector */
+const launchCustomBtnStyle: React.CSSProperties = {
+  width: '100%', borderRadius: radii.md, border: `1px solid ${colors.primaryBorder}`, background: 'rgba(255,59,48,0.08)', color: colors.primary,
+  fontWeight: typography.weights.black, fontSize: typography.sizes.sm, padding: `${spacing.sm}px ${spacing.md}px`, marginTop: spacing.sm, marginBottom: spacing.sm, cursor: 'pointer',
 };
 

@@ -199,7 +199,7 @@ export function ExerciseCard({
           ) : (
             <InlineEdit
               value={pe.weightKg}
-              step={2.5}
+              step={0.5}
               min={0}
               max={500}
               inputMode="decimal"
@@ -216,8 +216,8 @@ export function ExerciseCard({
           <InlineEdit
             value={pe.reps}
             step={1}
-            min={pe.repsMin ?? 1}
-            max={pe.repsMax ?? 30}
+            min={1}
+            max={100}
             inputMode="numeric"
             color={colors.text}
             onChange={val => onUpdateExercise(pe.id, { reps: val })}

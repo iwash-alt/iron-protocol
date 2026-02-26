@@ -8,7 +8,6 @@ type Profile = {
   age: number;
   level: 'beginner' | 'intermediate' | 'advanced';
   days: number;
-  health: boolean;
 };
 
 export function useProfile() {

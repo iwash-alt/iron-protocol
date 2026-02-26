@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+// ─── ROTATING PHRASES (module-level for stable reference) ───────────────────
+const ROTATING_PHRASES = [
+  'Less than a coffee.',
+  'Less than a protein shake.',
+  'Less than 7 minutes of parking.',
+];
 
 // ─── HOMEPAGE STYLES ────────────────────────────────────────────────────────
 const HS = {
@@ -43,26 +50,12 @@ const HS = {
     zIndex: 1,
     maxWidth: 700,
   },
-  heroBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '8px 18px',
-    borderRadius: 40,
-    background: 'rgba(204,0,0,0.12)',
-    border: '1px solid rgba(204,0,0,0.3)',
-    color: '#CC0000',
-    fontSize: '0.8rem',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    marginBottom: 28,
-  },
   heroHeadline: {
     fontSize: 'clamp(2.4rem, 6vw, 4.2rem)',
     fontWeight: 800,
     lineHeight: 1.08,
     margin: '0 0 20px',
-    letterSpacing: '-0.02em',
+    letterSpacing: '0.04em',
   },
   heroAccent: {
     color: '#CC0000',
@@ -71,9 +64,15 @@ const HS = {
     fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
     color: '#888',
     lineHeight: 1.5,
-    margin: '0 auto 36px',
-    maxWidth: 520,
+    margin: '0 auto 12px',
+    maxWidth: 560,
     fontWeight: 400,
+  },
+  heroPricing: {
+    fontSize: '1rem',
+    color: '#ccc',
+    fontWeight: 700,
+    marginBottom: 28,
   },
   heroCta: {
     display: 'inline-block',
@@ -89,6 +88,13 @@ const HS = {
     boxShadow: '0 8px 32px rgba(204,0,0,0.4), 0 0 60px rgba(204,0,0,0.15)',
     transition: 'transform 0.2s, box-shadow 0.2s',
     textDecoration: 'none',
+  },
+  heroNoCard: {
+    marginTop: 16,
+    fontSize: '0.8rem',
+    color: '#666',
+    fontWeight: 500,
+    letterSpacing: '0.02em',
   },
   heroScrollHint: {
     position: 'absolute',
@@ -106,7 +112,7 @@ const HS = {
     letterSpacing: '0.1em',
   },
 
-  // ─── PRICE DISRUPTION ─────────────────
+  // ─── PRICE TABLE ───────────────────────
   priceSection: {
     padding: '80px 20px',
     maxWidth: 1100,
@@ -134,90 +140,49 @@ const HS = {
     maxWidth: 500,
     lineHeight: 1.5,
   },
-  priceGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 16,
-    maxWidth: 900,
+  priceTableWrap: {
+    overflowX: 'auto',
+    maxWidth: 800,
     margin: '0 auto',
-  },
-  priceCard: {
-    padding: '32px 24px',
-    borderRadius: 20,
-    background: '#111',
+    borderRadius: 16,
     border: '1px solid rgba(255,255,255,0.06)',
-    textAlign: 'center',
-    transition: 'transform 0.3s, border-color 0.3s',
-    position: 'relative',
   },
-  priceCardHighlight: {
-    background: 'linear-gradient(180deg, #1a0000 0%, #111 100%)',
-    border: '1px solid rgba(204,0,0,0.4)',
-    transform: 'scale(1.04)',
-    boxShadow: '0 8px 40px rgba(204,0,0,0.15)',
+  priceTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontFamily: '"Space Grotesk", sans-serif',
   },
-  priceCardBadge: {
-    position: 'absolute',
-    top: -12,
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '6px 18px',
-    borderRadius: 20,
-    background: '#CC0000',
-    color: '#fff',
-    fontSize: '0.65rem',
+  priceTableHead: {
+    background: 'rgba(255,255,255,0.03)',
+  },
+  priceTableTh: {
+    padding: '14px 16px',
+    fontSize: '0.7rem',
     fontWeight: 800,
     letterSpacing: '0.08em',
-    whiteSpace: 'nowrap',
-  },
-  priceAppName: {
-    fontSize: '1rem',
-    fontWeight: 700,
     color: '#888',
-    marginBottom: 8,
+    textAlign: 'center',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
   },
-  priceAppNameHighlight: {
-    color: '#fff',
-  },
-  priceAmount: {
-    fontSize: '2.5rem',
-    fontWeight: 800,
-    marginBottom: 4,
-  },
-  priceAmountStrike: {
-    color: '#444',
-    textDecoration: 'line-through',
-  },
-  priceAmountHighlight: {
-    color: '#CC0000',
-  },
-  pricePeriod: {
-    fontSize: '0.8rem',
-    color: '#555',
-    marginBottom: 16,
-  },
-  priceFeatures: {
-    listStyle: 'none',
-    padding: 0,
-    margin: 0,
+  priceTableThFirst: {
     textAlign: 'left',
   },
-  priceFeature: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '8px 0',
-    fontSize: '0.85rem',
-    color: '#888',
-    borderTop: '1px solid rgba(255,255,255,0.04)',
+  priceTableRow: {
+    borderBottom: '1px solid rgba(255,255,255,0.04)',
+    transition: 'background 0.2s',
   },
-  priceFeatureHighlight: {
+  priceTableRowHighlight: {
+    background: 'rgba(204,0,0,0.12)',
+    borderBottom: '1px solid rgba(204,0,0,0.3)',
+  },
+  priceTableTd: {
+    padding: '14px 16px',
+    fontSize: '0.9rem',
+    textAlign: 'center',
     color: '#ccc',
   },
-  checkIcon: {
-    flexShrink: 0,
-    width: 18,
-    height: 18,
+  priceTableTdFirst: {
+    textAlign: 'left',
   },
 
   // ─── FEATURE CARDS ─────────────────────
@@ -269,305 +234,32 @@ const HS = {
     lineHeight: 1.6,
   },
 
-  // ─── LIVE DEMO ─────────────────────────
-  demoSection: {
-    padding: '80px 20px',
-    maxWidth: 700,
-    margin: '0 auto',
-    textAlign: 'center',
-  },
-  demoPhone: {
-    maxWidth: 380,
-    margin: '0 auto',
-    borderRadius: 28,
-    background: '#111',
-    border: '1px solid rgba(255,255,255,0.08)',
-    padding: '24px 20px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-  },
-  demoHeader: {
+  // ─── STATS BAR ─────────────────────────
+  statsBar: {
     display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 20,
-  },
-  demoLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: 'rgba(204,0,0,0.15)',
-    border: '1px solid rgba(204,0,0,0.3)',
-    display: 'flex',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-  },
-  demoAppTitle: {
-    fontWeight: 800,
-    fontSize: '0.85rem',
-    letterSpacing: '0.04em',
-  },
-  demoCard: {
-    padding: 16,
-    borderRadius: 16,
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    marginBottom: 12,
-  },
-  demoCardDone: {
-    background: 'rgba(52,199,89,0.06)',
-    border: '1px solid rgba(52,199,89,0.2)',
-  },
-  demoExName: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    marginBottom: 2,
-  },
-  demoExMuscle: {
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    color: '#666',
-    letterSpacing: '0.04em',
-    marginBottom: 12,
-  },
-  demoStats: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: 6,
-    marginBottom: 14,
-  },
-  demoStat: {
-    padding: '8px 4px',
-    borderRadius: 8,
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.04)',
-    textAlign: 'center',
-  },
-  demoStatLabel: {
-    fontSize: '0.55rem',
-    color: '#555',
-    fontWeight: 700,
-    letterSpacing: '0.04em',
-    marginBottom: 2,
-  },
-  demoStatVal: {
-    fontSize: '0.95rem',
-    fontWeight: 800,
-  },
-  demoCompleteBtn: {
-    width: '100%',
-    padding: 14,
-    borderRadius: 12,
-    border: 'none',
-    background: '#CC0000',
-    color: '#fff',
-    fontWeight: 800,
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    boxShadow: '0 4px 16px rgba(204,0,0,0.3)',
-    fontFamily: '"Space Grotesk", sans-serif',
-    transition: 'transform 0.15s',
-  },
-  demoCompleteBtnDone: {
-    background: 'rgba(255,255,255,0.05)',
-    color: '#555',
-    cursor: 'default',
-    boxShadow: 'none',
-  },
-  demoProgress: {
-    marginTop: 16,
-  },
-  demoProgHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '0.65rem',
-    color: '#555',
-    fontWeight: 700,
-    marginBottom: 6,
-  },
-  demoProgTrack: {
-    height: 6,
-    background: 'rgba(255,255,255,0.06)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  demoProgFill: {
-    height: '100%',
-    background: '#CC0000',
-    borderRadius: 3,
-    transition: 'width 0.4s ease',
-  },
-  // RPE overlay for demo
-  demoOverlay: {
-    position: 'absolute',
-    inset: 0,
-    background: 'rgba(0,0,0,0.85)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 28,
-    zIndex: 10,
-  },
-  demoRpeBox: {
-    background: '#1a1a1a',
-    borderRadius: 20,
-    padding: 24,
-    width: '85%',
-    maxWidth: 320,
-    textAlign: 'center',
-    border: '1px solid rgba(255,255,255,0.08)',
-  },
-  demoRpeTitle: {
-    fontSize: '1rem',
-    fontWeight: 800,
-    color: '#34C759',
-    marginBottom: 4,
-  },
-  demoRpeSub: {
-    fontSize: '0.8rem',
-    color: '#888',
-    marginBottom: 12,
-  },
-  demoRpeQ: {
-    fontSize: '0.95rem',
-    fontWeight: 600,
-    marginBottom: 14,
-  },
-  demoRpeGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(5, 1fr)',
-    gap: 6,
-    marginBottom: 12,
-  },
-  demoRpeBtn: {
-    padding: '10px 2px',
-    border: 'none',
-    borderRadius: 10,
-    cursor: 'pointer',
-    color: '#fff',
-    fontFamily: '"Space Grotesk", sans-serif',
-  },
-  demoRpeNum: {
-    fontSize: '1.25rem',
-    fontWeight: 800,
-  },
-  demoRpeLabel: {
-    fontSize: '0.45rem',
-    marginTop: 2,
-    opacity: 0.9,
-  },
-  demoWeightBump: {
-    padding: '14px 20px',
-    borderRadius: 14,
-    background: 'rgba(52,199,89,0.08)',
-    border: '1px solid rgba(52,199,89,0.2)',
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  demoWeightBumpText: {
-    fontSize: '0.85rem',
-    fontWeight: 700,
-    color: '#34C759',
-  },
-  demoWeightBumpSub: {
-    fontSize: '0.75rem',
-    color: '#888',
-    marginTop: 4,
-  },
-
-  // ─── HOW IT WORKS ──────────────────────
-  stepsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 32,
-    marginTop: 48,
-  },
-  stepCard: {
-    textAlign: 'center',
-    position: 'relative',
-  },
-  stepNum: {
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-    background: 'rgba(204,0,0,0.1)',
-    border: '1px solid rgba(204,0,0,0.25)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 16px',
-    fontSize: '1.1rem',
-    fontWeight: 800,
-    color: '#CC0000',
-  },
-  stepTitle: {
-    fontSize: '1.05rem',
-    fontWeight: 800,
-    marginBottom: 8,
-  },
-  stepDesc: {
-    fontSize: '0.85rem',
-    color: '#888',
-    lineHeight: 1.5,
-  },
-  stepConnector: {
-    position: 'absolute',
-    top: 24,
-    right: -16,
-    width: 32,
-    height: 1,
-    background: 'rgba(255,255,255,0.08)',
-  },
-
-  // ─── SOCIAL PROOF ─────────────────────
-  testimonialGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: 20,
-    marginTop: 48,
-  },
-  testimonialCard: {
-    padding: '28px 24px',
-    borderRadius: 20,
-    background: '#111',
-    border: '1px solid rgba(255,255,255,0.06)',
-  },
-  testimonialStars: {
-    marginBottom: 14,
-    display: 'flex',
-    gap: 3,
-  },
-  testimonialText: {
-    fontSize: '0.9rem',
-    color: '#ccc',
-    lineHeight: 1.6,
-    marginBottom: 16,
-    fontStyle: 'italic',
-  },
-  testimonialAuthor: {
-    display: 'flex',
     alignItems: 'center',
     gap: 12,
+    padding: '24px 0',
   },
-  testimonialAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #CC0000, #ff4444)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 800,
-    fontSize: '0.8rem',
-  },
-  testimonialName: {
+  statsItem: {
+    fontSize: '0.9rem',
     fontWeight: 700,
-    fontSize: '0.85rem',
+    color: '#ccc',
+    letterSpacing: '0.02em',
   },
-  testimonialMeta: {
-    fontSize: '0.75rem',
-    color: '#666',
-    marginTop: 2,
+  statsDivider: {
+    color: 'rgba(255,255,255,0.15)',
+    fontSize: '1rem',
+  },
+  rotatingSubtitle: {
+    marginTop: 20,
+    fontSize: 'clamp(1.2rem, 3vw, 1.6rem)',
+    fontWeight: 700,
+    color: '#CC0000',
+    minHeight: '2em',
+    transition: 'opacity 0.4s ease',
   },
 
   // ─── FINAL CTA ────────────────────────
@@ -581,7 +273,7 @@ const HS = {
     fontSize: 'clamp(1.8rem, 5vw, 3rem)',
     fontWeight: 800,
     marginBottom: 16,
-    letterSpacing: '-0.02em',
+    letterSpacing: '0.04em',
   },
   finalSub: {
     fontSize: '1.1rem',
@@ -630,7 +322,7 @@ const HS = {
     display: 'flex',
     justifyContent: 'center',
     gap: 32,
-    marginBottom: 16,
+    marginTop: 16,
   },
   footerLink: {
     color: '#666',
@@ -681,11 +373,6 @@ const homepageCss = `
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
-  @keyframes hp-weight-bump {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(1); }
-  }
 
   .hp-hero-cta:hover {
     transform: translateY(-2px) !important;
@@ -695,36 +382,13 @@ const homepageCss = `
     transform: translateY(-4px) !important;
     border-color: rgba(204,0,0,0.2) !important;
   }
-  .hp-price-card:hover {
-    transform: translateY(-4px);
-  }
-  .hp-demo-btn:hover {
-    transform: scale(1.02) !important;
-  }
-  .hp-demo-btn:active {
-    transform: scale(0.98) !important;
-  }
   .hp-footer-link:hover {
     color: #CC0000 !important;
   }
 
   @media (max-width: 768px) {
-    .hp-price-grid {
-      grid-template-columns: 1fr !important;
-      max-width: 400px !important;
-    }
     .hp-feature-grid {
       grid-template-columns: 1fr !important;
-    }
-    .hp-steps-grid {
-      grid-template-columns: 1fr !important;
-      gap: 24px !important;
-    }
-    .hp-testimonial-grid {
-      grid-template-columns: 1fr !important;
-    }
-    .hp-step-connector {
-      display: none !important;
     }
   }
 `;
@@ -732,11 +396,6 @@ const homepageCss = `
 // ─── SVG ICONS ──────────────────────────────────────────────────────────────
 function SvgIcon({ name, size = 24, color = '#CC0000' }) {
   const icons = {
-    bolt: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
     brain: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2a5 5 0 0 1 5 5c0 .9-.2 1.7-.7 2.4A5 5 0 0 1 19 14a5 5 0 0 1-3 4.6V22h-2v-3.4A5 5 0 0 1 11 14a5 5 0 0 1-3-4.6A5 5 0 0 1 5 7a5 5 0 0 1 5-5h2z" />
@@ -758,14 +417,6 @@ function SvgIcon({ name, size = 24, color = '#CC0000' }) {
         <path d="M9 12l2 2 4-4" />
       </svg>
     ),
-    dumbbell: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6.5 6.5h11M6.5 17.5h11" />
-        <rect x="2" y="6" width="4.5" height="12" rx="1" />
-        <rect x="17.5" y="6" width="4.5" height="12" rx="1" />
-        <rect x="6.5" y="9" width="11" height="6" rx="1" />
-      </svg>
-    ),
     check: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
@@ -776,38 +427,9 @@ function SvgIcon({ name, size = 24, color = '#CC0000' }) {
         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
       </svg>
     ),
-    star: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-      </svg>
-    ),
-    user: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-    target: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <circle cx="12" cy="12" r="6" />
-        <circle cx="12" cy="12" r="2" />
-      </svg>
-    ),
-    trending: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-        <polyline points="17 6 23 6 23 12" />
-      </svg>
-    ),
     chevronDown: (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="6 9 12 15 18 9" />
-      </svg>
-    ),
-    github: (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
       </svg>
     ),
   };
@@ -913,171 +535,20 @@ function RevealDiv({ children, style = {}, delay = 0, ...props }) {
   );
 }
 
-// ─── LIVE DEMO COMPONENT ────────────────────────────────────────────────────
-function LiveDemo() {
-  const [sets, setSets] = useState([false, false, false]);
-  const [showRpe, setShowRpe] = useState(false);
-  const [currentSet, setCurrentSet] = useState(0);
-  const [weight, setWeight] = useState(80);
-  const [showBump, setShowBump] = useState(false);
-  const [rpeChosen, setRpeChosen] = useState(null);
+// ─── COMPARISON TABLE DATA ──────────────────────────────────────────────────
+const COMPETITORS = [
+  { app: 'Fitbod', price: '$96/yr', autoReg: false, ghost: false, fatigue: 'Partial' },
+  { app: 'Dr. Muscle', price: '$120/yr', autoReg: true, ghost: false, fatigue: true },
+  { app: 'Hevy Pro', price: '$24/yr', autoReg: false, ghost: false, fatigue: false },
+  { app: 'Strong Pro', price: '$30/yr', autoReg: false, ghost: false, fatigue: false },
+  { app: 'RP Hypertrophy', price: '$420/yr', autoReg: true, ghost: false, fatigue: true },
+  { app: 'Iron Protocol', price: '$20/yr', autoReg: true, ghost: true, fatigue: true, highlight: true },
+];
 
-  const completedCount = sets.filter(Boolean).length;
-  const allDone = completedCount === 3;
-  const progress = Math.round((completedCount / 3) * 100);
-
-  const handleComplete = useCallback(() => {
-    if (allDone) return;
-    setCurrentSet(completedCount);
-    setShowRpe(true);
-  }, [allDone, completedCount]);
-
-  const handleRpe = useCallback((rpe) => {
-    setRpeChosen(rpe);
-    const next = [...sets];
-    next[currentSet] = true;
-    setSets(next);
-    setShowRpe(false);
-
-    if (currentSet === 2 && rpe <= 7) {
-      setShowBump(true);
-      setTimeout(() => {
-        setWeight(w => w + 2.5);
-        setTimeout(() => setShowBump(false), 2000);
-      }, 300);
-    }
-  }, [sets, currentSet]);
-
-  const handleReset = useCallback(() => {
-    setSets([false, false, false]);
-    setShowBump(false);
-    setCurrentSet(0);
-    setWeight(80);
-    setRpeChosen(null);
-  }, []);
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <div style={HS.demoPhone}>
-        {/* Phone header */}
-        <div style={HS.demoHeader}>
-          <div style={HS.demoLogo}>
-            <SvgIcon name="dumbbell" size={18} />
-          </div>
-          <span style={HS.demoAppTitle}>IRON PROTOCOL</span>
-        </div>
-
-        {/* Exercise card */}
-        <div style={{ ...HS.demoCard, ...(allDone ? HS.demoCardDone : {}) }}>
-          <div style={HS.demoExName}>Bench Press</div>
-          <div style={HS.demoExMuscle}>CHEST</div>
-          <div style={HS.demoStats}>
-            <div style={HS.demoStat}>
-              <div style={HS.demoStatLabel}>WEIGHT</div>
-              <div style={{
-                ...HS.demoStatVal,
-                color: showBump ? '#34C759' : '#fff',
-                animation: showBump ? 'hp-weight-bump 0.4s ease' : 'none',
-              }}>{weight}kg</div>
-            </div>
-            <div style={HS.demoStat}>
-              <div style={HS.demoStatLabel}>REPS</div>
-              <div style={HS.demoStatVal}>8</div>
-            </div>
-            <div style={HS.demoStat}>
-              <div style={HS.demoStatLabel}>SETS</div>
-              <div style={HS.demoStatVal}>{completedCount}/3</div>
-            </div>
-            <div style={HS.demoStat}>
-              <div style={HS.demoStatLabel}>RPE</div>
-              <div style={{ ...HS.demoStatVal, color: rpeChosen ? (rpeChosen <= 7 ? '#34C759' : rpeChosen === 8 ? '#FF9500' : '#CC0000') : '#555' }}>
-                {rpeChosen || '-'}
-              </div>
-            </div>
-          </div>
-
-          {/* Set indicators */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
-            {sets.map((done, i) => (
-              <div key={i} style={{
-                flex: 1,
-                height: 4,
-                borderRadius: 2,
-                background: done ? '#34C759' : 'rgba(255,255,255,0.08)',
-                transition: 'background 0.3s',
-              }} />
-            ))}
-          </div>
-
-          <button
-            className="hp-demo-btn"
-            onClick={allDone ? handleReset : handleComplete}
-            style={{
-              ...HS.demoCompleteBtn,
-              ...(allDone ? { background: 'rgba(52,199,89,0.15)', color: '#34C759', boxShadow: 'none' } : {}),
-            }}
-          >
-            {allDone ? 'RESET DEMO' : `COMPLETE SET ${completedCount + 1}`}
-          </button>
-        </div>
-
-        {/* Progress */}
-        <div style={HS.demoProgress}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#555', fontWeight: 700, marginBottom: 6 }}>
-            <span>WORKOUT PROGRESS</span>
-            <span>{progress}%</span>
-          </div>
-          <div style={HS.demoProgTrack}>
-            <div style={{ ...HS.demoProgFill, width: `${progress}%` }} />
-          </div>
-        </div>
-
-        {/* Weight bump notification */}
-        {showBump && (
-          <div style={HS.demoWeightBump}>
-            <div style={HS.demoWeightBumpText}>Weight increased to {weight}kg</div>
-            <div style={HS.demoWeightBumpSub}>RPE was low -- auto-progressing</div>
-          </div>
-        )}
-      </div>
-
-      {/* RPE Modal overlay */}
-      {showRpe && (
-        <div style={HS.demoOverlay}>
-          <div style={HS.demoRpeBox}>
-            <div style={HS.demoRpeTitle}>Set {currentSet + 1} Complete!</div>
-            <div style={HS.demoRpeSub}>Bench Press</div>
-            <div style={HS.demoRpeQ}>How hard was that?</div>
-            <div style={HS.demoRpeGrid}>
-              {[6, 7, 8, 9, 10].map(rpe => (
-                <button
-                  key={rpe}
-                  onClick={() => handleRpe(rpe)}
-                  style={{
-                    ...HS.demoRpeBtn,
-                    background: rpe <= 7 ? '#34C759' : rpe === 8 ? '#FF9500' : '#CC0000',
-                  }}
-                >
-                  <div style={HS.demoRpeNum}>{rpe}</div>
-                  <div style={HS.demoRpeLabel}>
-                    {rpe === 6 ? 'Easy' : rpe === 7 ? 'Mod' : rpe === 8 ? 'Hard' : rpe === 9 ? 'V.Hard' : 'Fail'}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: '0.7rem', color: '#666' }}>
-              RPE 6-7 = weight goes up next time
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+const STATS_ITEMS = ['250+ exercises', 'RPE auto-regulation', 'Ghost rival system', 'Fatigue detection', '$2/month'];
 
 // ─── MAIN HOMEPAGE COMPONENT ────────────────────────────────────────────────
 export default function Homepage() {
-  // Check for existing profile to show "Continue Training" vs "Start Training"
   const [hasProfile, setHasProfile] = useState(false);
   useEffect(() => {
     try {
@@ -1086,7 +557,22 @@ export default function Homepage() {
     } catch { /* noop */ }
   }, []);
 
-  const ctaText = hasProfile ? 'Continue Training' : 'Start Training -- Free';
+  // Rotating subtitle
+  const [rotatingIdx, setRotatingIdx] = useState(0);
+  const [rotatingVisible, setRotatingVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRotatingVisible(false);
+      setTimeout(() => {
+        setRotatingIdx(prev => (prev + 1) % ROTATING_PHRASES.length);
+        setRotatingVisible(true);
+      }, 400);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const ctaText = hasProfile ? 'CONTINUE TRAINING' : 'START YOUR FREE TRIAL';
   const ctaHref = '#/app';
 
   return (
@@ -1097,22 +583,18 @@ export default function Homepage() {
       <section style={HS.hero}>
         <HeroBackground />
         <div style={HS.heroContent}>
-          <div style={HS.heroBadge}>
-            <SvgIcon name="bolt" size={14} />
-            RPE-Based Auto-Regulation
-          </div>
           <h1 style={HS.heroHeadline}>
-            Train Smarter.<br />
-            Not Harder.<br />
-            <span style={HS.heroAccent}>$2/month.</span>
+            TRAIN HARDER.<br />
+            <span style={HS.heroAccent}>PROGRESS FASTER.</span>
           </h1>
           <p style={HS.heroSub}>
-            Your app counts reps. Iron Protocol reads your effort, adjusts your
-            weights, and builds your program in real time.
+            The only app that adjusts your training based on how you actually perform.
           </p>
+          <div style={HS.heroPricing}>$2/month. 7 days free.</div>
           <a href={ctaHref} className="hp-hero-cta" style={HS.heroCta}>
             {ctaText}
           </a>
+          <div style={HS.heroNoCard}>No credit card required</div>
         </div>
         <div style={{ ...HS.heroScrollHint, animation: 'hp-scroll-hint 2s ease-in-out infinite' }}>
           <SvgIcon name="chevronDown" size={20} color="#555" />
@@ -1120,73 +602,78 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* ━━━ SECTION 2: PRICE DISRUPTION ━━━ */}
+      {/* ━━━ SECTION 2: PRICE COMPARISON ━━━ */}
       <section style={HS.priceSection}>
         <RevealDiv>
           <div style={HS.sectionTag}>PRICING</div>
-          <h2 style={HS.sectionTitle}>More Features. Less Cost.</h2>
-          <p style={HS.sectionSub}>
-            Premium fitness coaching shouldn't require a premium budget.
-          </p>
+          <h2 style={HS.sectionTitle}>Why pay more for less?</h2>
         </RevealDiv>
 
-        <div className="hp-price-grid" style={HS.priceGrid}>
-          {/* Fitbod */}
-          <RevealDiv delay={0}>
-            <div className="hp-price-card" style={HS.priceCard}>
-              <div style={{ ...HS.priceAppName }}>Fitbod</div>
-              <div style={{ ...HS.priceAmount, ...HS.priceAmountStrike }}>$80</div>
-              <div style={HS.pricePeriod}>per year</div>
-              <ul style={HS.priceFeatures}>
-                <li style={HS.priceFeature}><SvgIcon name="check" size={16} color="#34C759" /> Auto-generated workouts</li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No RPE tracking</span></li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No ghost rival</span></li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No fatigue detection</span></li>
-              </ul>
-            </div>
-          </RevealDiv>
-
-          {/* Iron Protocol */}
-          <RevealDiv delay={150}>
-            <div className="hp-price-card" style={{ ...HS.priceCard, ...HS.priceCardHighlight }}>
-              <div style={HS.priceCardBadge}>BEST VALUE</div>
-              <div style={{ ...HS.priceAppName, ...HS.priceAppNameHighlight }}>Iron Protocol</div>
-              <div style={{ ...HS.priceAmount, ...HS.priceAmountHighlight }}>$24</div>
-              <div style={HS.pricePeriod}>per year</div>
-              <ul style={HS.priceFeatures}>
-                <li style={{ ...HS.priceFeature, ...HS.priceFeatureHighlight }}><SvgIcon name="check" size={16} color="#34C759" /> Smart auto-progression</li>
-                <li style={{ ...HS.priceFeature, ...HS.priceFeatureHighlight }}><SvgIcon name="check" size={16} color="#34C759" /> RPE-based programming</li>
-                <li style={{ ...HS.priceFeature, ...HS.priceFeatureHighlight }}><SvgIcon name="check" size={16} color="#34C759" /> Ghost rival system</li>
-                <li style={{ ...HS.priceFeature, ...HS.priceFeatureHighlight }}><SvgIcon name="check" size={16} color="#34C759" /> Fatigue detection</li>
-              </ul>
-            </div>
-          </RevealDiv>
-
-          {/* Strong */}
-          <RevealDiv delay={300}>
-            <div className="hp-price-card" style={HS.priceCard}>
-              <div style={HS.priceAppName}>Strong</div>
-              <div style={{ ...HS.priceAmount, ...HS.priceAmountStrike }}>$30</div>
-              <div style={HS.pricePeriod}>per year</div>
-              <ul style={HS.priceFeatures}>
-                <li style={HS.priceFeature}><SvgIcon name="check" size={16} color="#34C759" /> Exercise logging</li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No auto-progression</span></li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No ghost rival</span></li>
-                <li style={HS.priceFeature}><SvgIcon name="x" size={16} color="#444" /><span style={{ color: '#555' }}>No fatigue detection</span></li>
-              </ul>
-            </div>
-          </RevealDiv>
-        </div>
+        <RevealDiv delay={200}>
+          <div style={HS.priceTableWrap}>
+            <table style={HS.priceTable}>
+              <thead>
+                <tr style={HS.priceTableHead}>
+                  <th style={{ ...HS.priceTableTh, ...HS.priceTableThFirst }}>APP</th>
+                  <th style={HS.priceTableTh}>PRICE</th>
+                  <th style={HS.priceTableTh}>AUTO-REG</th>
+                  <th style={HS.priceTableTh}>GHOST</th>
+                  <th style={HS.priceTableTh}>FATIGUE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPETITORS.map((row, i) => (
+                  <tr key={i} style={row.highlight ? HS.priceTableRowHighlight : HS.priceTableRow}>
+                    <td style={{
+                      ...HS.priceTableTd,
+                      ...HS.priceTableTdFirst,
+                      fontWeight: row.highlight ? 800 : 600,
+                      color: row.highlight ? '#fff' : '#ccc',
+                    }}>
+                      {row.app}
+                    </td>
+                    <td style={{
+                      ...HS.priceTableTd,
+                      textDecoration: row.highlight ? 'none' : 'line-through',
+                      color: row.highlight ? '#fff' : '#555',
+                      fontWeight: row.highlight ? 800 : 400,
+                    }}>
+                      {row.price}
+                    </td>
+                    <td style={HS.priceTableTd}>
+                      {row.autoReg
+                        ? <SvgIcon name="check" size={16} color="#34C759" />
+                        : <SvgIcon name="x" size={16} color="#444" />}
+                    </td>
+                    <td style={{
+                      ...HS.priceTableTd,
+                      fontWeight: row.highlight && row.ghost ? 800 : 400,
+                      color: row.highlight && row.ghost ? '#34C759' : undefined,
+                    }}>
+                      {row.ghost
+                        ? (row.highlight ? 'YES' : <SvgIcon name="check" size={16} color="#34C759" />)
+                        : <SvgIcon name="x" size={16} color="#444" />}
+                    </td>
+                    <td style={HS.priceTableTd}>
+                      {row.fatigue === 'Partial'
+                        ? <span style={{ color: '#FF9500', fontSize: '0.8rem', fontWeight: 600 }}>Partial</span>
+                        : row.fatigue
+                          ? <SvgIcon name="check" size={16} color="#34C759" />
+                          : <SvgIcon name="x" size={16} color="#444" />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </RevealDiv>
       </section>
 
       {/* ━━━ SECTION 3: FEATURE CARDS ━━━ */}
       <section style={HS.featuresSection}>
         <RevealDiv>
-          <div style={HS.sectionTag}>INTELLIGENCE</div>
-          <h2 style={HS.sectionTitle}>Your App Tracks. Ours Thinks.</h2>
-          <p style={HS.sectionSub}>
-            Three features that make Iron Protocol fundamentally different.
-          </p>
+          <div style={HS.sectionTag}>FEATURES</div>
+          <h2 style={HS.sectionTitle}>Three Features. Zero Guesswork.</h2>
         </RevealDiv>
 
         <div className="hp-feature-grid" style={HS.featureGrid}>
@@ -1195,12 +682,11 @@ export default function Homepage() {
               <div style={HS.featureIconWrap}>
                 <SvgIcon name="brain" size={28} />
               </div>
-              <div style={HS.featureTitle}>RPE Auto-Progression</div>
-              <div style={HS.featureTagline}>Rate your effort. We handle the rest.</div>
+              <div style={HS.featureTitle}>RATE YOUR EFFORT. WE HANDLE THE REST.</div>
+              <div style={HS.featureTagline}>Intelligent RPE-based progression</div>
               <div style={HS.featureDesc}>
-                After every set, rate how hard it felt on a 6-10 scale. Iron Protocol
-                uses that data to automatically adjust your weights for next session --
-                heavier when you're strong, lighter when you're not.
+                After each set, rate how hard you worked. We calculate your
+                next session automatically.
               </div>
             </div>
           </RevealDiv>
@@ -1210,12 +696,11 @@ export default function Homepage() {
               <div style={HS.featureIconWrap}>
                 <SvgIcon name="ghost" size={28} />
               </div>
-              <div style={HS.featureTitle}>Ghost Rival System</div>
-              <div style={HS.featureTagline}>Race your ghost every session.</div>
+              <div style={HS.featureTitle}>RACE YOUR GHOST.</div>
+              <div style={HS.featureTagline}>Ghost rival system</div>
               <div style={HS.featureDesc}>
-                Your past performance becomes your rival. Every workout, you're
-                competing against the version of you from last week. Beat your ghost,
-                and you're getting stronger. Simple.
+                Every workout, you compete against your last session.
+                Real-time volume comparison. Win/loss streaks.
               </div>
             </div>
           </RevealDiv>
@@ -1225,153 +710,59 @@ export default function Homepage() {
               <div style={HS.featureIconWrap}>
                 <SvgIcon name="shield" size={28} />
               </div>
-              <div style={HS.featureTitle}>Fatigue Detection</div>
-              <div style={HS.featureTagline}>We'll tell you when to back off.</div>
+              <div style={HS.featureTitle}>FATIGUE DETECTION. NO WEARABLE REQUIRED.</div>
+              <div style={HS.featureTagline}>Built-in fatigue monitoring</div>
               <div style={HS.featureDesc}>
-                Iron Protocol monitors your RPE trends across weeks. When fatigue
-                accumulates and performance drops, it recommends a deload before
-                you burn out or get hurt.
+                No Oura ring. No Whoop band. We track your patterns to tell
+                you when to push and when to rest.
               </div>
             </div>
           </RevealDiv>
         </div>
       </section>
 
-      {/* ━━━ SECTION 4: LIVE DEMO ━━━ */}
-      <section style={HS.demoSection}>
-        <RevealDiv>
-          <div style={HS.sectionTag}>TRY IT NOW</div>
-          <h2 style={HS.sectionTitle}>See It In Action</h2>
-          <p style={HS.sectionSub}>
-            Tap "Complete Set", rate your effort, and watch the weight auto-adjust.
-          </p>
-        </RevealDiv>
-        <RevealDiv delay={200}>
-          <LiveDemo />
-        </RevealDiv>
-      </section>
-
-      {/* ━━━ SECTION 5: HOW IT WORKS ━━━ */}
+      {/* ━━━ SECTION 4: SOCIAL PROOF ━━━ */}
       <section style={{ ...HS.section, textAlign: 'center' }}>
         <RevealDiv>
-          <div style={HS.sectionTag}>GET STARTED</div>
-          <h2 style={HS.sectionTitle}>Three Steps to Stronger</h2>
+          <div style={HS.statsBar}>
+            {STATS_ITEMS.map((stat, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span style={HS.statsDivider}>|</span>}
+                <span style={HS.statsItem}>{stat}</span>
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{ ...HS.rotatingSubtitle, opacity: rotatingVisible ? 1 : 0 }}>
+            {ROTATING_PHRASES[rotatingIdx]}
+          </div>
         </RevealDiv>
-
-        <div className="hp-steps-grid" style={HS.stepsGrid}>
-          <RevealDiv delay={0}>
-            <div style={HS.stepCard}>
-              <div style={HS.stepNum}>1</div>
-              <div style={HS.stepTitle}>Set Up Your Profile</div>
-              <div style={HS.stepDesc}>
-                Tell us your experience level, preferred split, and training days.
-                Takes under a minute.
-              </div>
-              <div className="hp-step-connector" style={HS.stepConnector} />
-            </div>
-          </RevealDiv>
-
-          <RevealDiv delay={150}>
-            <div style={HS.stepCard}>
-              <div style={HS.stepNum}>2</div>
-              <div style={HS.stepTitle}>Follow the Smart Program</div>
-              <div style={HS.stepDesc}>
-                Your program adapts every session based on your RPE ratings. No
-                guessing, no spreadsheets.
-              </div>
-              <div className="hp-step-connector" style={HS.stepConnector} />
-            </div>
-          </RevealDiv>
-
-          <RevealDiv delay={300}>
-            <div style={HS.stepCard}>
-              <div style={HS.stepNum}>3</div>
-              <div style={HS.stepTitle}>Get Stronger</div>
-              <div style={HS.stepDesc}>
-                Track PRs, beat your ghost, and watch the weights climb. The
-                protocol handles the science.
-              </div>
-            </div>
-          </RevealDiv>
-        </div>
       </section>
 
-      {/* ━━━ SECTION 6: SOCIAL PROOF ━━━ */}
-      <section style={{ ...HS.section, textAlign: 'center' }}>
-        <RevealDiv>
-          <div style={HS.sectionTag}>ATHLETES</div>
-          <h2 style={HS.sectionTitle}>What Lifters Are Saying</h2>
-        </RevealDiv>
-
-        <div className="hp-testimonial-grid" style={HS.testimonialGrid}>
-          {[
-            {
-              text: "I've tried every app out there. This is the first one that actually adjusts my weights intelligently. My bench went up 15kg in 3 months.",
-              name: 'Marcus R.',
-              meta: 'Powerlifter, 2 years',
-              initials: 'MR',
-            },
-            {
-              text: "The ghost rival feature is addictive. I find myself pushing harder every session just to beat last week's numbers. Game changer.",
-              name: 'Sarah K.',
-              meta: 'CrossFit athlete',
-              initials: 'SK',
-            },
-            {
-              text: "Finally an app that told me to deload before I got injured. The fatigue detection is worth the subscription alone. And at $2/mo, it's a no-brainer.",
-              name: 'James T.',
-              meta: 'Bodybuilder, 5 years',
-              initials: 'JT',
-            },
-          ].map((t, i) => (
-            <RevealDiv key={i} delay={i * 150}>
-              <div style={HS.testimonialCard}>
-                <div style={HS.testimonialStars}>
-                  {[1,2,3,4,5].map(s => <SvgIcon key={s} name="star" size={14} color="#CC0000" />)}
-                </div>
-                <div style={HS.testimonialText}>"{t.text}"</div>
-                <div style={HS.testimonialAuthor}>
-                  <div style={HS.testimonialAvatar}>{t.initials}</div>
-                  <div>
-                    <div style={HS.testimonialName}>{t.name}</div>
-                    <div style={HS.testimonialMeta}>{t.meta}</div>
-                  </div>
-                </div>
-              </div>
-            </RevealDiv>
-          ))}
-        </div>
-      </section>
-
-      {/* ━━━ SECTION 7: FINAL CTA ━━━ */}
+      {/* ━━━ SECTION 5: FINAL CTA ━━━ */}
       <section style={HS.finalCta}>
         <div style={HS.finalGlow} />
         <RevealDiv>
           <h2 style={HS.finalHeadline}>
-            Your Ghost Is Waiting.
+            YOUR GHOST IS WAITING.
           </h2>
           <p style={HS.finalSub}>
-            Start for free. Go Pro for the price of a coffee.
+            7 days free. Then $2/month. Cancel anytime.
           </p>
           <a href={ctaHref} style={HS.finalBtn}>
-            {ctaText}
+            START TRAINING
           </a>
         </RevealDiv>
       </section>
 
-      {/* ━━━ SECTION 8: FOOTER ━━━ */}
+      {/* ━━━ SECTION 6: FOOTER ━━━ */}
       <footer style={HS.footer}>
-        <div style={HS.footerLinks}>
-          <a href="https://github.com/iwash-alt/iron-protocol" className="hp-footer-link" style={HS.footerLink} target="_blank" rel="noopener noreferrer">
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <SvgIcon name="github" size={16} color="#666" /> GitHub
-            </span>
-          </a>
-          <a href="#/privacy" className="hp-footer-link" style={HS.footerLink}>Privacy</a>
-          <a href="#/about" className="hp-footer-link" style={HS.footerLink}>About</a>
-        </div>
         <div style={HS.footerCopy}>
-          Iron Protocol {new Date().getFullYear()}. Train smarter.
+          Iron Protocol | Built by lifters, for lifters.
+        </div>
+        <div style={HS.footerLinks}>
+          <a href="#/terms" className="hp-footer-link" style={HS.footerLink}>Terms</a>
+          <a href="#/privacy" className="hp-footer-link" style={HS.footerLink}>Privacy</a>
+          <a href="#/contact" className="hp-footer-link" style={HS.footerLink}>Contact</a>
         </div>
       </footer>
     </div>

@@ -11,7 +11,7 @@ export default function Onboarding({ onComplete }) {
     <div key="0" style={S.obStep}>
       <div style={S.obIcon}><Icon name="dumbbell" size={32} /></div>
       <h1 style={S.obTitle}>IRON PROTOCOL</h1>
-      <p style={S.obText}>Progressive overload with smart auto-regulation. Let's build your program.</p>
+      <p style={S.obText}>Progressive overload with intelligent auto-regulation. Let's build your program.</p>
       <button onClick={() => setStep(1)} style={S.obBtn}>GET STARTED</button>
     </div>,
     <div key="1" style={S.obStep}>

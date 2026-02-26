@@ -219,11 +219,11 @@ export function Dashboard({
       ) : (
         <div style={lockedCardStyles.card}>
           <div style={lockedCardStyles.icon}>{'\u{1F512}'}</div>
-          <div style={lockedCardStyles.title}>Smart Training Intelligence</div>
+          <div style={lockedCardStyles.title}>Intelligent Training Progression</div>
           <div style={lockedCardStyles.desc}>
             Fatigue tracking, weekly insights, adaptive rest, and mid-workout suggestions.
           </div>
-          <div style={lockedCardStyles.price}>Unlock smart training {'\u2014'} $2/mo</div>
+          <div style={lockedCardStyles.price}>Unlock intelligent progression {'\u2014'} $2/mo</div>
         </div>
       )}
 

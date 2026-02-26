@@ -6,8 +6,7 @@ export const userProfileSchema = z.object({
   weight: z.number().positive(),
   age: z.number().int().positive(),
   level: z.enum(['beginner', 'intermediate', 'advanced']),
-  days: z.union([z.literal(3), z.literal(4)]),
-  health: z.boolean(),
+  days: z.union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
 });
 
 export const exerciseHistoryEntrySchema = z.object({

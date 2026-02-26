@@ -33,7 +33,6 @@ describe('LocalStorageAdapter', () => {
         age: 28,
         level: 'intermediate' as const,
         days: 3 as const,
-        health: true,
       };
 
       await adapter.save('profile', profile);

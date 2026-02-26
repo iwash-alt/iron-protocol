@@ -7,6 +7,7 @@ export interface WorkoutTemplate {
   id: string;
   name: string;
   description: string;
+  daysPerWeek: number;
   days: TemplateDay[];
 }
 
@@ -14,7 +15,8 @@ export const workoutTemplates: Record<string, WorkoutTemplate> = {
   ppl: {
     id: 'ppl',
     name: 'Push / Pull / Legs',
-    description: 'Classic 3-day split',
+    description: 'The most popular split for building muscle',
+    daysPerWeek: 6,
     days: [
       { name: 'Push', exercises: ['Barbell Bench Press', 'Overhead Press', 'Lateral Raises', 'Tricep Pushdown', 'Cable Crunch'] },
       { name: 'Pull', exercises: ['Deadlift', 'Barbell Row', 'Lat Pulldown', 'Barbell Curl', 'Face Pulls', 'Hanging Leg Raise'] },
@@ -24,7 +26,8 @@ export const workoutTemplates: Record<string, WorkoutTemplate> = {
   upperLower: {
     id: 'upperLower',
     name: 'Upper / Lower',
-    description: '4-day split',
+    description: 'Balanced strength and size',
+    daysPerWeek: 4,
     days: [
       { name: 'Upper A', exercises: ['Barbell Bench Press', 'Barbell Row', 'Overhead Press', 'Barbell Curl', 'Tricep Pushdown', 'Woodchops (Cable)'] },
       { name: 'Lower A', exercises: ['Squat', 'Romanian Deadlift', 'Leg Press', 'Calf Raises', 'Russian Twist'] },
@@ -35,7 +38,8 @@ export const workoutTemplates: Record<string, WorkoutTemplate> = {
   fullBody: {
     id: 'fullBody',
     name: 'Full Body',
-    description: '3-day full body',
+    description: 'Great for beginners or busy schedules',
+    daysPerWeek: 3,
     days: [
       { name: 'Day A', exercises: ['Squat', 'Barbell Bench Press', 'Barbell Row', 'Overhead Press', 'Plank'] },
       { name: 'Day B', exercises: ['Deadlift', 'Barbell Bench Press', 'Lat Pulldown', 'Barbell Curl', 'Hanging Leg Raise'] },
@@ -45,7 +49,8 @@ export const workoutTemplates: Record<string, WorkoutTemplate> = {
   broSplit: {
     id: 'broSplit',
     name: 'Bro Split',
-    description: '5-day bodybuilding',
+    description: 'Chest, Back, Shoulders, Arms, Legs',
+    daysPerWeek: 5,
     days: [
       { name: 'Chest', exercises: ['Barbell Bench Press', 'Barbell Bench Press', 'Push Ups', 'Cable Crunch'] },
       { name: 'Back', exercises: ['Deadlift', 'Barbell Row', 'Lat Pulldown', 'Face Pulls', 'Hanging Leg Raise'] },

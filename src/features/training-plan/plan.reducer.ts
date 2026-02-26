@@ -98,6 +98,45 @@ export function createInitialPlan(profile: UserProfile, templateKey?: string): P
 }
 
 
+export function createPlanFromTemplate(
+  templateKey: string,
+  weights: Record<string, number>,
+): PlanState {
+  const template = workoutTemplates[templateKey];
+  if (!template) {
+    return createInitialPlan({ name: '', height: 175, weight: 80, age: 30, level: 'intermediate', days: 3 });
+  }
+
+  const days: WorkoutDay[] = template.days.map((d, i) => ({
+    id: `d${i}`,
+    name: d.name,
+  }));
+
+  const exercises: PlanExercise[] = [];
+  template.days.forEach((day, di) => {
+    day.exercises.forEach((name, ei) => {
+      const ex = findExerciseByName(name);
+      if (ex) {
+        const lower = isLowerBody(ex.muscle);
+        exercises.push({
+          id: `d${di}-${ei}`,
+          dayId: `d${di}`,
+          exercise: ex,
+          sets: 4,
+          repsMin: lower ? 6 : 8,
+          repsMax: lower ? 10 : 12,
+          reps: lower ? 8 : 10,
+          weightKg: weights[name] ?? 0,
+          restSeconds: 90,
+          progressionKg: 2.5,
+        });
+      }
+    });
+  });
+
+  return { days, exercises, dayIndex: 0, programName: template.name };
+}
+
 function toPositiveInt(value: number, fallback: number): number {
   const normalized = Math.round(value);
   return Number.isFinite(normalized) && normalized > 0 ? normalized : fallback;

@@ -10,7 +10,6 @@ const baseProfile: UserProfile = {
   age: 28,
   level: 'intermediate',
   days: 3,
-  health: true,
 };
 
 describe('createInitialPlan', () => {

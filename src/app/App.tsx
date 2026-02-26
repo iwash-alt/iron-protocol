@@ -2,7 +2,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { ErrorBoundary, LoadingSpinner, ToastProvider } from '@/shared/components';
 import { TIMINGS } from '@/shared/constants/timings';
-import { loadProfile, runMigrations, saveProfile } from '@/shared/storage';
+import { loadProfile, runMigrations, saveProfile, saveTrainingPlan } from '@/shared/storage';
 import { DemoModeProvider } from '@/shared/demo/DemoModeContext';
 import { PlanProvider, usePlan } from '@/features/training-plan/PlanContext';
 import { WorkoutProvider } from '@/features/workout/WorkoutContext';
@@ -13,6 +13,7 @@ import { InstallBanner } from '@/features/pwa/InstallBanner';
 import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
 import { ProfilePhotoProvider } from '@/features/photos/ProfilePhotoContext';
 import { AppShell } from '@/app/AppShell';
+import type { PlanState } from '@/features/training-plan/plan.reducer';
 
 // @ts-expect-error — JSX homepage component without type declarations
 const Homepage = React.lazy(() => import('@/ui/screens/Homepage'));
@@ -58,7 +59,8 @@ export default function App() {
     if (profile && (hash === '#/' || hash === '' || hash === '#')) window.location.hash = '#/app';
   }, [profile, hash]);
 
-  const handleProfileComplete = useCallback((p: UserProfile) => {
+  const handleProfileComplete = useCallback((p: UserProfile, plan: PlanState) => {
+    saveTrainingPlan(plan);
     saveProfile(p);
     setProfile(p);
     window.location.hash = '#/app';

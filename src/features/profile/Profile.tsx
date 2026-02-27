@@ -37,7 +37,6 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ ...profile });
   const [showReset, setShowReset] = useState(false);
-  const [showPrefs, setShowPrefs] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
 
   const handleSave = useCallback(() => {
@@ -180,21 +179,6 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
         </div>
       </div>
 
-      {/* Training Preferences */}
-      <div style={S.profileSection}>
-        <div style={S.profileSectionTitle}>TRAINING</div>
-        <div style={S.profileCard}>
-          <div style={S.profileRow} onClick={() => setShowPrefs(true)}>
-            <span style={S.profileRowLabel}><Icon name="dumbbell" size={18} /> Experience</span>
-            <span style={{ ...S.profileRowValue, textTransform: 'capitalize' } as React.CSSProperties}>{profile.level} <Icon name="chevron-right" size={14} /></span>
-          </div>
-          <div style={{ ...S.profileRow, ...S.profileRowLast }} onClick={() => setShowPrefs(true)}>
-            <span style={S.profileRowLabel}><Icon name="flame" size={18} /> Training Days</span>
-            <span style={S.profileRowValue}>{profile.days}x / week <Icon name="chevron-right" size={14} /></span>
-          </div>
-        </div>
-      </div>
-
       {/* Upgrade to Pro */}
       <div style={S.upgradeCard}>
         <div style={S.upgradeTitle}>Upgrade to Pro</div>
@@ -327,82 +311,6 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
             </div>
 
             <button onClick={handleSave} style={S.profileEditSave}>SAVE CHANGES</button>
-          </div>
-        </>
-      )}
-
-      {/* Training Preferences Sheet */}
-      {showPrefs && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 140 }} onClick={() => setShowPrefs(false)} />
-          <div style={S.profileEditModal} className="modal-sheet">
-            <div style={S.profileEditHandle} />
-            <div style={S.profileEditTitle as React.CSSProperties}>Training Preferences</div>
-
-            <div style={S.profileEditField}>
-              <label style={S.profileEditLabel}>Experience Level</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(['beginner', 'intermediate', 'advanced'] as const).map(lvl => (
-                  <button
-                    key={lvl}
-                    onClick={() => setEditData(d => ({ ...d, level: lvl }))}
-                    style={{
-                      flex: 1,
-                      padding: '12px 8px',
-                      borderRadius: 12,
-                      border: editData.level === lvl ? `2px solid ${colors.primary}` : '2px solid rgba(255,255,255,0.1)',
-                      background: editData.level === lvl ? 'rgba(255,59,48,0.1)' : 'rgba(255,255,255,0.03)',
-                      color: editData.level === lvl ? colors.text : colors.textSecondary,
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      fontSize: '0.75rem',
-                      textTransform: 'capitalize',
-                      minHeight: 48,
-                    }}
-                  >
-                    {lvl}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={S.profileEditField}>
-              <label style={S.profileEditLabel}>Training Days</label>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {([3, 4] as const).map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setEditData(prev => ({ ...prev, days: d }))}
-                    style={{
-                      flex: 1,
-                      padding: 14,
-                      borderRadius: 12,
-                      border: editData.days === d ? `2px solid ${colors.primary}` : '2px solid rgba(255,255,255,0.1)',
-                      background: editData.days === d ? 'rgba(255,59,48,0.1)' : 'rgba(255,255,255,0.03)',
-                      color: editData.days === d ? colors.text : colors.textSecondary,
-                      cursor: 'pointer',
-                      fontWeight: 800,
-                      fontSize: '1.1rem',
-                      minHeight: 52,
-                    }}
-                  >
-                    {d}x / week
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                const updated = { ...profile, level: editData.level, days: editData.days };
-                saveProfile(updated);
-                onProfileUpdate(updated);
-                setShowPrefs(false);
-              }}
-              style={S.profileEditSave}
-            >
-              SAVE PREFERENCES
-            </button>
           </div>
         </>
       )}

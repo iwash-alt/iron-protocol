@@ -1,4 +1,4 @@
-import type { Exercise, Equipment, MuscleGroup, EquipmentFilter, MuscleFilter } from '@/shared/types';
+import type { Exercise, Equipment, MuscleGroup, EquipmentFilter, MuscleFilter, ExerciseType } from '@/shared/types';
 import { MUSCLE_FILTER_MAP } from '@/shared/types';
 
 const baseExercises: Exercise[] = [
@@ -2053,11 +2053,14 @@ export function searchExercises(query: string): Exercise[] {
   });
 }
 
-/** Filter exercises by equipment and/or muscle, with optional search */
+/** Filter exercises by equipment and/or muscle and/or type, with optional search.
+ *  Accepts an optional `extra` array (e.g. custom exercises) merged before filtering. */
 export function filterExercises(opts: {
   search?: string;
   equipment?: EquipmentFilter;
   muscle?: MuscleFilter;
+  type?: ExerciseType | 'All';
+  extra?: Exercise[];
 }): Exercise[] {
   const normalizeEquipment = (equipment: string): string => {
     const value = equipment.toLowerCase();
@@ -2069,7 +2072,22 @@ export function filterExercises(opts: {
     return value;
   };
 
-  let results = opts.search ? searchExercises(opts.search) : exercises;
+  const pool: Exercise[] = opts.extra && opts.extra.length > 0
+    ? [...exercises, ...opts.extra]
+    : exercises;
+
+  let results: Exercise[];
+  if (opts.search) {
+    const lower = opts.search.toLowerCase().trim();
+    const terms = lower.split(/\s+/);
+    results = pool.filter(e => {
+      const name = e.name.toLowerCase();
+      return terms.every(t => name.includes(t));
+    });
+  } else {
+    results = pool;
+  }
+
   if (opts.equipment && opts.equipment !== 'All') {
     const target = normalizeEquipment(opts.equipment);
     results = results.filter(e => {
@@ -2082,6 +2100,14 @@ export function filterExercises(opts: {
     const matchGroups = MUSCLE_FILTER_MAP[opts.muscle];
     if (matchGroups) {
       results = results.filter(e => (matchGroups as readonly string[]).includes(e.muscle));
+    }
+  }
+  if (opts.type && opts.type !== 'All') {
+    // Group 'accessory' with 'isolation' for the UI filter
+    if (opts.type === 'isolation') {
+      results = results.filter(e => e.type === 'isolation' || e.type === 'accessory');
+    } else {
+      results = results.filter(e => e.type === opts.type);
     }
   }
   return results;

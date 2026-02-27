@@ -14,6 +14,7 @@ export {
   loadQuickCustomizations, saveQuickCustomizations,
   loadProfilePhoto, saveProfilePhoto, removeProfilePhoto,
   loadProgressPhotos, saveProgressPhotos, addProgressPhoto, deleteProgressPhoto, getProgressPhotosStorageInfo,
+  loadCustomExercises, saveCustomExercises,
   StorageKeys,
 } from './storage';
 

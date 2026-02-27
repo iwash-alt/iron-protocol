@@ -1,4 +1,12 @@
-export const exercises = [
+export interface DomainExercise {
+  id: string;
+  name: string;
+  muscle: string;
+  equipment: string;
+  bodyweight: boolean;
+}
+
+export const exercises: DomainExercise[] = [
   // ── CHEST ──────────────────────────────────────────────────────────────
   { id: '1', name: 'Barbell Bench Press', muscle: 'Chest', equipment: 'Barbell', bodyweight: false },
   { id: '31', name: 'Incline Barbell Bench Press', muscle: 'Chest', equipment: 'Barbell', bodyweight: false },

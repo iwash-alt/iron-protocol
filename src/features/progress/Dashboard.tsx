@@ -8,8 +8,11 @@ import { formatVolume } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { generateWeeklyInsights } from '@/analytics/insights';
+import { getPeriodStats, getMuscleGroupDistribution } from '@/analytics/periodStats';
+import type { DashboardPeriod } from '@/analytics/periodStats';
 import { FatigueCard } from './FatigueCard';
 import { InsightsCard } from './InsightsCard';
+import { MuscleDistributionCard } from './MuscleDistributionCard';
 import { findExerciseByName } from '@/data/exercises';
 import { colors, radii, typography, spacing } from '@/shared/theme/tokens';
 import { ProgressPhotos } from '@/features/photos/ProgressPhotos';
@@ -74,6 +77,20 @@ interface DashboardProps {
   onToggleDemo: (enabled: boolean) => void;
 }
 
+const PERIOD_LABELS: Record<DashboardPeriod, string> = {
+  week: 'W',
+  month: 'M',
+  quarter: 'Q',
+  year: 'Y',
+};
+
+const PERIOD_FULL_LABELS: Record<DashboardPeriod, string> = {
+  week: 'This Week',
+  month: 'This Month',
+  quarter: 'Last 3 Months',
+  year: 'Last 12 Months',
+};
+
 export function Dashboard({
   profile,
   streak,
@@ -89,11 +106,33 @@ export function Dashboard({
 
   const [prFilter, setPrFilter] = useState('All');
   const [measureTab, setMeasureTab] = useState<'measurements' | 'photos'>('measurements');
+  const [period, setPeriod] = useState<DashboardPeriod>('month');
 
   const totalVol = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
-  const volData = workout.workoutHistory.slice(-7).map(w => w.totalVolumeKg || 0);
   const weightData = progress.bodyMeasurements.slice(-10).map(m => parseFloat(String(m.weight)) || 0);
   const programsCompleted = Math.floor(workout.weekCount / 4);
+
+  // Period-based analytics
+  const periodStats = useMemo(() => {
+    if (workout.workoutHistory.length === 0) return null;
+    return getPeriodStats(workout.workoutHistory, period, workout.personalRecords);
+  }, [workout.workoutHistory, workout.personalRecords, period]);
+
+  const muscleDistribution = useMemo(() => {
+    if (workout.workoutHistory.length === 0) return [];
+    return getMuscleGroupDistribution(workout.workoutHistory, period);
+  }, [workout.workoutHistory, period]);
+
+  // Volume chart data from period stats
+  const volChartData = useMemo(
+    () => periodStats?.dataPoints.map(p => p.volumeKg) ?? [],
+    [periodStats],
+  );
+
+  const volChartLabels = useMemo(
+    () => periodStats?.dataPoints.map(p => p.label) ?? [],
+    [periodStats],
+  );
 
   // Intelligence features (Pro only)
   const fatigue = useMemo(() => {
@@ -124,6 +163,7 @@ export function Dashboard({
 
   return (
     <div>
+      {/* Global summary cards */}
       <div style={S.sumGrid}>
         <div style={S.sumCard}>
           <div style={S.sumLabel}>WORKOUTS</div>
@@ -158,57 +198,111 @@ export function Dashboard({
         </div>
       )}
 
-      {/* Weekly Volume chart */}
-      {volData.length > 1 && (() => {
-        const recentAvg = volData.reduce((a, b) => a + b, 0) / volData.length;
-        const olderWorkouts = workout.workoutHistory.slice(0, -7);
-        const olderVols = olderWorkouts.slice(-28).map(w => w.totalVolumeKg || 0);
-        const olderAvg = olderVols.length > 0
-          ? olderVols.reduce((a, b) => a + b, 0) / olderVols.length
-          : recentAvg;
-        const pctChange = olderAvg > 0
-          ? Math.round(((recentAvg - olderAvg) / olderAvg) * 100)
-          : 0;
-        const maxVol = Math.max(...volData);
-
-        return (
-          <div style={S.chartBox}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
-              <h3 style={S.chartTitle}>{'\u{1F4CA}'} Weekly Volume</h3>
-              {olderVols.length > 0 && (
-                <span style={{
-                  fontSize: typography.sizes.sm,
-                  color: pctChange >= 0 ? colors.success : colors.primary,
-                  fontWeight: typography.weights.bold,
-                }}>
-                  {pctChange >= 0 ? '+' : ''}{pctChange}% vs avg
-                </span>
-              )}
+      {/* ── Period Volume Chart ─────────────────────────────────────── */}
+      {workout.workoutHistory.length > 0 && (
+        <div style={S.chartBox}>
+          {/* Header row: title + period toggles */}
+          <div style={chartStyles.chartHeader}>
+            <h3 style={S.chartTitle}>📊 Training Volume</h3>
+            <div style={chartStyles.periodToggle}>
+              {(Object.keys(PERIOD_LABELS) as DashboardPeriod[]).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  style={{
+                    ...chartStyles.periodBtn,
+                    ...(period === p ? chartStyles.periodBtnActive : {}),
+                  }}
+                >
+                  {PERIOD_LABELS[p]}
+                </button>
+              ))}
             </div>
-            <div style={{ display: 'flex', gap: spacing.sm }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column' as const,
-                justifyContent: 'space-between',
-                height: 60,
-                width: 40,
-                flexShrink: 0,
-              }}>
-                <span style={{ fontSize: typography.sizes.xs, color: colors.textTertiary, textAlign: 'right' as const }}>
-                  {formatVolume(maxVol, { abbreviated: true })}
-                </span>
-                <span style={{ fontSize: typography.sizes.xs, color: colors.textTertiary, textAlign: 'right' as const }}>
-                  0
-                </span>
-              </div>
-              <div style={{ flex: 1 }}>
-                <MiniChart data={volData} type="bar" height={60} />
-              </div>
-            </div>
-            <div style={S.chartLabels}><span>7 workouts ago</span><span>Latest</span></div>
           </div>
-        );
-      })()}
+
+          {/* Period summary stats row */}
+          {periodStats && (
+            <div style={chartStyles.periodSummary}>
+              <div style={chartStyles.periodSumItem}>
+                <div style={chartStyles.periodSumVal}>
+                  {periodStats.totalSessions}
+                </div>
+                <div style={chartStyles.periodSumLabel}>SESSIONS</div>
+              </div>
+              <div style={chartStyles.periodSumDivider} />
+              <div style={chartStyles.periodSumItem}>
+                <div style={chartStyles.periodSumVal}>
+                  {formatVolume(periodStats.totalVolume, { abbreviated: true })}
+                </div>
+                <div style={chartStyles.periodSumLabel}>VOLUME</div>
+              </div>
+              <div style={chartStyles.periodSumDivider} />
+              <div style={chartStyles.periodSumItem}>
+                <div style={chartStyles.periodSumVal}>
+                  {periodStats.avgRPE > 0 ? periodStats.avgRPE.toFixed(1) : '—'}
+                </div>
+                <div style={chartStyles.periodSumLabel}>AVG RPE</div>
+              </div>
+              <div style={chartStyles.periodSumDivider} />
+              <div style={chartStyles.periodSumItem}>
+                <div style={{ ...chartStyles.periodSumVal, color: periodStats.newPRs > 0 ? colors.primary : colors.text }}>
+                  {periodStats.newPRs}
+                </div>
+                <div style={chartStyles.periodSumLabel}>NEW PRs</div>
+              </div>
+            </div>
+          )}
+
+          {/* Volume % change badge */}
+          {periodStats && periodStats.totalVolume > 0 && periodStats.volumeChangePct !== 0 && (
+            <div style={chartStyles.changeRow}>
+              <span style={{
+                ...chartStyles.changeBadge,
+                color: periodStats.volumeChangePct >= 0 ? colors.success : colors.primary,
+                background: periodStats.volumeChangePct >= 0
+                  ? 'rgba(34,197,94,0.1)' : 'rgba(255,59,48,0.1)',
+                border: `1px solid ${periodStats.volumeChangePct >= 0
+                  ? 'rgba(34,197,94,0.3)' : 'rgba(255,59,48,0.3)'}`,
+              }}>
+                {periodStats.volumeChangePct > 0 ? '↑' : '↓'}
+                {' '}{Math.abs(periodStats.volumeChangePct)}% vs prev {PERIOD_FULL_LABELS[period].toLowerCase()}
+              </span>
+            </div>
+          )}
+
+          {/* Bar chart */}
+          {volChartData.length > 0 && (
+            <>
+              <div style={{ display: 'flex', gap: spacing.sm, marginTop: spacing.sm }}>
+                <div style={chartStyles.yAxis}>
+                  <span style={chartStyles.yLabel}>
+                    {formatVolume(Math.max(...volChartData), { abbreviated: true })}
+                  </span>
+                  <span style={chartStyles.yLabel}>0</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <MiniChart data={volChartData} type="bar" height={72} />
+                </div>
+              </div>
+              {/* X-axis labels */}
+              <div style={chartStyles.xLabels}>
+                {volChartLabels.map((label, i) => (
+                  <span key={i} style={chartStyles.xLabel}>{label}</span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {periodStats?.totalSessions === 0 && (
+            <p style={chartStyles.noData}>No workouts in {PERIOD_FULL_LABELS[period].toLowerCase()}</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Muscle Distribution Card ────────────────────────────────── */}
+      {muscleDistribution.length > 0 && (
+        <MuscleDistributionCard distribution={muscleDistribution} period={period} />
+      )}
 
       {/* Intelligence cards (Pro) or upgrade prompt (Free) */}
       {isPro ? (
@@ -473,6 +567,116 @@ function PREntryRow({ icon, label, value, date }: { icon: string; label: string;
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const chartStyles: Record<string, React.CSSProperties> = {
+  chartHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  periodToggle: {
+    display: 'flex',
+    gap: 3,
+    background: 'rgba(255,255,255,0.05)',
+    borderRadius: radii.pill,
+    padding: 3,
+  },
+  periodBtn: {
+    width: 32,
+    height: 28,
+    borderRadius: radii.pill,
+    border: 'none',
+    background: 'transparent',
+    color: colors.textSecondary,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.black,
+    cursor: 'pointer',
+    letterSpacing: '0.04em',
+  },
+  periodBtnActive: {
+    background: colors.primary,
+    color: '#fff',
+  },
+  periodSummary: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    background: 'rgba(255,255,255,0.03)',
+    borderRadius: radii.md,
+    padding: `${spacing.sm}px ${spacing.xs}px`,
+    marginBottom: spacing.sm,
+    border: '1px solid rgba(255,255,255,0.05)',
+  },
+  periodSumItem: {
+    textAlign: 'center' as const,
+    flex: 1,
+  },
+  periodSumVal: {
+    fontSize: typography.sizes['2xl'],
+    fontWeight: typography.weights.black,
+    color: colors.text,
+    lineHeight: 1.1,
+  },
+  periodSumLabel: {
+    fontSize: '0.55rem',
+    fontWeight: typography.weights.black,
+    color: colors.textTertiary,
+    letterSpacing: '0.08em',
+    marginTop: 2,
+  },
+  periodSumDivider: {
+    width: 1,
+    height: 32,
+    background: 'rgba(255,255,255,0.07)',
+  },
+  changeRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.xs,
+  },
+  changeBadge: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+    padding: '3px 10px',
+    borderRadius: radii.pill,
+  },
+  yAxis: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'space-between',
+    height: 72,
+    width: 40,
+    flexShrink: 0,
+  },
+  yLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    textAlign: 'right' as const,
+  },
+  xLabels: {
+    display: 'flex',
+    justifyContent: 'space-around',
+    marginTop: 4,
+    paddingLeft: 48,
+  },
+  xLabel: {
+    fontSize: '0.55rem',
+    color: colors.textTertiary,
+    textAlign: 'center' as const,
+    flex: 1,
+    letterSpacing: '0.02em',
+  },
+  noData: {
+    color: colors.textTertiary,
+    fontSize: typography.sizes.sm,
+    textAlign: 'center' as const,
+    padding: `${spacing.lg}px 0`,
+    margin: 0,
+  },
+};
 
 const prStyles: Record<string, React.CSSProperties> = {
   filterRow: {

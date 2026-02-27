@@ -1,4 +1,4 @@
-export type { Exercise, MuscleGroup, Equipment, ExerciseType, EquipmentFilter, MuscleFilter } from './exercise';
+export type { Exercise, MuscleGroup, Equipment, ExerciseType, EquipmentFilter, MuscleFilter, CustomExercise } from './exercise';
 export { MUSCLE_GROUPS, EQUIPMENT_TYPES, EXERCISE_TYPES, LOWER_BODY_MUSCLES, isLowerBody, EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from './exercise';
 
 export type {

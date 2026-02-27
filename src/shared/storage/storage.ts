@@ -5,6 +5,7 @@ import type { BodyMeasurement } from '@/shared/types';
 import type { NutritionHistory } from '@/shared/types';
 import type { EntitlementStore } from '@/shared/types';
 import type { PlanExercise, WorkoutDay } from '@/shared/types';
+import type { CustomExercise } from '@/shared/types/exercise';
 import type { QuickTemplateCustomizations } from '@/data/quick-templates';
 import {
   userProfileSchema,
@@ -36,6 +37,7 @@ export const StorageKeys = {
   PROGRESS_PHOTOS: 'iron_progress_photos',
   TRAINING_PLAN: 'iron_training_plan',
   QUICK_CUSTOMIZATIONS: 'ironQuickCustomizations',
+  CUSTOM_EXERCISES: 'ironCustomExercises',
 } as const;
 
 
@@ -403,4 +405,31 @@ export function getProgressPhotosStorageInfo(): { count: number; maxCount: numbe
     maxCount: MAX_PROGRESS_PHOTOS,
     bytesUsed: new Blob([raw]).size,
   };
+}
+
+// === Custom Exercises ===
+
+export function loadCustomExercises(): CustomExercise[] {
+  try {
+    const raw = localStorage.getItem(StorageKeys.CUSTOM_EXERCISES);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((e: unknown): e is CustomExercise => {
+      if (!e || typeof e !== 'object') return false;
+      const obj = e as Record<string, unknown>;
+      return (
+        typeof obj.id === 'string' &&
+        typeof obj.name === 'string' &&
+        typeof obj.muscle === 'string' &&
+        obj.isCustom === true
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomExercises(exercises: CustomExercise[]): void {
+  safeSave(StorageKeys.CUSTOM_EXERCISES, exercises);
 }

@@ -32,6 +32,20 @@ export interface Exercise {
   tips?: string[];
 }
 
+/** A user-created custom exercise stored in localStorage */
+export interface CustomExercise {
+  id: string;          // e.g. "custom-1700000000000"
+  name: string;
+  muscle: MuscleGroup;
+  secondaryMuscles: string[];
+  equipment: Equipment;
+  type: ExerciseType;
+  isBodyweight: boolean;
+  formCues: string[];
+  commonMistakes: string[];
+  isCustom: true;
+}
+
 export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [
   'Quads', 'Hamstrings', 'Glutes', 'Calves',
 ];

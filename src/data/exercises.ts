@@ -1,4 +1,4 @@
-import type { Exercise, Equipment, MuscleGroup, EquipmentFilter, MuscleFilter } from '@/shared/types';
+import type { Exercise, Equipment, MuscleGroup, EquipmentFilter, MuscleFilter, ExerciseType } from '@/shared/types';
 import { MUSCLE_FILTER_MAP } from '@/shared/types';
 
 const baseExercises: Exercise[] = [

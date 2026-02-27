@@ -51,15 +51,6 @@ function parseDate(dateStr: string): Date {
   return new Date(dateStr + 'T00:00:00Z');
 }
 
-/** ISO week number for a Date (Mon=start of week). */
-function isoWeek(d: Date): number {
-  const tmp = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayOfWeek = tmp.getUTCDay() === 0 ? 7 : tmp.getUTCDay();
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayOfWeek);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  return Math.ceil(((tmp.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
-
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

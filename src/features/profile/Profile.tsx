@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
+import { useTier } from '@/hooks/useTier';
 import { Icon, useToast } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, typography } from '@/shared/theme/tokens';
@@ -33,6 +34,8 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
   const workout = useWorkout();
   const { photo: profilePhoto, setPhoto, clearPhoto } = useProfilePhoto();
   const { showToast } = useToast();
+  const { canAccess, tier: planId } = useTier();
+  const isPro = canAccess('analytics_advanced');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ ...profile });
@@ -160,37 +163,46 @@ export function Profile({ profile, onProfileUpdate }: ProfileProps) {
       <div style={S.profileSection}>
         <div style={S.profileSectionTitle}>PERSONAL INFO</div>
         <div style={S.profileCard}>
-          <div style={S.profileRow} onClick={() => { setEditData({ ...profile }); setEditing(true); }}>
+          <div style={S.profileRow} role="button" tabIndex={0} onClick={() => { setEditData({ ...profile }); setEditing(true); }} onKeyDown={e => { if (e.key === 'Enter') { setEditData({ ...profile }); setEditing(true); } }}>
             <span style={S.profileRowLabel}><Icon name="user" size={18} /> Name</span>
             <span style={S.profileRowValue}>{profile.name} <Icon name="chevron-right" size={14} /></span>
           </div>
-          <div style={S.profileRow} onClick={() => { setEditData({ ...profile }); setEditing(true); }}>
+          <div style={S.profileRow} role="button" tabIndex={0} onClick={() => { setEditData({ ...profile }); setEditing(true); }} onKeyDown={e => { if (e.key === 'Enter') { setEditData({ ...profile }); setEditing(true); } }}>
             <span style={S.profileRowLabel}><Icon name="ruler" size={18} /> Height</span>
             <span style={S.profileRowValue}>{profile.height} cm <Icon name="chevron-right" size={14} /></span>
           </div>
-          <div style={S.profileRow} onClick={() => { setEditData({ ...profile }); setEditing(true); }}>
+          <div style={S.profileRow} role="button" tabIndex={0} onClick={() => { setEditData({ ...profile }); setEditing(true); }} onKeyDown={e => { if (e.key === 'Enter') { setEditData({ ...profile }); setEditing(true); } }}>
             <span style={S.profileRowLabel}>Weight</span>
             <span style={S.profileRowValue}>{profile.weight} kg <Icon name="chevron-right" size={14} /></span>
           </div>
-          <div style={{ ...S.profileRow, ...S.profileRowLast }} onClick={() => { setEditData({ ...profile }); setEditing(true); }}>
+          <div style={{ ...S.profileRow, ...S.profileRowLast }} role="button" tabIndex={0} onClick={() => { setEditData({ ...profile }); setEditing(true); }} onKeyDown={e => { if (e.key === 'Enter') { setEditData({ ...profile }); setEditing(true); } }}>
             <span style={S.profileRowLabel}>Age</span>
             <span style={S.profileRowValue}>{profile.age} <Icon name="chevron-right" size={14} /></span>
           </div>
         </div>
       </div>
 
-      {/* Upgrade to Pro */}
-      <div style={S.upgradeCard}>
-        <div style={S.upgradeTitle}>Upgrade to Pro</div>
-        <div style={S.upgradeSub}>Unlock the full Iron Protocol experience</div>
-        {['Advanced periodization', 'AI form analysis', 'Custom templates', 'Priority support'].map(f => (
-          <div key={f} style={S.upgradeFeature}>
-            <span style={S.upgradeFeatureIcon}><Icon name="star-filled" size={14} /></span>
-            {f}
+      {/* Subscription Status */}
+      {isPro ? (
+        <div style={{ ...S.upgradeCard, background: 'linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(34,197,94,0.02) 100%)', borderColor: 'rgba(34,197,94,0.2)' }}>
+          <div style={{ ...S.upgradeTitle, color: '#22c55e' }}>Iron Protocol Pro</div>
+          <div style={S.upgradeSub}>All features unlocked</div>
+        </div>
+      ) : (
+        <div style={S.upgradeCard}>
+          <div style={S.upgradeTitle}>
+            {planId === 'free' ? 'Free Tier' : 'Upgrade to Pro'}
           </div>
-        ))}
-        <button style={S.upgradeBtn}>COMING SOON</button>
-      </div>
+          <div style={S.upgradeSub}>Unlock the full Iron Protocol experience</div>
+          {['Fatigue detection', 'Weekly insights', 'Advanced analytics', 'Ghost rival system'].map(f => (
+            <div key={f} style={S.upgradeFeature}>
+              <span style={S.upgradeFeatureIcon}><Icon name="star-filled" size={14} /></span>
+              {f}
+            </div>
+          ))}
+          <button style={S.upgradeBtn}>$2/MONTH — COMING SOON</button>
+        </div>
+      )}
 
       {/* Data Management */}
       <div style={S.profileSection}>

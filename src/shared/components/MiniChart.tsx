@@ -15,6 +15,7 @@ export function MiniChart({ data, color = '#FF3B30', type = 'line', height = 50 
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
+  const safeMax = max || 1; // Prevent division by zero when all values are 0
 
   if (type === 'bar') {
     return (
@@ -23,14 +24,23 @@ export function MiniChart({ data, color = '#FF3B30', type = 'line', height = 50 
           <rect
             key={i}
             x={i * (100 / data.length) + 1}
-            y={50 - (v / max) * 45}
+            y={50 - (v / safeMax) * 45}
             width={100 / data.length - 2}
-            height={(v / max) * 45}
+            height={(v / safeMax) * 45}
             fill={color}
             opacity={0.5 + i * 0.05}
             rx="2"
           />
         ))}
+      </svg>
+    );
+  }
+
+  // Single data point: render as a centered dot
+  if (data.length === 1) {
+    return (
+      <svg width="100%" height={height} viewBox="0 0 100 50" preserveAspectRatio="none">
+        <circle cx="50" cy="25" r="3" fill={color} />
       </svg>
     );
   }

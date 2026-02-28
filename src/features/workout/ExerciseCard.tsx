@@ -338,8 +338,8 @@ const cs: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   reorderBtn: {
-    width: 22,
-    height: 18,
+    width: 32,
+    height: 24,
     borderRadius: radii.sm,
     border: `1px solid ${colors.surfaceBorder}`,
     background: 'transparent',

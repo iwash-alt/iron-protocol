@@ -57,7 +57,7 @@ export function useWorkout(profile: Profile | null) {
       total += p.sets;
       done += completed[p.id] || 0;
     });
-    return Math.round((done / total) * 100);
+    return total > 0 ? Math.round((done / total) * 100) : 0;
   }, [dayExercises, completed]);
 
   const initializePlan = useCallback((p: Profile, templateKey: string | null = null) => {

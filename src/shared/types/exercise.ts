@@ -44,6 +44,10 @@ export interface CustomExercise {
   formCues: string[];
   commonMistakes: string[];
   isCustom: true;
+  /** Optional user notes (e.g. grip width, tempo, cues) */
+  notes?: string;
+  /** If duplicated from an existing exercise, its id */
+  duplicatedFrom?: string;
 }
 
 export const LOWER_BODY_MUSCLES: readonly MuscleGroup[] = [

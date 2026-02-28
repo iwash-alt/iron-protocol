@@ -120,7 +120,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
       total += pe.sets;
       done += state.completedSets[pe.id] || 0;
     });
-    return Math.round((done / total) * 100);
+    return total > 0 ? Math.round((done / total) * 100) : 0;
   }, [dayExercises, state.completedSets]);
 
   const persistPRs = useCallback((updated: PersonalRecords) => {

@@ -6,6 +6,7 @@ import { loadCustomExercises, saveCustomExercises } from '@/shared/storage';
 import { ExerciseFilterPanel } from './ExerciseFilterPanel';
 import { SuggestedExercises } from './SuggestedExercises';
 import { useFilterHistory } from '@/shared/hooks/useFilterHistory';
+import { suggestTags } from '@/shared/utils/exerciseAutoTag';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,14 +129,33 @@ function ExerciseDetailSheet({
 function CreateExerciseSheet({
   onSave,
   onClose,
+  allExercises,
+  duplicateFrom,
 }: {
   onSave: (ex: CustomExercise) => void;
   onClose: () => void;
+  allExercises?: Exercise[];
+  duplicateFrom?: Exercise | null;
 }) {
-  const [name, setName] = useState('');
-  const [muscle, setMuscle] = useState<MuscleGroup>('Chest');
-  const [equipment, setEquipment] = useState<Equipment>('Barbell');
-  const [type, setType] = useState<ExerciseType>('compound');
+  const [name, setName] = useState(duplicateFrom ? `${duplicateFrom.name} (Custom)` : '');
+  const [muscle, setMuscle] = useState<MuscleGroup>(duplicateFrom?.muscle ?? 'Chest');
+  const [equipment, setEquipment] = useState<Equipment>(duplicateFrom?.equipment ?? 'Barbell');
+  const [type, setType] = useState<ExerciseType>(duplicateFrom?.type ?? 'compound');
+  const [notes, setNotes] = useState('');
+  const [showDuplicate, setShowDuplicate] = useState(false);
+  const [dupSearch, setDupSearch] = useState('');
+
+  // Auto-tag: suggest muscle/equipment/type as user types name
+  useEffect(() => {
+    // Don't auto-tag if duplicating (already pre-filled)
+    if (duplicateFrom) return;
+    if (!name || name.trim().length < 3) return;
+
+    const tags = suggestTags(name);
+    if (tags.muscle) setMuscle(tags.muscle);
+    if (tags.equipment) setEquipment(tags.equipment);
+    if (tags.type) setType(tags.type);
+  }, [name, duplicateFrom]);
 
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
@@ -147,60 +167,157 @@ function CreateExerciseSheet({
       equipment,
       type,
       isBodyweight: equipment === 'None',
-      secondaryMuscles: [],
-      formCues: [],
-      commonMistakes: [],
+      secondaryMuscles: duplicateFrom?.secondaryMuscles ?? [],
+      formCues: duplicateFrom?.formCues ?? [],
+      commonMistakes: duplicateFrom?.commonMistakes ?? [],
       isCustom: true,
+      notes: notes.trim() || undefined,
+      duplicatedFrom: duplicateFrom?.id,
     };
     onSave(custom);
-  }, [name, muscle, equipment, type, onSave]);
+  }, [name, muscle, equipment, type, notes, duplicateFrom, onSave]);
+
+  // Duplicate search results
+  const dupResults = useMemo(() => {
+    if (!showDuplicate || !allExercises || !dupSearch.trim()) return [];
+    const lower = dupSearch.toLowerCase();
+    return allExercises.filter(e => e.name.toLowerCase().includes(lower)).slice(0, 8);
+  }, [showDuplicate, allExercises, dupSearch]);
+
+  const handleDuplicateSelect = useCallback((ex: Exercise) => {
+    setName(`${ex.name} (Custom)`);
+    setMuscle(ex.muscle);
+    setEquipment(ex.equipment);
+    setType(ex.type);
+    setShowDuplicate(false);
+    setDupSearch('');
+  }, []);
+
+  const muscleIcons: Record<string, string> = {
+    Chest: '💪', Back: '🔙', Shoulders: '🏔️', Biceps: '💪',
+    Triceps: '💪', Quads: '🦵', Hamstrings: '🦵', Glutes: '🍑',
+    Calves: '🦶', Core: '🎯', 'Full Body': '⚡', Cardio: '❤️',
+    Lats: '🔙', 'Rear Delts': '🏔️',
+  };
+
+  // Duplicate picker sub-sheet
+  if (showDuplicate) {
+    return (
+      <>
+        <div style={ebStyles.sheetOverlay} onClick={() => setShowDuplicate(false)} />
+        <div style={ebStyles.detailSheet}>
+          <div style={ebStyles.detailHandle} />
+          <div style={ebStyles.createTitle}>Duplicate from Existing</div>
+          <div style={ebStyles.createField}>
+            <input
+              type="text"
+              value={dupSearch}
+              placeholder="Search exercise to duplicate..."
+              autoFocus
+              onChange={e => setDupSearch(e.target.value)}
+              style={ebStyles.createInput}
+            />
+          </div>
+          <div style={csStyles.dupList}>
+            {dupResults.length === 0 && dupSearch.trim() && (
+              <div style={csStyles.dupEmpty}>No exercises found</div>
+            )}
+            {dupResults.map(ex => (
+              <button
+                key={ex.id}
+                style={csStyles.dupRow}
+                onClick={() => handleDuplicateSelect(ex)}
+              >
+                <div>
+                  <div style={csStyles.dupName}>{ex.name}</div>
+                  <div style={csStyles.dupMeta}>
+                    {ex.muscle} · {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
+                  </div>
+                </div>
+                <span style={csStyles.dupArrow}>→</span>
+              </button>
+            ))}
+          </div>
+          <button style={ebStyles.cancelLink} onClick={() => setShowDuplicate(false)}>Back</button>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <div style={ebStyles.sheetOverlay} onClick={onClose} />
-      <div style={ebStyles.detailSheet}>
+      <div style={{ ...ebStyles.detailSheet, maxHeight: '90vh' }}>
         <div style={ebStyles.detailHandle} />
-        <div style={ebStyles.createTitle}>Create Custom Exercise</div>
+        <div style={csStyles.headerRow}>
+          <div style={ebStyles.createTitle}>Create Custom Exercise</div>
+          {allExercises && allExercises.length > 0 && (
+            <button style={csStyles.dupBtn} onClick={() => setShowDuplicate(true)}>
+              📋 Duplicate
+            </button>
+          )}
+        </div>
 
+        {/* Name */}
         <div style={ebStyles.createField}>
           <label style={ebStyles.createLabel}>Exercise Name</label>
           <input
             type="text"
             value={name}
-            placeholder="e.g. Meadows Row"
-            maxLength={50}
+            placeholder="e.g. Incline Dumbbell Press"
+            maxLength={60}
             autoFocus
             onChange={e => setName(e.target.value)}
-            style={ebStyles.createInput}
+            style={csStyles.nameInput}
           />
+          {name.trim().length >= 3 && suggestTags(name).muscle && !duplicateFrom && (
+            <div style={csStyles.autoTagHint}>
+              ✨ Auto-detected: {suggestTags(name).muscle}
+              {suggestTags(name).equipment ? ` / ${suggestTags(name).equipment}` : ''}
+            </div>
+          )}
         </div>
 
+        {/* Muscle Group with icons */}
         <div style={ebStyles.createField}>
-          <label style={ebStyles.createLabel}>Primary Muscle</label>
-          <select
-            value={muscle}
-            onChange={e => setMuscle(e.target.value as MuscleGroup)}
-            style={ebStyles.createSelect}
-          >
+          <label style={ebStyles.createLabel}>Primary Muscle Group</label>
+          <div style={csStyles.muscleGrid}>
             {CREATE_MUSCLE_OPTIONS.map(m => (
-              <option key={m} value={m}>{m}</option>
+              <button
+                key={m}
+                onClick={() => setMuscle(m)}
+                style={{
+                  ...csStyles.muscleChip,
+                  ...(muscle === m ? csStyles.muscleChipActive : {}),
+                }}
+              >
+                <span style={csStyles.muscleIcon}>{muscleIcons[m] ?? '🏋️'}</span>
+                <span>{m}</span>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
+        {/* Equipment */}
         <div style={ebStyles.createField}>
           <label style={ebStyles.createLabel}>Equipment</label>
-          <select
-            value={equipment}
-            onChange={e => setEquipment(e.target.value as Equipment)}
-            style={ebStyles.createSelect}
-          >
+          <div style={csStyles.equipGrid}>
             {CREATE_EQUIPMENT_OPTIONS.map(eq => (
-              <option key={eq} value={eq}>{eq === 'None' ? 'Bodyweight / No Equipment' : eq}</option>
+              <button
+                key={eq}
+                onClick={() => setEquipment(eq)}
+                style={{
+                  ...csStyles.equipChip,
+                  ...(equipment === eq ? csStyles.equipChipActive : {}),
+                }}
+              >
+                {eq === 'None' ? 'Bodyweight' : eq}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
+        {/* Exercise Type */}
         <div style={ebStyles.createField}>
           <label style={ebStyles.createLabel}>Exercise Type</label>
           <div style={ebStyles.typeRow}>
@@ -219,8 +336,44 @@ function CreateExerciseSheet({
           </div>
         </div>
 
+        {/* Notes */}
+        <div style={ebStyles.createField}>
+          <label style={ebStyles.createLabel}>Notes (optional)</label>
+          <textarea
+            value={notes}
+            placeholder="e.g. Use wide grip, 3 second eccentric..."
+            maxLength={200}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            style={csStyles.notesInput}
+          />
+        </div>
+
+        {/* Live preview card */}
+        {name.trim() && (
+          <div style={csStyles.preview}>
+            <div style={csStyles.previewLabel}>PREVIEW</div>
+            <div style={csStyles.previewCard}>
+              <div style={csStyles.previewNameRow}>
+                <span style={csStyles.previewName}>{name.trim()}</span>
+                <span style={ebStyles.customBadge}>CUSTOM</span>
+              </div>
+              <div style={csStyles.previewMeta}>
+                <span style={{ ...ebStyles.typeBadge, ...getTypeBadgeStyle(type) }}>{type}</span>
+                <span style={csStyles.previewDot}>·</span>
+                <span style={csStyles.previewText}>{muscle}</span>
+                <span style={csStyles.previewDot}>·</span>
+                <span style={csStyles.previewText}>{equipment === 'None' ? 'Bodyweight' : equipment}</span>
+              </div>
+              {notes.trim() && (
+                <div style={csStyles.previewNotes}>📝 {notes.trim()}</div>
+              )}
+            </div>
+          </div>
+        )}
+
         <button
-          style={{ ...ebStyles.addBigBtn, opacity: name.trim() ? 1 : 0.5 }}
+          style={{ ...ebStyles.addBigBtn, opacity: name.trim() ? 1 : 0.4 }}
           onClick={handleSave}
           disabled={!name.trim()}
         >
@@ -231,6 +384,199 @@ function CreateExerciseSheet({
     </>
   );
 }
+
+// ── CreateExerciseSheet styles ────────────────────────────────────────────────
+
+const csStyles: Record<string, React.CSSProperties> = {
+  headerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  dupBtn: {
+    padding: `${spacing.xs}px ${spacing.sm}px`,
+    borderRadius: radii.md,
+    border: `1px solid rgba(168,85,247,0.3)`,
+    background: 'rgba(168,85,247,0.1)',
+    color: '#c084fc',
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+  },
+  nameInput: {
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    padding: `14px ${spacing.md}px`,
+    borderRadius: radii.lg,
+    border: `2px solid rgba(255,255,255,0.1)`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    outline: 'none',
+  },
+  autoTagHint: {
+    fontSize: typography.sizes.xs,
+    color: '#a78bfa',
+    marginTop: 6,
+    padding: `3px 8px`,
+    borderRadius: radii.sm,
+    background: 'rgba(167,139,250,0.08)',
+    display: 'inline-block',
+  },
+  muscleGrid: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 6,
+  },
+  muscleChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: `6px 10px`,
+    borderRadius: radii.md,
+    border: `1px solid rgba(255,255,255,0.08)`,
+    background: 'rgba(255,255,255,0.04)',
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    cursor: 'pointer',
+  },
+  muscleChipActive: {
+    background: 'rgba(255,59,48,0.15)',
+    border: `1px solid rgba(255,59,48,0.5)`,
+    color: colors.text,
+  },
+  muscleIcon: {
+    fontSize: '0.75rem',
+  },
+  equipGrid: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: 6,
+  },
+  equipChip: {
+    padding: `6px 10px`,
+    borderRadius: radii.md,
+    border: `1px solid rgba(255,255,255,0.08)`,
+    background: 'rgba(255,255,255,0.04)',
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    cursor: 'pointer',
+  },
+  equipChipActive: {
+    background: 'rgba(255,59,48,0.15)',
+    border: `1px solid rgba(255,59,48,0.5)`,
+    color: colors.text,
+  },
+  notesInput: {
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    padding: `${spacing.sm}px ${spacing.md}px`,
+    borderRadius: radii.md,
+    border: `1px solid rgba(255,255,255,0.1)`,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.text,
+    fontSize: typography.sizes.base,
+    outline: 'none',
+    resize: 'none' as const,
+    fontFamily: 'inherit',
+  },
+  preview: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  previewLabel: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.black,
+    color: colors.textTertiary,
+    letterSpacing: '0.08em',
+    marginBottom: spacing.xs,
+  },
+  previewCard: {
+    padding: `${spacing.md}px`,
+    borderRadius: radii.lg,
+    background: 'rgba(255,255,255,0.04)',
+    border: `1px solid rgba(255,255,255,0.08)`,
+  },
+  previewNameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  previewName: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.black,
+    color: colors.text,
+  },
+  previewMeta: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+  },
+  previewDot: {
+    color: colors.textTertiary,
+    fontSize: typography.sizes.xs,
+  },
+  previewText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+  },
+  previewNotes: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: 8,
+    padding: `4px 8px`,
+    borderRadius: radii.sm,
+    background: 'rgba(255,255,255,0.03)',
+    fontStyle: 'italic' as const,
+  },
+  // Duplicate picker styles
+  dupList: {
+    maxHeight: '50vh',
+    overflowY: 'auto' as const,
+  },
+  dupEmpty: {
+    textAlign: 'center' as const,
+    color: colors.textTertiary,
+    padding: spacing.lg,
+    fontSize: typography.sizes.sm,
+  },
+  dupRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    padding: `${spacing.sm}px 0`,
+    borderBottom: `1px solid rgba(255,255,255,0.04)`,
+    background: 'none',
+    border: 'none',
+    borderBottomStyle: 'solid' as const,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+    cursor: 'pointer',
+    textAlign: 'left' as const,
+  },
+  dupName: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+  },
+  dupMeta: {
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  dupArrow: {
+    color: colors.primary,
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+  },
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -433,6 +779,21 @@ export function ExerciseBrowserModal({
             <div style={ebStyles.loading}>Loading exercises...</div>
           )}
 
+          {exerciseData && filteredExercises.length === 0 && (
+            <div style={ebStyles.emptyState}>
+              <div style={ebStyles.emptyIcon}>🏋️</div>
+              <div style={ebStyles.emptyText}>No exercises match your filters</div>
+              <button style={ebStyles.emptyCreate} onClick={() => setShowCreate(true)}>
+                + Create Custom Exercise
+              </button>
+              {hasFilters && (
+                <button style={ebStyles.emptyClear} onClick={handleClearFilters}>
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
+
           {filteredExercises.map(ex => (
             <ExerciseRow
               key={ex.id}
@@ -471,6 +832,7 @@ export function ExerciseBrowserModal({
         <CreateExerciseSheet
           onSave={handleSaveCustom}
           onClose={() => setShowCreate(false)}
+          allExercises={allExercisesFlat}
         />
       )}
     </>
@@ -629,6 +991,41 @@ const ebStyles: Record<string, React.CSSProperties> = {
     color: colors.textTertiary,
     padding: spacing.xl,
     fontSize: typography.sizes.sm,
+  },
+  emptyState: {
+    textAlign: 'center' as const,
+    padding: `${spacing.xl}px 0`,
+  },
+  emptyIcon: {
+    fontSize: '2.5rem',
+    marginBottom: spacing.sm,
+  },
+  emptyText: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  emptyCreate: {
+    padding: `${spacing.sm}px ${spacing.lg}px`,
+    borderRadius: radii.pill,
+    border: `1px solid ${colors.primaryBorder}`,
+    background: 'rgba(255,59,48,0.1)',
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    cursor: 'pointer',
+    marginBottom: spacing.sm,
+  },
+  emptyClear: {
+    display: 'block',
+    margin: '0 auto',
+    padding: `${spacing.xs}px ${spacing.md}px`,
+    border: 'none',
+    background: 'transparent',
+    color: colors.textTertiary,
+    fontSize: typography.sizes.sm,
+    cursor: 'pointer',
+    textDecoration: 'underline' as const,
   },
   exerciseRow: {
     display: 'flex',

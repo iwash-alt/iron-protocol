@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Exercise, EquipmentFilter, MuscleFilter, ExerciseType, MuscleGroup, Equipment } from '@/shared/types';
-import {
-  EQUIPMENT_FILTER_OPTIONS,
-  MUSCLE_FILTER_OPTIONS,
-} from '@/shared/types';
 import type { CustomExercise } from '@/shared/types/exercise';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { loadCustomExercises, saveCustomExercises } from '@/shared/storage';
+import { ExerciseFilterPanel } from './ExerciseFilterPanel';
+import { SuggestedExercises } from './SuggestedExercises';
+import { useFilterHistory } from '@/shared/hooks/useFilterHistory';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,33 +53,6 @@ const CREATE_EQUIPMENT_OPTIONS: Equipment[] = [
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function FilterScroll({
-  options,
-  value,
-  onChange,
-}: {
-  options: string[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div style={ebStyles.filterScroll}>
-      {options.map(opt => (
-        <button
-          key={opt}
-          onClick={() => onChange(opt)}
-          style={{
-            ...ebStyles.filterChip,
-            ...(value === opt ? ebStyles.filterChipActive : {}),
-          }}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function ExerciseDetailSheet({
   exercise,
@@ -292,9 +264,9 @@ export function ExerciseBrowserModal({
   const [exEquipment, setExEquipment] = useState<EquipmentFilter | 'All'>('All');
   const [exMuscle, setExMuscle] = useState<MuscleFilter | 'All'>('All');
   const [exType, setExType] = useState<ExerciseTypeFilter>('All');
-  const [activeFilterRow, setActiveFilterRow] = useState<'equipment' | 'muscle' | 'type'>('equipment');
   const [detailExercise, setDetailExercise] = useState<Exercise | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const filterHistory = useFilterHistory();
 
   // Lazy-load exercise data (117 KB chunk)
   useEffect(() => {
@@ -356,10 +328,32 @@ export function ExerciseBrowserModal({
     onClose();
   }, [customExercises, onSelect, onClose]);
 
-  const equipmentLabels = ['All', ...EQUIPMENT_FILTER_OPTIONS];
-  const muscleLabels = ['All', ...MUSCLE_FILTER_OPTIONS];
   const typeLabels = TYPE_OPTIONS.map(t => t.label);
   const typeValues = TYPE_OPTIONS.map(t => t.value);
+
+  // Flat exercise list for autocomplete
+  const allExercisesFlat = useMemo(() => {
+    if (!exerciseData) return [];
+    return exerciseData.filterExercises({ extra: customAsExercises });
+  }, [exerciseData, customAsExercises]);
+
+  // Wrapped handlers that track filter history
+  const handleEquipmentChange = useCallback((v: EquipmentFilter | 'All') => {
+    setExEquipment(v);
+    filterHistory.trackFilter('equipment', v);
+  }, [filterHistory]);
+
+  const handleMuscleChange = useCallback((v: MuscleFilter | 'All') => {
+    setExMuscle(v);
+    filterHistory.trackFilter('muscle', v);
+  }, [filterHistory]);
+
+  const preferredEquipment = filterHistory.getTopEquipment(3);
+  const preferredMuscles = filterHistory.getTopMuscle(3);
+  const currentResultIds = useMemo(
+    () => new Set(filteredExercises.map(ex => ex.id)),
+    [filteredExercises],
+  );
 
   return (
     <>
@@ -380,70 +374,38 @@ export function ExerciseBrowserModal({
           </button>
         </div>
 
-        {/* Search */}
-        <div style={ebStyles.searchWrap}>
-          <span style={ebStyles.searchIcon}>🔍</span>
-          <input
-            type="text"
-            placeholder="Search exercises..."
-            value={exSearch}
-            onChange={e => setExSearch(e.target.value)}
-            style={ebStyles.searchInput}
+        {/* Filter panel (search + equipment + muscle) */}
+        <div style={{ padding: `0 ${spacing.lg}px` }}>
+          <ExerciseFilterPanel
+            search={exSearch}
+            onSearchChange={setExSearch}
+            equipment={exEquipment}
+            onEquipmentChange={handleEquipmentChange}
+            muscle={exMuscle}
+            onMuscleChange={handleMuscleChange}
+            allExercises={allExercisesFlat}
+            resultCount={filteredExercises.length}
+            onCreateCustom={() => setShowCreate(true)}
+            onClearFilters={handleClearFilters}
+            hasFilters={hasFilters}
           />
-          {exSearch && (
-            <button style={ebStyles.searchClear} onClick={() => setExSearch('')}>✕</button>
-          )}
         </div>
 
-        {/* Filter row selector */}
+        {/* Type filter row (unique to ExerciseBrowserModal) */}
         <div style={ebStyles.filterTabRow}>
-          {(['equipment', 'muscle', 'type'] as const).map(tab => (
+          {typeLabels.map((label, idx) => (
             <button
-              key={tab}
-              onClick={() => setActiveFilterRow(tab)}
+              key={label}
+              onClick={() => setExType(typeValues[idx] ?? 'All')}
               style={{
-                ...ebStyles.filterTab,
-                ...(activeFilterRow === tab ? ebStyles.filterTabActive : {}),
+                ...ebStyles.filterChip,
+                ...((typeValues[idx] === exType) ? ebStyles.filterChipActive : {}),
               }}
             >
-              {tab === 'equipment' ? 'Equipment' : tab === 'muscle' ? 'Muscle' : 'Type'}
-              {(tab === 'equipment' && exEquipment !== 'All') ||
-               (tab === 'muscle' && exMuscle !== 'All') ||
-               (tab === 'type' && exType !== 'All') ? (
-                 <span style={ebStyles.filterDot} />
-               ) : null}
+              {label}
             </button>
           ))}
-          {hasFilters && (
-            <button style={ebStyles.clearBtn} onClick={handleClearFilters}>Clear</button>
-          )}
         </div>
-
-        {/* Active filter row */}
-        {activeFilterRow === 'equipment' && (
-          <FilterScroll
-            options={equipmentLabels}
-            value={exEquipment}
-            onChange={v => setExEquipment(v as EquipmentFilter | 'All')}
-          />
-        )}
-        {activeFilterRow === 'muscle' && (
-          <FilterScroll
-            options={muscleLabels}
-            value={exMuscle}
-            onChange={v => setExMuscle(v as MuscleFilter | 'All')}
-          />
-        )}
-        {activeFilterRow === 'type' && (
-          <FilterScroll
-            options={typeLabels}
-            value={TYPE_OPTIONS.find(t => t.value === exType)?.label ?? 'All Types'}
-            onChange={label => {
-              const idx = typeLabels.indexOf(label);
-              if (idx >= 0) setExType(typeValues[idx] ?? 'All');
-            }}
-          />
-        )}
 
         {/* Exercise list */}
         <div style={ebStyles.list}>
@@ -471,16 +433,6 @@ export function ExerciseBrowserModal({
             <div style={ebStyles.loading}>Loading exercises...</div>
           )}
 
-          {exerciseData && filteredExercises.length === 0 && (
-            <div style={ebStyles.empty}>
-              <div style={ebStyles.emptyIcon}>🏋️</div>
-              <div style={ebStyles.emptyText}>No exercises match</div>
-              <button style={ebStyles.emptyCreate} onClick={() => setShowCreate(true)}>
-                Create Custom Exercise
-              </button>
-            </div>
-          )}
-
           {filteredExercises.map(ex => (
             <ExerciseRow
               key={ex.id}
@@ -489,6 +441,17 @@ export function ExerciseBrowserModal({
               onDetail={setDetailExercise}
             />
           ))}
+
+          {/* Suggested exercises based on filter history */}
+          {exerciseData && hasFilters && (
+            <SuggestedExercises
+              allExercises={allExercisesFlat}
+              currentResultIds={currentResultIds}
+              preferredEquipment={preferredEquipment}
+              preferredMuscles={preferredMuscles}
+              onSelect={ex => { onSelect(ex); onClose(); }}
+            />
+          )}
         </div>
 
         <button onClick={onClose} style={ebStyles.closeBtn}>Close</button>
@@ -616,38 +579,6 @@ const ebStyles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
   },
-  searchWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: spacing.sm,
-    margin: `0 ${spacing.lg}px ${spacing.sm}px`,
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    borderRadius: radii.md,
-    border: `1px solid rgba(255,255,255,0.1)`,
-    background: 'rgba(255,255,255,0.06)',
-    flexShrink: 0,
-  },
-  searchIcon: {
-    fontSize: 14,
-    flexShrink: 0,
-  },
-  searchInput: {
-    flex: 1,
-    background: 'none',
-    border: 'none',
-    outline: 'none',
-    color: colors.text,
-    fontSize: typography.sizes.base,
-  },
-  searchClear: {
-    background: 'none',
-    border: 'none',
-    color: colors.textTertiary,
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: 0,
-    flexShrink: 0,
-  },
   filterTabRow: {
     display: 'flex',
     gap: spacing.xs,
@@ -655,53 +586,7 @@ const ebStyles: Record<string, React.CSSProperties> = {
     marginBottom: spacing.xs,
     flexShrink: 0,
     alignItems: 'center',
-  },
-  filterTab: {
-    padding: `${spacing.xs}px ${spacing.md}px`,
-    borderRadius: radii.pill,
-    border: `1px solid rgba(255,255,255,0.08)`,
-    background: 'transparent',
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    cursor: 'pointer',
-    position: 'relative' as const,
-    letterSpacing: '0.04em',
-    textTransform: 'uppercase' as const,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-  },
-  filterTabActive: {
-    background: 'rgba(255,255,255,0.1)',
-    border: `1px solid rgba(255,255,255,0.2)`,
-    color: colors.text,
-  },
-  filterDot: {
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
-    background: colors.primary,
-    display: 'inline-block',
-  },
-  clearBtn: {
-    marginLeft: 'auto' as const,
-    padding: `${spacing.xs}px ${spacing.sm}px`,
-    borderRadius: radii.pill,
-    border: 'none',
-    background: 'transparent',
-    color: colors.primary,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    cursor: 'pointer',
-  },
-  filterScroll: {
-    display: 'flex',
-    gap: 6,
     overflowX: 'auto' as const,
-    padding: `${spacing.xs}px ${spacing.lg}px`,
-    marginBottom: spacing.xs,
-    flexShrink: 0,
     scrollbarWidth: 'none' as const,
   },
   filterChip: {
@@ -744,22 +629,6 @@ const ebStyles: Record<string, React.CSSProperties> = {
     color: colors.textTertiary,
     padding: spacing.xl,
     fontSize: typography.sizes.sm,
-  },
-  empty: {
-    textAlign: 'center' as const,
-    padding: `${spacing.xl}px 0`,
-  },
-  emptyIcon: { fontSize: 40, marginBottom: spacing.sm },
-  emptyText: { color: colors.textSecondary, fontSize: typography.sizes.base, marginBottom: spacing.md },
-  emptyCreate: {
-    padding: `${spacing.sm}px ${spacing.lg}px`,
-    borderRadius: radii.pill,
-    border: `1px solid ${colors.primaryBorder}`,
-    background: 'rgba(255,59,48,0.1)',
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    cursor: 'pointer',
   },
   exerciseRow: {
     display: 'flex',

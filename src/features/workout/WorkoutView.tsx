@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } from '@/shared/types';
-import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS, MUSCLE_FILTER_MAP } from '@/shared/types';
+import { MUSCLE_FILTER_MAP } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
-import { useTimer, getAdaptiveRest, useSwipeNavigation } from '@/shared/hooks';
-import { Icon, MiniChart, EmptyState, useToast, FilterPills } from '@/shared/components';
+import { useTimer, getAdaptiveRest, useSwipeNavigation, useFilterHistory } from '@/shared/hooks';
+import { Icon, MiniChart, EmptyState, useToast, ExerciseFilterPanel } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
@@ -92,6 +92,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [exMuscle, setExMuscle] = useState<MuscleFilter>('All');
 
   const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
+  const filterHistory = useFilterHistory();
 
   // Ref to hold the current "next exercise" ID for the timer complete callback
   const nextExerciseIdRef = useRef<string | null>(null);
@@ -138,6 +139,30 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     if (!exerciseData) return [];
     return exerciseData.filterExercises({ search: exSearch, equipment: exEquipment, muscle: exMuscle });
   }, [exerciseData, exSearch, exEquipment, exMuscle]);
+
+  // All exercises flat list for autocomplete
+  const allExercisesFlat = useMemo(() => {
+    if (!exerciseData) return [];
+    return exerciseData.filterExercises({});
+  }, [exerciseData]);
+
+  const handleExEquipmentChange = useCallback((v: EquipmentFilter | 'All') => {
+    setExEquipment(v as EquipmentFilter);
+    filterHistory.trackFilter('equipment', v);
+  }, [filterHistory]);
+
+  const handleExMuscleChange = useCallback((v: MuscleFilter | 'All') => {
+    setExMuscle(v as MuscleFilter);
+    filterHistory.trackFilter('muscle', v);
+  }, [filterHistory]);
+
+  const hasExFilters = exEquipment !== 'All' || exMuscle !== 'All' || exSearch !== '';
+
+  const handleClearExFilters = useCallback(() => {
+    setExSearch('');
+    setExEquipment('All');
+    setExMuscle('All');
+  }, []);
 
   // Intelligence features (Pro only)
   const { showToast, dismissToast } = useToast();
@@ -706,46 +731,30 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       {/* Swap exercise modal (Dual Filter) */}
       {showSwap && (() => {
         const defaultMuscle = toCuratedMuscle(showSwap.exercise.muscle);
+        const swapMuscle = exMuscle === 'All' ? defaultMuscle : exMuscle;
         const swapResults = exerciseData?.filterExercises({
           search: exSearch,
           equipment: exEquipment,
-          muscle: exMuscle === 'All' ? defaultMuscle : exMuscle,
+          muscle: swapMuscle,
         }).filter(ex => ex.id !== showSwap.exercise.id) ?? [];
         return (
-          <div style={S.overlay} onClick={() => { setShowSwap(null); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
+          <div style={S.overlay} onClick={() => { setShowSwap(null); handleClearExFilters(); }}>
             <div style={{ ...S.swapBox, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
               <h3 style={S.swapTitle}>Swap Exercise</h3>
               <p style={S.swapSub}>Replacing: {showSwap.exercise.name}</p>
 
-              {/* Search */}
-              <input
-                type="text"
-                placeholder="Search exercises..."
-                value={exSearch}
-                onChange={e => setExSearch(e.target.value)}
-                style={ebStyles.searchInput}
+              <ExerciseFilterPanel
+                search={exSearch}
+                onSearchChange={setExSearch}
+                equipment={exEquipment}
+                onEquipmentChange={handleExEquipmentChange}
+                muscle={swapMuscle}
+                onMuscleChange={handleExMuscleChange}
+                allExercises={allExercisesFlat}
+                resultCount={swapResults.length}
+                onClearFilters={handleClearExFilters}
+                hasFilters={hasExFilters}
               />
-
-              {/* Filter pills */}
-              <FilterPills
-                options={EQUIPMENT_FILTER_OPTIONS}
-                value={exEquipment}
-                onChange={v => setExEquipment(v as EquipmentFilter)}
-                allLabel="All Equipment"
-              />
-              <FilterPills
-                options={MUSCLE_FILTER_OPTIONS}
-                value={exMuscle === 'All' ? defaultMuscle : exMuscle}
-                onChange={v => setExMuscle(v as MuscleFilter)}
-                allLabel="All Muscles"
-              />
-
-              {/* Result count */}
-              <p style={ebStyles.resultCount}>
-                {swapResults.length > 0
-                  ? `${swapResults.length} exercises found`
-                  : 'No exercises match these filters'}
-              </p>
 
               <div style={S.swapList}>
                 {swapResults.map(ex => (
@@ -754,7 +763,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                       onClick={() => {
                         plan.swapExercise(showSwap.id, ex);
                         setShowSwap(null);
-                        setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                        handleClearExFilters();
                       }}
                       style={{ ...S.swapItem, flex: 1 }}
                     >
@@ -777,40 +786,23 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
 
       {/* Add exercise modal (Dual Filter) */}
       {showAddExercise && (
-        <div style={S.overlay} onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }}>
+        <div style={S.overlay} onClick={() => { setShowAddExercise(false); handleClearExFilters(); }}>
           <div style={{ ...S.addExModal, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <h3 style={S.addExTitle}>Add Exercise</h3>
             <p style={S.addExSub}>Add to {plan.currentDay?.name}</p>
 
-            {/* Search bar */}
-            <input
-              type="text"
-              placeholder="Search exercises..."
-              value={exSearch}
-              onChange={e => setExSearch(e.target.value)}
-              style={ebStyles.searchInput}
+            <ExerciseFilterPanel
+              search={exSearch}
+              onSearchChange={setExSearch}
+              equipment={exEquipment}
+              onEquipmentChange={handleExEquipmentChange}
+              muscle={exMuscle}
+              onMuscleChange={handleExMuscleChange}
+              allExercises={allExercisesFlat}
+              resultCount={filteredExercises.length}
+              onClearFilters={handleClearExFilters}
+              hasFilters={hasExFilters}
             />
-
-            {/* Dual filter dropdowns */}
-            <FilterPills
-              options={EQUIPMENT_FILTER_OPTIONS}
-              value={exEquipment}
-              onChange={v => setExEquipment(v as EquipmentFilter)}
-              allLabel="All Equipment"
-            />
-            <FilterPills
-              options={MUSCLE_FILTER_OPTIONS}
-              value={exMuscle}
-              onChange={v => setExMuscle(v as MuscleFilter)}
-              allLabel="All Muscles"
-            />
-
-            {/* Result count */}
-            <p style={ebStyles.resultCount}>
-              {filteredExercises.length > 0
-                ? `${filteredExercises.length} exercises found`
-                : 'No exercises match these filters'}
-            </p>
 
             {/* Results */}
             <div style={S.addExList}>
@@ -820,7 +812,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                     onClick={() => {
                       plan.addExercise(ex);
                       setShowAddExercise(false);
-                      setExSearch(''); setExEquipment('All'); setExMuscle('All');
+                      handleClearExFilters();
                     }}
                     style={{ ...S.addExItem, flex: 1 }}
                   >
@@ -837,7 +829,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 </div>
               ))}
             </div>
-            <button onClick={() => { setShowAddExercise(false); setExSearch(''); setExEquipment('All'); setExMuscle('All'); }} style={S.addExCancel}>CANCEL</button>
+            <button onClick={() => { setShowAddExercise(false); handleClearExFilters(); }} style={S.addExCancel}>CANCEL</button>
           </div>
         </div>
       )}
@@ -991,28 +983,6 @@ const ehStyles: Record<string, React.CSSProperties> = {
   },
 };
 
-/** Exercise browser styles (shared by Add and Swap modals) */
-const ebStyles: Record<string, React.CSSProperties> = {
-  searchInput: {
-    width: '100%',
-    padding: `${spacing.sm}px ${spacing.md}px`,
-    borderRadius: radii.md,
-    border: `1px solid ${colors.surfaceBorder}`,
-    background: 'rgba(255,255,255,0.06)',
-    color: colors.text,
-    fontSize: typography.sizes.base,
-    outline: 'none',
-    marginBottom: spacing.sm,
-    boxSizing: 'border-box' as const,
-  },
-  resultCount: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
-    textAlign: 'center' as const,
-    marginBottom: spacing.sm,
-    marginTop: 0,
-  },
-};
 
 
 

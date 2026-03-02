@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EquipmentFilter, MuscleFilter } from '@/shared/types';
+import type { EquipmentFilter, MuscleFilter, ExerciseType } from '@/shared/types';
 import { EQUIPMENT_FILTER_OPTIONS, MUSCLE_FILTER_OPTIONS } from '@/shared/types';
 import { colors, spacing, typography } from '@/shared/theme/tokens';
 import { ExerciseSearchBar } from './ExerciseSearchBar';
@@ -9,37 +9,44 @@ import type { FilterCardOption } from './FilterCards';
 // ── Emoji icon mappings ──────────────────────────────────────────────────────
 
 const EQUIPMENT_ICONS: Record<string, string> = {
-  Barbell: '\u{1F3CB}\u{FE0F}',
-  Dumbbell: '\u{1F4AA}',
-  'Smith Machine': '\u{1F529}',
-  Cable: '\u{1F517}',
-  Machine: '\u2699\uFE0F',
-  Bodyweight: '\u{1F938}',
-  'EZ Bar': '\u{1F3CB}\u{FE0F}',
-  Kettlebell: '\u{1F514}',
-  Band: '\u{1FAA2}',
+  Barbell: '🏋️',
+  Dumbbell: '💪',
+  'Smith Machine': '🔩',
+  Cable: '🔗',
+  Machine: '⚙️',
+  Bodyweight: '🤸',
+  'EZ Bar': '🏋️',
+  Kettlebell: '🔔',
+  Band: '🪢',
 };
 
 const MUSCLE_ICONS: Record<string, string> = {
-  Chest: '\u{1F4AA}',
-  Back: '\u{1F519}',
-  Shoulders: '\u{1F3D4}\u{FE0F}',
-  Arms: '\u{1F4AA}',
-  Legs: '\u{1F9B5}',
-  Core: '\u{1F3AF}',
+  Chest: '💪',
+  Back: '🔙',
+  Shoulders: '🏔️',
+  Arms: '💪',
+  Legs: '🦵',
+  Core: '🎯',
 };
 
 const EQUIPMENT_CARD_OPTIONS: readonly FilterCardOption[] = EQUIPMENT_FILTER_OPTIONS.map(eq => ({
   value: eq,
   label: eq,
-  icon: EQUIPMENT_ICONS[eq] ?? '\u{1F3CB}\u{FE0F}',
+  icon: EQUIPMENT_ICONS[eq] ?? '🏋️',
 }));
 
 const MUSCLE_CARD_OPTIONS: readonly FilterCardOption[] = MUSCLE_FILTER_OPTIONS.map(m => ({
   value: m,
   label: m,
-  icon: MUSCLE_ICONS[m] ?? '\u{1F4AA}',
+  icon: MUSCLE_ICONS[m] ?? '💪',
 }));
+
+const TYPE_CARD_OPTIONS: readonly FilterCardOption[] = [
+  { value: 'compound', label: 'Compound', icon: '🏋️' },
+  { value: 'isolation', label: 'Isolation', icon: '🎯' },
+  { value: 'bodyweight', label: 'Bodyweight', icon: '🤸' },
+  { value: 'cardio', label: 'Cardio', icon: '❤️' },
+];
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +57,8 @@ interface ExerciseFilterPanelProps {
   onEquipmentChange: (value: EquipmentFilter | 'All') => void;
   muscle: MuscleFilter | 'All';
   onMuscleChange: (value: MuscleFilter | 'All') => void;
+  type?: ExerciseType | 'All';
+  onTypeChange?: (value: ExerciseType | 'All') => void;
   allExercises: Array<{ name: string; muscle: string; equipment: string }>;
   resultCount: number;
   onCreateCustom?: () => void;
@@ -66,6 +75,8 @@ export function ExerciseFilterPanel({
   onEquipmentChange,
   muscle,
   onMuscleChange,
+  type,
+  onTypeChange,
   allExercises,
   resultCount,
   onCreateCustom,
@@ -88,7 +99,7 @@ export function ExerciseFilterPanel({
         value={equipment}
         onChange={v => onEquipmentChange(v as EquipmentFilter | 'All')}
         allLabel="All"
-        allIcon="\u{1F3CB}\u{FE0F}"
+        allIcon="🏋️"
       />
 
       {/* Muscle group filter row */}
@@ -98,8 +109,22 @@ export function ExerciseFilterPanel({
         value={muscle}
         onChange={v => onMuscleChange(v as MuscleFilter | 'All')}
         allLabel="All"
-        allIcon="\u{1F4AA}"
+        allIcon="💪"
       />
+
+      {/* Type filter row (optional) */}
+      {onTypeChange && (
+        <>
+          <div style={rowLabelStyle}>TYPE</div>
+          <FilterCards
+            options={TYPE_CARD_OPTIONS}
+            value={type ?? 'All'}
+            onChange={v => onTypeChange(v as ExerciseType | 'All')}
+            allLabel="All Types"
+            allIcon="🏋️"
+          />
+        </>
+      )}
 
       {/* Result count + clear filters */}
       <div style={resultRowStyle}>
@@ -114,7 +139,7 @@ export function ExerciseFilterPanel({
       {/* Empty state with create custom */}
       {resultCount === 0 && hasFilters && onCreateCustom && (
         <div style={emptyStateStyle}>
-          <div style={emptyIconStyle}>{'\u{1F3CB}\u{FE0F}'}</div>
+          <div style={emptyIconStyle}>🏋️</div>
           <div style={emptyTextStyle}>No exercises match</div>
           <button type="button" style={createBtnStyle} onClick={onCreateCustom}>
             No luck? Create custom

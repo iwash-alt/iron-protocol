@@ -34,14 +34,6 @@ interface ExerciseDataModule {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TYPE_OPTIONS: Array<{ value: ExerciseTypeFilter; label: string }> = [
-  { value: 'All', label: 'All Types' },
-  { value: 'compound', label: 'Compound' },
-  { value: 'isolation', label: 'Isolation' },
-  { value: 'bodyweight', label: 'Bodyweight' },
-  { value: 'cardio', label: 'Cardio' },
-];
-
 // Default muscle groups for the select dropdown in create form
 const CREATE_MUSCLE_OPTIONS: MuscleGroup[] = [
   'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
@@ -674,8 +666,6 @@ export function ExerciseBrowserModal({
     onClose();
   }, [customExercises, onSelect, onClose]);
 
-  const typeLabels = TYPE_OPTIONS.map(t => t.label);
-  const typeValues = TYPE_OPTIONS.map(t => t.value);
 
   // Flat exercise list for autocomplete
   const allExercisesFlat = useMemo(() => {
@@ -729,28 +719,14 @@ export function ExerciseBrowserModal({
             onEquipmentChange={handleEquipmentChange}
             muscle={exMuscle}
             onMuscleChange={handleMuscleChange}
+            type={exType}
+            onTypeChange={setExType}
             allExercises={allExercisesFlat}
             resultCount={filteredExercises.length}
             onCreateCustom={() => setShowCreate(true)}
             onClearFilters={handleClearFilters}
             hasFilters={hasFilters}
           />
-        </div>
-
-        {/* Type filter row (unique to ExerciseBrowserModal) */}
-        <div style={ebStyles.filterTabRow}>
-          {typeLabels.map((label, idx) => (
-            <button
-              key={label}
-              onClick={() => setExType(typeValues[idx] ?? 'All')}
-              style={{
-                ...ebStyles.filterChip,
-                ...((typeValues[idx] === exType) ? ebStyles.filterChipActive : {}),
-              }}
-            >
-              {label}
-            </button>
-          ))}
         </div>
 
         {/* Exercise list */}
@@ -940,33 +916,6 @@ const ebStyles: Record<string, React.CSSProperties> = {
     fontWeight: typography.weights.bold,
     cursor: 'pointer',
     whiteSpace: 'nowrap' as const,
-  },
-  filterTabRow: {
-    display: 'flex',
-    gap: spacing.xs,
-    padding: `0 ${spacing.lg}px`,
-    marginBottom: spacing.xs,
-    flexShrink: 0,
-    alignItems: 'center',
-    overflowX: 'auto' as const,
-    scrollbarWidth: 'none' as const,
-  },
-  filterChip: {
-    padding: `5px 12px`,
-    borderRadius: radii.pill,
-    border: `1px solid rgba(255,255,255,0.1)`,
-    background: 'rgba(255,255,255,0.04)',
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    cursor: 'pointer',
-    whiteSpace: 'nowrap' as const,
-    flexShrink: 0,
-  },
-  filterChipActive: {
-    background: 'rgba(255,59,48,0.12)',
-    border: `1px solid rgba(255,59,48,0.4)`,
-    color: colors.text,
   },
   list: {
     flex: 1,

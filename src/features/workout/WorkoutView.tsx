@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter } from '@/shared/types';
+import type { PlanExercise, RPEValue, Exercise, EquipmentFilter, MuscleFilter, ExerciseType } from '@/shared/types';
 import { MUSCLE_FILTER_MAP } from '@/shared/types';
 import { usePlan } from '@/features/training-plan/PlanContext';
 import { useWorkout } from './WorkoutContext';
 import { useTimer, getAdaptiveRest, useSwipeNavigation, useFilterHistory } from '@/shared/hooks';
-import { Icon, MiniChart, EmptyState, useToast, ExerciseFilterPanel } from '@/shared/components';
+import { Icon, MiniChart, EmptyState, useToast, ExerciseFilterPanel, ExerciseBrowserModal } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { TIMINGS } from '@/shared/constants/timings';
@@ -86,10 +86,11 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
   const [restPulseTarget, setRestPulseTarget] = useState<string | null>(null);
   const [dayAnimKey, setDayAnimKey] = useState(0);
   const [dayAnimClass, setDayAnimClass] = useState('');
-  // Exercise browser filter states (shared between Add and Swap modals)
+  // Exercise browser filter states (swap modal only; add modal uses ExerciseBrowserModal's own state)
   const [exSearch, setExSearch] = useState('');
   const [exEquipment, setExEquipment] = useState<EquipmentFilter>('All');
   const [exMuscle, setExMuscle] = useState<MuscleFilter>('All');
+  const [exType, setExType] = useState<ExerciseType | 'All'>('All');
 
   const [exerciseData, setExerciseData] = useState<ExerciseDataModule | null>(null);
   const filterHistory = useFilterHistory();
@@ -134,12 +135,6 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     return () => { mounted = false; };
   }, [showAddExercise, showSwap, showExerciseHistory]);
 
-  // Filtered exercise list for dual-filter
-  const filteredExercises = useMemo(() => {
-    if (!exerciseData) return [];
-    return exerciseData.filterExercises({ search: exSearch, equipment: exEquipment, muscle: exMuscle });
-  }, [exerciseData, exSearch, exEquipment, exMuscle]);
-
   // All exercises flat list for autocomplete
   const allExercisesFlat = useMemo(() => {
     if (!exerciseData) return [];
@@ -156,13 +151,34 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
     filterHistory.trackFilter('muscle', v);
   }, [filterHistory]);
 
-  const hasExFilters = exEquipment !== 'All' || exMuscle !== 'All' || exSearch !== '';
+  const hasExFilters = exEquipment !== 'All' || exMuscle !== 'All' || exType !== 'All' || exSearch !== '';
 
   const handleClearExFilters = useCallback(() => {
     setExSearch('');
     setExEquipment('All');
     setExMuscle('All');
+    setExType('All');
   }, []);
+
+  // Reset swap filter state when modal opens (isolate from previous session)
+  useEffect(() => {
+    if (showSwap) {
+      handleClearExFilters();
+    }
+  }, [showSwap, handleClearExFilters]);
+
+  // Derive recently used exercise names for ExerciseBrowserModal
+  const recentlyUsedNames = useMemo(() => {
+    const entries = Object.entries(workout.exerciseHistory);
+    return entries
+      .map(([name, history]) => ({
+        name,
+        lastDate: history.length > 0 ? history[history.length - 1].date : '',
+      }))
+      .sort((a, b) => b.lastDate.localeCompare(a.lastDate))
+      .slice(0, 10)
+      .map(e => e.name);
+  }, [workout.exerciseHistory]);
 
   // Intelligence features (Pro only)
   const { showToast, dismissToast } = useToast();
@@ -728,7 +744,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         <HowToModal exercise={showHowTo} onClose={() => setShowHowTo(null)} />
       )}
 
-      {/* Swap exercise modal (Dual Filter) */}
+      {/* Swap exercise modal */}
       {showSwap && (() => {
         const defaultMuscle = toCuratedMuscle(showSwap.exercise.muscle);
         const swapMuscle = exMuscle === 'All' ? defaultMuscle : exMuscle;
@@ -736,6 +752,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
           search: exSearch,
           equipment: exEquipment,
           muscle: swapMuscle,
+          type: exType === 'All' ? undefined : exType,
         }).filter(ex => ex.id !== showSwap.exercise.id) ?? [];
         return (
           <div style={S.overlay} onClick={() => { setShowSwap(null); handleClearExFilters(); }}>
@@ -750,6 +767,8 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
                 onEquipmentChange={handleExEquipmentChange}
                 muscle={swapMuscle}
                 onMuscleChange={handleExMuscleChange}
+                type={exType}
+                onTypeChange={setExType}
                 allExercises={allExercisesFlat}
                 resultCount={swapResults.length}
                 onClearFilters={handleClearExFilters}
@@ -784,54 +803,18 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
         );
       })()}
 
-      {/* Add exercise modal (Dual Filter) */}
+      {/* Add exercise modal — uses full ExerciseBrowserModal for consistent filtering */}
       {showAddExercise && (
-        <div style={S.overlay} onClick={() => { setShowAddExercise(false); handleClearExFilters(); }}>
-          <div style={{ ...S.addExModal, maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h3 style={S.addExTitle}>Add Exercise</h3>
-            <p style={S.addExSub}>Add to {plan.currentDay?.name}</p>
-
-            <ExerciseFilterPanel
-              search={exSearch}
-              onSearchChange={setExSearch}
-              equipment={exEquipment}
-              onEquipmentChange={handleExEquipmentChange}
-              muscle={exMuscle}
-              onMuscleChange={handleExMuscleChange}
-              allExercises={allExercisesFlat}
-              resultCount={filteredExercises.length}
-              onClearFilters={handleClearExFilters}
-              hasFilters={hasExFilters}
-            />
-
-            {/* Results */}
-            <div style={S.addExList}>
-              {filteredExercises.map(ex => (
-                <div key={ex.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button
-                    onClick={() => {
-                      plan.addExercise(ex);
-                      setShowAddExercise(false);
-                      handleClearExFilters();
-                    }}
-                    style={{ ...S.addExItem, flex: 1 }}
-                  >
-                    <div>
-                      <div style={S.addExName}>{ex.name}</div>
-                      <div style={S.addExMeta}>
-                        {ex.muscle} {'\u00B7'} {ex.equipment === 'None' ? 'Bodyweight' : ex.equipment}
-                        {ex.isBodyweight ? '' : ' \u00B7 Weighted'}
-                      </div>
-                    </div>
-                    <div style={S.addExArrow}>+</div>
-                  </button>
-                  <button onClick={() => setShowHowTo(ex)} style={howToBtn}>?</button>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => { setShowAddExercise(false); handleClearExFilters(); }} style={S.addExCancel}>CANCEL</button>
-          </div>
-        </div>
+        <ExerciseBrowserModal
+          title="Add Exercise"
+          subtitle={`Add to ${plan.currentDay?.name}`}
+          recentlyUsed={recentlyUsedNames}
+          onSelect={(exercise) => {
+            plan.addExercise(exercise);
+            setShowAddExercise(false);
+          }}
+          onClose={() => setShowAddExercise(false)}
+        />
       )}
 
       {/* Template selector */}

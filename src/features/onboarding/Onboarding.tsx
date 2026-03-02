@@ -131,7 +131,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     // Screen 4: SET YOUR WEIGHTS
     <div key="weights" style={S.obStep}>
       <h2 style={S.obStepTitle}>Set your starting weights</h2>
-      <p style={S.obSubtext}>Leave at 0 if you're unsure</p>
+      <p style={S.obSubtext}>Optional — you can always adjust later</p>
       <div style={S.obWeightList}>
         {compounds.map(exerciseName => (
           <div key={exerciseName} style={S.obWeightRow}>
@@ -153,7 +153,22 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       <p style={S.obDisclaimer}>
         Iron Protocol is a training tool, not medical advice. Consult a physician before starting any exercise program.
       </p>
-      <button onClick={handleStart} style={S.obBtn}>START TRAINING</button>
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12, width: '100%' }}>
+        <button onClick={handleStart} style={S.obBtn}>START TRAINING</button>
+        <button
+          onClick={() => { setWeights({}); handleStart(); }}
+          style={{
+            ...S.obBtn,
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#aaa',
+            fontWeight: 600,
+            fontSize: '0.875rem',
+          }}
+        >
+          SKIP — I&apos;LL SET THESE LATER
+        </button>
+      </div>
     </div>,
   ];
 

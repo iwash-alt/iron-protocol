@@ -99,6 +99,17 @@ export function CustomWorkoutBuilder({ onSave, onCancel }: CustomWorkoutBuilderP
     ));
   }, []);
 
+  const reorderExercise = useCallback((dayId: string, fromIdx: number, toIdx: number) => {
+    setDays(prev => prev.map(d => {
+      if (d.id !== dayId) return d;
+      if (toIdx < 0 || toIdx >= d.exercises.length) return d;
+      const exs = [...d.exercises];
+      const [moved] = exs.splice(fromIdx, 1);
+      exs.splice(toIdx, 0, moved);
+      return { ...d, exercises: exs };
+    }));
+  }, []);
+
   // ── Save ─────────────────────────────────────────────────────────────────
 
   const handleSave = useCallback(() => {
@@ -225,6 +236,7 @@ export function CustomWorkoutBuilder({ onSave, onCancel }: CustomWorkoutBuilderP
                           {/* Column headers */}
                           {day.exercises.length > 0 && (
                             <div style={bStyles.exHeaderRow}>
+                              <span style={bStyles.exHeaderReorder} />
                               <span style={bStyles.exHeaderName}>Exercise</span>
                               <span style={bStyles.exHeaderLabel}>Sets</span>
                               <span style={bStyles.exHeaderLabel}>Reps</span>
@@ -239,6 +251,30 @@ export function CustomWorkoutBuilder({ onSave, onCancel }: CustomWorkoutBuilderP
                           ) : (
                             day.exercises.map((de, exIdx) => (
                               <div key={`${day.id}-${de.exercise.id}-${exIdx}`} style={bStyles.exRow}>
+                                <div style={bStyles.reorderCol}>
+                                  <button
+                                    onClick={() => reorderExercise(day.id, exIdx, exIdx - 1)}
+                                    disabled={exIdx === 0}
+                                    style={{
+                                      ...bStyles.reorderBtn,
+                                      ...(exIdx === 0 ? bStyles.reorderBtnDisabled : {}),
+                                    }}
+                                    aria-label="Move up"
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    onClick={() => reorderExercise(day.id, exIdx, exIdx + 1)}
+                                    disabled={exIdx === day.exercises.length - 1}
+                                    style={{
+                                      ...bStyles.reorderBtn,
+                                      ...(exIdx === day.exercises.length - 1 ? bStyles.reorderBtnDisabled : {}),
+                                    }}
+                                    aria-label="Move down"
+                                  >
+                                    ↓
+                                  </button>
+                                </div>
                                 <div style={bStyles.exMeta}>
                                   <div style={bStyles.exName}>{de.exercise.name}</div>
                                   <div style={bStyles.exMuscle}>{de.exercise.muscle}</div>
@@ -288,6 +324,22 @@ export function CustomWorkoutBuilder({ onSave, onCancel }: CustomWorkoutBuilderP
                                 </button>
                               </div>
                             ))
+                          )}
+
+                          {/* Volume preview */}
+                          {day.exercises.length > 0 && (
+                            <div style={bStyles.volumePreview}>
+                              <span>
+                                {day.exercises.reduce((sum, ex) => sum + ex.sets, 0)} total sets
+                              </span>
+                              <span>
+                                {day.exercises.length} exercise{day.exercises.length !== 1 ? 's' : ''}
+                              </span>
+                              <span>
+                                ~{Math.round(day.exercises.reduce((sum, ex) =>
+                                  sum + (ex.sets * ex.reps * (ex.weightKg || 20)), 0) / 1000)}k vol
+                              </span>
+                            </div>
                           )}
 
                           <button
@@ -539,10 +591,13 @@ const bStyles: Record<string, React.CSSProperties> = {
   },
   exHeaderRow: {
     display: 'grid',
-    gridTemplateColumns: '1fr 52px 52px 60px 28px',
+    gridTemplateColumns: '36px 1fr 52px 52px 60px 36px',
     gap: 6,
     marginBottom: 4,
     paddingLeft: 2,
+  },
+  exHeaderReorder: {
+    width: 36,
   },
   exHeaderName: {
     color: colors.textTertiary,
@@ -562,10 +617,34 @@ const bStyles: Record<string, React.CSSProperties> = {
   },
   exRow: {
     display: 'grid',
-    gridTemplateColumns: '1fr 52px 52px 60px 36px',
+    gridTemplateColumns: '36px 1fr 52px 52px 60px 36px',
     alignItems: 'center',
     gap: 6,
     marginBottom: 6,
+  },
+  reorderCol: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 2,
+  },
+  reorderBtn: {
+    width: 32,
+    height: 16,
+    border: 'none',
+    borderRadius: 4,
+    background: 'rgba(255,255,255,0.06)',
+    color: colors.textSecondary,
+    fontSize: '0.6rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    minHeight: 0,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.3,
+    cursor: 'default',
   },
   exMeta: {
     minWidth: 0,
@@ -613,6 +692,17 @@ const bStyles: Record<string, React.CSSProperties> = {
     color: colors.textSecondary,
     fontSize: typography.sizes.xs,
     margin: `${spacing.sm}px 0`,
+  },
+  volumePreview: {
+    marginTop: spacing.sm,
+    padding: `${spacing.xs}px ${spacing.sm}px`,
+    borderRadius: radii.sm,
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: typography.sizes.xs,
+    color: colors.textTertiary,
   },
   addExBtn: {
     width: '100%',

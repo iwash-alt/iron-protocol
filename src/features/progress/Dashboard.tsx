@@ -1,41 +1,32 @@
 import React, { useMemo, useState } from 'react';
-import type { UserProfile, ExercisePR } from '@/shared/types';
+import type { UserProfile } from '@/shared/types';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProgress } from './progress.context';
-import { MiniChart, Icon, EmptyState } from '@/shared/components';
+import { EmptyState } from '@/shared/components';
 import { S } from '@/shared/theme/styles';
 import { formatVolume } from '@/shared/utils';
 import { useTier } from '@/hooks/useTier';
 import { calculateFatigueScore } from '@/training/fatigue';
 import { generateWeeklyInsights } from '@/analytics/insights';
-import { getPeriodStats, getMuscleGroupDistribution } from '@/analytics/periodStats';
+import { getPeriodStats, getMuscleGroupDistribution, getPRTrends, getAvgRPETrend } from '@/analytics/periodStats';
 import type { DashboardPeriod } from '@/analytics/periodStats';
 import { FatigueCard } from './FatigueCard';
 import { InsightsCard } from './InsightsCard';
 import { MuscleDistributionCard } from './MuscleDistributionCard';
-import { findExerciseByName } from '@/data/exercises';
-import { colors, radii, typography, spacing } from '@/shared/theme/tokens';
-import { ProgressPhotos } from '@/features/photos/ProgressPhotos';
-
-/** Muscle group filter categories - maps UI labels to exercise muscle groups */
-const PR_FILTER_GROUPS: Record<string, string[]> = {
-  All: [],
-  Chest: ['Chest'],
-  Back: ['Back', 'Lats', 'Rear Delts'],
-  Legs: ['Quads', 'Hamstrings', 'Glutes', 'Calves'],
-  Shoulders: ['Shoulders'],
-  Arms: ['Biceps', 'Triceps'],
-  Core: ['Core'],
-};
-
-/** Check if a PR was set within the last 7 days */
-function isNewPR(dateStr: string | undefined): boolean {
-  if (!dateStr) return false;
-  const prDate = new Date(dateStr);
-  const now = new Date();
-  const diff = (now.getTime() - prDate.getTime()) / 86400000;
-  return diff <= 7;
-}
+import { PRBoard } from './PRBoard';
+import { BodyTracking } from './BodyTracking';
+import { RecentWorkouts } from './RecentWorkouts';
+import { ProfileSummary } from './ProfileSummary';
+import {
+  PeriodDropdown,
+  VolumeChart,
+  PRTrendsChart,
+  MusclePieChart,
+  RecoveryTrendChart,
+  SummaryCards,
+  ChartCarousel,
+} from './charts';
+import { colors, spacing, typography } from '@/shared/theme/tokens';
 
 const ChartIllustration = (
   <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
@@ -47,27 +38,6 @@ const ChartIllustration = (
   </svg>
 );
 
-const TrophyIllustration = (
-  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
-    <path d="M20 10 h24 v18 a12 12 0 0 1-24 0 Z" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
-    <path d="M20 16 h-6 a6 6 0 0 0 0 12 h6" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
-    <path d="M44 16 h6 a6 6 0 0 1 0 12 h-6" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round"/>
-    <line x1="32" y1="40" x2="32" y2="50" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-    <line x1="22" y1="50" x2="42" y2="50" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const RulerIllustration = (
-  <svg width={64} height={64} viewBox="0 0 64 64" fill="none">
-    <rect x="8" y="24" width="48" height="16" rx="2" stroke="currentColor" strokeWidth="2.5"/>
-    <line x1="16" y1="24" x2="16" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="24" y1="24" x2="24" y2="36" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="32" y1="24" x2="32" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="40" y1="24" x2="40" y2="36" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <line x1="48" y1="24" x2="48" y2="32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
-
 interface DashboardProps {
   profile: UserProfile;
   streak: number;
@@ -76,20 +46,6 @@ interface DashboardProps {
   demoMode: boolean;
   onToggleDemo: (enabled: boolean) => void;
 }
-
-const PERIOD_LABELS: Record<DashboardPeriod, string> = {
-  week: 'W',
-  month: 'M',
-  quarter: 'Q',
-  year: 'Y',
-};
-
-const PERIOD_FULL_LABELS: Record<DashboardPeriod, string> = {
-  week: 'This Week',
-  month: 'This Month',
-  quarter: 'Last 3 Months',
-  year: 'Last 12 Months',
-};
 
 export function Dashboard({
   profile,
@@ -104,37 +60,31 @@ export function Dashboard({
   const { canAccess } = useTier();
   const isPro = canAccess('analytics_advanced');
 
-  const [prFilter, setPrFilter] = useState('All');
-  const [measureTab, setMeasureTab] = useState<'measurements' | 'photos'>('measurements');
   const [period, setPeriod] = useState<DashboardPeriod>('month');
 
-  const totalVol = workout.workoutHistory.reduce((a, w) => a + (w.totalVolumeKg || 0), 0);
-  const weightData = progress.bodyMeasurements.slice(-10).map(m => parseFloat(String(m.weight)) || 0);
-  const programsCompleted = Math.floor(workout.weekCount / 4);
+  const hasHistory = workout.workoutHistory.length > 0;
 
-  // Period-based analytics
+  // ── Computed analytics (all driven by `period`) ──────────────────────────
   const periodStats = useMemo(() => {
-    if (workout.workoutHistory.length === 0) return null;
+    if (!hasHistory) return null;
     return getPeriodStats(workout.workoutHistory, period, workout.personalRecords);
-  }, [workout.workoutHistory, workout.personalRecords, period]);
+  }, [workout.workoutHistory, workout.personalRecords, period, hasHistory]);
 
   const muscleDistribution = useMemo(() => {
-    if (workout.workoutHistory.length === 0) return [];
+    if (!hasHistory) return [];
     return getMuscleGroupDistribution(workout.workoutHistory, period);
-  }, [workout.workoutHistory, period]);
+  }, [workout.workoutHistory, period, hasHistory]);
 
-  // Volume chart data from period stats
-  const volChartData = useMemo(
-    () => periodStats?.dataPoints.map(p => p.volumeKg) ?? [],
-    [periodStats],
-  );
+  const prTrends = useMemo(() => {
+    return getPRTrends(workout.exerciseHistory, period);
+  }, [workout.exerciseHistory, period]);
 
-  const volChartLabels = useMemo(
-    () => periodStats?.dataPoints.map(p => p.label) ?? [],
-    [periodStats],
-  );
+  const rpeTrend = useMemo(() => {
+    if (!hasHistory) return [];
+    return getAvgRPETrend(workout.workoutHistory, period);
+  }, [workout.workoutHistory, period, hasHistory]);
 
-  // Intelligence features (Pro only)
+  // Pro-only intelligence
   const fatigue = useMemo(() => {
     if (!isPro || workout.workoutHistory.length < 2) return null;
     return calculateFatigueScore(workout.workoutHistory, workout.exerciseHistory);
@@ -150,47 +100,35 @@ export function Dashboard({
     );
   }, [isPro, workout.workoutHistory, workout.personalRecords, workout.exerciseHistory, profile.days]);
 
-  // Filter PRs by muscle group
-  const filteredPRs = useMemo(() => {
-    const entries = Object.entries(workout.personalRecords);
-    if (prFilter === 'All') return entries;
-    const allowedMuscles = PR_FILTER_GROUPS[prFilter] || [];
-    return entries.filter(([name]) => {
-      const ex = findExerciseByName(name);
-      return ex && allowedMuscles.includes(ex.muscle);
-    });
-  }, [workout.personalRecords, prFilter]);
+  // Derived display values
+  const topMuscle = muscleDistribution.length > 0 ? muscleDistribution[0] : null;
 
   return (
     <div>
-      {/* Global summary cards */}
-      <div style={S.sumGrid}>
-        <div style={S.sumCard}>
-          <div style={S.sumLabel}>WORKOUTS</div>
-          <div style={S.sumVal}>{workout.workoutHistory.length}</div>
-        </div>
-        <div style={S.sumCard}>
-          <div style={S.sumLabel}>VOLUME</div>
-          <div style={S.sumVal}>{formatVolume(totalVol, { abbreviated: true })}</div>
-        </div>
-        <div style={S.sumCard}>
-          <div style={S.sumLabel}>STREAK</div>
-          <div style={S.sumVal}>{streak} {'\u{1F525}'}</div>
-        </div>
-        <div style={S.sumCard}>
-          <div style={S.sumLabel}>PROGRAMS</div>
-          <div style={S.sumVal}>{programsCompleted}</div>
-        </div>
-      </div>
+      {/* ── Period Dropdown ─────────────────────────────────────────── */}
+      <PeriodDropdown value={period} onChange={setPeriod} />
 
-      {workout.workoutHistory.length === 0 && (
+      {/* ── Summary Cards ──────────────────────────────────────────── */}
+      <SummaryCards
+        totalVolume={periodStats?.totalVolume ?? 0}
+        volumeChangePct={periodStats?.volumeChangePct ?? 0}
+        streak={streak}
+        topMuscle={topMuscle?.muscle ?? null}
+        topMusclePct={topMuscle?.pct ?? 0}
+        avgRPE={periodStats?.avgRPE ?? 0}
+        newPRs={periodStats?.newPRs ?? 0}
+      />
+
+      {/* ── Empty state ────────────────────────────────────────────── */}
+      {!hasHistory && (
         <EmptyState
           illustration={ChartIllustration}
-          title="Train for a few days and your insights will appear here"
+          title="Log workouts to see stats!"
           subtitle="Your first workout builds the foundation"
         />
       )}
 
+      {/* ── Training Week ──────────────────────────────────────────── */}
       {workout.weekCount > 0 && (
         <div style={S.weekCard}>
           {'\u{1F4C5}'} Training Week {workout.weekCount}
@@ -198,416 +136,121 @@ export function Dashboard({
         </div>
       )}
 
-      {/* ── Period Volume Chart ─────────────────────────────────────── */}
-      {workout.workoutHistory.length > 0 && (
-        <div style={S.chartBox}>
-          {/* Header row: title + period toggles */}
-          <div style={chartStyles.chartHeader}>
-            <h3 style={S.chartTitle}>📊 Training Volume</h3>
-            <div style={chartStyles.periodToggle}>
-              {(Object.keys(PERIOD_LABELS) as DashboardPeriod[]).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  style={{
-                    ...chartStyles.periodBtn,
-                    ...(period === p ? chartStyles.periodBtnActive : {}),
-                  }}
-                >
-                  {PERIOD_LABELS[p]}
-                </button>
-              ))}
-            </div>
+      {/* ── Chart Carousel (Volume, PR Trends, Recovery) ─────────── */}
+      {hasHistory && (
+        <ChartCarousel titles={['Volume', 'PR Trends', 'Recovery']}>
+          {[
+            <VolumeChart
+              key="volume"
+              dataPoints={periodStats?.dataPoints ?? []}
+              volumeChangePct={periodStats?.volumeChangePct ?? 0}
+            />,
+            <PRTrendsChart
+              key="pr-trends"
+              trends={prTrends}
+            />,
+            <RecoveryTrendChart
+              key="recovery"
+              data={rpeTrend}
+            />,
+          ]}
+        </ChartCarousel>
+      )}
+
+      {/* ── Period Stats Summary Row ───────────────────────────────── */}
+      {periodStats && periodStats.totalSessions > 0 && (
+        <div style={dashStyles.periodSummary}>
+          <div style={dashStyles.periodSumItem}>
+            <div style={dashStyles.periodSumVal}>{periodStats.totalSessions}</div>
+            <div style={dashStyles.periodSumLabel}>SESSIONS</div>
           </div>
-
-          {/* Period summary stats row */}
-          {periodStats && (
-            <div style={chartStyles.periodSummary}>
-              <div style={chartStyles.periodSumItem}>
-                <div style={chartStyles.periodSumVal}>
-                  {periodStats.totalSessions}
-                </div>
-                <div style={chartStyles.periodSumLabel}>SESSIONS</div>
-              </div>
-              <div style={chartStyles.periodSumDivider} />
-              <div style={chartStyles.periodSumItem}>
-                <div style={chartStyles.periodSumVal}>
-                  {formatVolume(periodStats.totalVolume, { abbreviated: true })}
-                </div>
-                <div style={chartStyles.periodSumLabel}>VOLUME</div>
-              </div>
-              <div style={chartStyles.periodSumDivider} />
-              <div style={chartStyles.periodSumItem}>
-                <div style={chartStyles.periodSumVal}>
-                  {periodStats.avgRPE > 0 ? periodStats.avgRPE.toFixed(1) : '—'}
-                </div>
-                <div style={chartStyles.periodSumLabel}>AVG RPE</div>
-              </div>
-              <div style={chartStyles.periodSumDivider} />
-              <div style={chartStyles.periodSumItem}>
-                <div style={{ ...chartStyles.periodSumVal, color: periodStats.newPRs > 0 ? colors.primary : colors.text }}>
-                  {periodStats.newPRs}
-                </div>
-                <div style={chartStyles.periodSumLabel}>NEW PRs</div>
-              </div>
+          <div style={dashStyles.divider} />
+          <div style={dashStyles.periodSumItem}>
+            <div style={dashStyles.periodSumVal}>{formatVolume(periodStats.totalVolume, { abbreviated: true })}</div>
+            <div style={dashStyles.periodSumLabel}>VOLUME</div>
+          </div>
+          <div style={dashStyles.divider} />
+          <div style={dashStyles.periodSumItem}>
+            <div style={dashStyles.periodSumVal}>
+              {periodStats.avgRPE > 0 ? periodStats.avgRPE.toFixed(1) : '\u2014'}
             </div>
-          )}
-
-          {/* Volume % change badge */}
-          {periodStats && periodStats.totalVolume > 0 && periodStats.volumeChangePct !== 0 && (
-            <div style={chartStyles.changeRow}>
-              <span style={{
-                ...chartStyles.changeBadge,
-                color: periodStats.volumeChangePct >= 0 ? colors.success : colors.primary,
-                background: periodStats.volumeChangePct >= 0
-                  ? 'rgba(34,197,94,0.1)' : 'rgba(255,59,48,0.1)',
-                border: `1px solid ${periodStats.volumeChangePct >= 0
-                  ? 'rgba(34,197,94,0.3)' : 'rgba(255,59,48,0.3)'}`,
-              }}>
-                {periodStats.volumeChangePct > 0 ? '↑' : '↓'}
-                {' '}{Math.abs(periodStats.volumeChangePct)}% vs prev {PERIOD_FULL_LABELS[period].toLowerCase()}
-              </span>
+            <div style={dashStyles.periodSumLabel}>AVG RPE</div>
+          </div>
+          <div style={dashStyles.divider} />
+          <div style={dashStyles.periodSumItem}>
+            <div style={{
+              ...dashStyles.periodSumVal,
+              color: periodStats.newPRs > 0 ? colors.primary : colors.text,
+            }}>
+              {periodStats.newPRs}
             </div>
-          )}
-
-          {/* Bar chart */}
-          {volChartData.length > 0 && (
-            <>
-              <div style={{ display: 'flex', gap: spacing.sm, marginTop: spacing.sm }}>
-                <div style={chartStyles.yAxis}>
-                  <span style={chartStyles.yLabel}>
-                    {formatVolume(Math.max(...volChartData), { abbreviated: true })}
-                  </span>
-                  <span style={chartStyles.yLabel}>0</span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <MiniChart data={volChartData} type="bar" height={72} />
-                </div>
-              </div>
-              {/* X-axis labels */}
-              <div style={chartStyles.xLabels}>
-                {volChartLabels.map((label, i) => (
-                  <span key={i} style={chartStyles.xLabel}>{label}</span>
-                ))}
-              </div>
-            </>
-          )}
-
-          {periodStats?.totalSessions === 0 && (
-            <p style={chartStyles.noData}>No workouts in {PERIOD_FULL_LABELS[period].toLowerCase()}</p>
-          )}
+            <div style={dashStyles.periodSumLabel}>NEW PRs</div>
+          </div>
         </div>
       )}
 
-      {/* ── Muscle Distribution Card ────────────────────────────────── */}
+      {/* ── Muscle Distribution ─────────────────────────────────────── */}
       {muscleDistribution.length > 0 && (
-        <MuscleDistributionCard distribution={muscleDistribution} period={period} />
+        <>
+          <MusclePieChart distribution={muscleDistribution} />
+          <MuscleDistributionCard distribution={muscleDistribution} period={period} />
+        </>
       )}
 
-      {/* Intelligence cards (Pro) or upgrade prompt (Free) */}
+      {/* ── Intelligence Cards (Pro) ────────────────────────────────── */}
       {isPro ? (
         <>
           {fatigue && <FatigueCard fatigue={fatigue} />}
           {insights && <InsightsCard insight={insights} />}
         </>
       ) : (
-        <div style={lockedCardStyles.card}>
-          <div style={lockedCardStyles.icon}>{'\u{1F512}'}</div>
-          <div style={lockedCardStyles.title}>Intelligent Training Progression</div>
-          <div style={lockedCardStyles.desc}>
+        <div style={dashStyles.lockedCard}>
+          <div style={{ fontSize: 32, marginBottom: spacing.sm }}>{'\u{1F512}'}</div>
+          <div style={dashStyles.lockedTitle}>Intelligent Training Progression</div>
+          <div style={dashStyles.lockedDesc}>
             Fatigue tracking, weekly insights, adaptive rest, and mid-workout suggestions.
           </div>
-          <div style={lockedCardStyles.price}>Unlock intelligent progression {'\u2014'} $2/mo</div>
+          <div style={dashStyles.lockedPrice}>Unlock intelligent progression {'\u2014'} $2/mo</div>
         </div>
       )}
 
-      {/* Enhanced Personal Records Board */}
-      <div style={S.chartBox}>
-        <h3 style={S.chartTitle}>{'\u{1F3C6}'} Personal Records</h3>
+      {/* ── Personal Records Board ──────────────────────────────────── */}
+      <PRBoard
+        personalRecords={workout.personalRecords}
+        globalPRs={workout.globalPRs}
+        onShowExerciseHistory={onShowExerciseHistory}
+      />
 
-        {Object.keys(workout.personalRecords).length > 0 ? (
-          <>
-            {/* Muscle group filter tabs */}
-            <div style={prStyles.filterRow}>
-              {Object.keys(PR_FILTER_GROUPS).map(group => (
-                <button
-                  key={group}
-                  onClick={() => setPrFilter(group)}
-                  style={{
-                    ...prStyles.filterBtn,
-                    ...(prFilter === group ? prStyles.filterBtnActive : {}),
-                  }}
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
+      {/* ── Body Tracking ───────────────────────────────────────────── */}
+      <BodyTracking
+        profile={profile}
+        bodyMeasurements={progress.bodyMeasurements}
+        onOpenMeasurements={onOpenMeasurements}
+      />
 
-            {/* Global PRs */}
-            {prFilter === 'All' && workout.globalPRs && (
-              <div style={prStyles.globalSection}>
-                <div style={prStyles.globalTitle}>GLOBAL RECORDS</div>
-                <div style={prStyles.globalGrid}>
-                  {workout.globalPRs.highestSessionVolume && (
-                    <div style={prStyles.globalItem}>
-                      <div style={prStyles.globalLabel}>Session Volume</div>
-                      <div style={prStyles.globalValue}>{formatVolume(workout.globalPRs.highestSessionVolume.value)}</div>
-                      <div style={prStyles.globalDate}>{workout.globalPRs.highestSessionVolume.date}</div>
-                    </div>
-                  )}
-                  {workout.globalPRs.longestStreak && (
-                    <div style={prStyles.globalItem}>
-                      <div style={prStyles.globalLabel}>Longest Streak</div>
-                      <div style={prStyles.globalValue}>{workout.globalPRs.longestStreak.days}d</div>
-                      <div style={prStyles.globalDate}>ended {workout.globalPRs.longestStreak.endDate}</div>
-                    </div>
-                  )}
-                  {workout.globalPRs.mostSetsInWorkout && (
-                    <div style={prStyles.globalItem}>
-                      <div style={prStyles.globalLabel}>Most Sets</div>
-                      <div style={prStyles.globalValue}>{workout.globalPRs.mostSetsInWorkout.count}</div>
-                      <div style={prStyles.globalDate}>{workout.globalPRs.mostSetsInWorkout.date}</div>
-                    </div>
-                  )}
-                  {workout.globalPRs.highestAvgRPE && (
-                    <div style={prStyles.globalItem}>
-                      <div style={prStyles.globalLabel}>Toughest Avg RPE</div>
-                      <div style={prStyles.globalValue}>{workout.globalPRs.highestAvgRPE.value}</div>
-                      <div style={prStyles.globalDate}>{workout.globalPRs.highestAvgRPE.date}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+      {/* ── Recent Workouts ─────────────────────────────────────────── */}
+      <RecentWorkouts workoutHistory={workout.workoutHistory} />
 
-            {/* Per-exercise PRs */}
-            <div style={prStyles.exerciseList}>
-              {filteredPRs.map(([name, pr]) => (
-                <PRExerciseCard
-                  key={name}
-                  name={name}
-                  pr={pr}
-                  onClick={() => onShowExerciseHistory(name)}
-                />
-              ))}
-              {filteredPRs.length === 0 && (
-                <p style={{ color: colors.textTertiary, textAlign: 'center', padding: '16px 0', fontSize: typography.sizes.md }}>
-                  No PRs for this muscle group yet
-                </p>
-              )}
-            </div>
-          </>
-        ) : (
-          <EmptyState
-            illustration={TrophyIllustration}
-            title="Your records board is empty"
-            subtitle="Complete your first workout to set your baseline"
-            style={{ padding: `${spacing.xl}px ${spacing.md}px` }}
-          />
-        )}
-      </div>
-
-      <div style={S.chartBox}>
-        <div style={S.chartHeader}>
-          <h3 style={S.chartTitle}>{'\u{1F4CF}'} Body Tracking</h3>
-          {measureTab === 'measurements' && (
-            <button onClick={onOpenMeasurements} style={S.addMeasureBtn}>+ LOG</button>
-          )}
-        </div>
-        {/* Measurements / Photos tabs */}
-        <div style={measureTabStyles.tabRow}>
-          <button
-            onClick={() => setMeasureTab('measurements')}
-            style={{
-              ...measureTabStyles.tab,
-              ...(measureTab === 'measurements' ? measureTabStyles.tabActive : {}),
-            }}
-          >
-            <Icon name="ruler" size={14} /> Measurements
-          </button>
-          <button
-            onClick={() => setMeasureTab('photos')}
-            style={{
-              ...measureTabStyles.tab,
-              ...(measureTab === 'photos' ? measureTabStyles.tabActive : {}),
-            }}
-          >
-            <Icon name="camera" size={14} /> Progress Photos
-          </button>
-        </div>
-        {measureTab === 'measurements' ? (
-          weightData.length > 1 ? (
-            <>
-              <MiniChart data={weightData} color="#3B82F6" height={60} />
-              <div style={S.measureSummary}>
-                <span>Current: {progress.bodyMeasurements[progress.bodyMeasurements.length - 1]?.weight}kg</span>
-                <span>Start: {progress.bodyMeasurements[0]?.weight}kg</span>
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              illustration={RulerIllustration}
-              title="Log measurements to track progress"
-              subtitle="Track weight and body measurements over time"
-              actions={[{ label: 'Log Now', onClick: onOpenMeasurements }]}
-              style={{ padding: `${spacing.lg}px ${spacing.md}px` }}
-            />
-          )
-        ) : (
-          <ProgressPhotos currentWeight={profile.weight} />
-        )}
-      </div>
-
-      {workout.workoutHistory.length > 0 && (
-        <div style={S.chartBox}>
-          <h3 style={S.chartTitle}>{'\u{1F4CB}'} Recent Workouts</h3>
-          <div style={S.recentList}>
-            {workout.workoutHistory.slice(-5).reverse().map((w, i) => (
-              <div key={i} style={S.recentItem}>
-                <div><div style={S.recentDay}>{w.dayName}</div><div style={S.recentDate}>{w.date}</div></div>
-                <div style={S.recentStats}>
-                  <span style={S.recentPct}>{w.completionPercent}%</span>
-                  <span style={S.recentVol}>{formatVolume(w.totalVolumeKg)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={S.profileBox}>
-        <h3 style={S.chartTitle}>{'\u{1F464}'} Profile</h3>
-        <div style={S.profileGrid}>
-          <div style={S.profileItem}><span style={S.profileLabel}>Height</span><span>{profile.height}cm</span></div>
-          <div style={S.profileItem}><span style={S.profileLabel}>Weight</span><span>{profile.weight}kg</span></div>
-          <div style={S.profileItem}><span style={S.profileLabel}>Level</span><span style={{ textTransform: 'capitalize' }}>{profile.level}</span></div>
-          <div style={S.profileItem}><span style={S.profileLabel}>Schedule</span><span>{profile.days}x/week</span></div>
-        </div>
-        <div style={S.demoRow}>
-          <div>
-            <div style={S.demoLabel}>Demo Mode</div>
-            <div style={S.demoHint}>Load 6 months of serious lifter data</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => onToggleDemo(!demoMode)}
-            style={{ ...S.demoToggle, ...(demoMode ? S.demoToggleOn : {}) }}
-            aria-pressed={demoMode}
-          >
-            <span style={{ ...S.demoKnob, ...(demoMode ? S.demoKnobOn : {}) }} />
-          </button>
-        </div>
-      </div>
+      {/* ── Profile Summary ─────────────────────────────────────────── */}
+      <ProfileSummary
+        profile={profile}
+        demoMode={demoMode}
+        onToggleDemo={onToggleDemo}
+      />
     </div>
   );
 }
 
-/** Single exercise PR card with expanded display */
-function PRExerciseCard({ name, pr, onClick }: { name: string; pr: ExercisePR; onClick: () => void }) {
-  const hasAnyNew = [
-    pr.heaviestWeight?.date,
-    pr.bestEstimated1RM?.date,
-    pr.bestSetVolume?.date,
-    pr.bestSessionVolume?.date,
-  ].some(d => isNewPR(d));
-
-  return (
-    <div style={prStyles.exerciseCard} onClick={onClick}>
-      <div style={prStyles.exerciseHeader}>
-        <div style={prStyles.exerciseName}>{name}</div>
-        {hasAnyNew && <span style={prStyles.newBadge}>NEW</span>}
-      </div>
-      <div style={prStyles.prEntries}>
-        {pr.heaviestWeight && (
-          <PREntryRow
-            icon={'\u{1F4AA}'}
-            label="Heavy"
-            value={`${pr.heaviestWeight.weightKg}kg x ${pr.heaviestWeight.reps}`}
-            date={pr.heaviestWeight.date}
-          />
-        )}
-        {pr.bestEstimated1RM && (
-          <PREntryRow
-            icon={'\u{1F3AF}'}
-            label="Est 1RM"
-            value={`${pr.bestEstimated1RM.value}kg`}
-            date={pr.bestEstimated1RM.date}
-          />
-        )}
-        {pr.bestSetVolume && (
-          <PREntryRow
-            icon={'\u26A1'}
-            label="Best Set"
-            value={`${pr.bestSetVolume.weightKg}kg x ${pr.bestSetVolume.reps} = ${formatVolume(pr.bestSetVolume.value)}`}
-            date={pr.bestSetVolume.date}
-          />
-        )}
-        {pr.bestSessionVolume && (
-          <PREntryRow
-            icon={'\u{1F4C8}'}
-            label="Session Vol"
-            value={formatVolume(pr.bestSessionVolume.value)}
-            date={pr.bestSessionVolume.date}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PREntryRow({ icon, label, value, date }: { icon: string; label: string; value: string; date: string }) {
-  const isNew = isNewPR(date);
-  return (
-    <div style={prStyles.prRow}>
-      <span style={prStyles.prRowIcon}>{icon}</span>
-      <span style={prStyles.prRowLabel}>{label}:</span>
-      <span style={{ ...prStyles.prRowValue, color: isNew ? colors.primary : colors.text }}>{value}</span>
-      <span style={prStyles.prRowDate}>({date})</span>
-      {isNew && <span style={prStyles.prRowNew}>NEW</span>}
-    </div>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
-
-const chartStyles: Record<string, React.CSSProperties> = {
-  chartHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  periodToggle: {
-    display: 'flex',
-    gap: 3,
-    background: 'rgba(255,255,255,0.05)',
-    borderRadius: radii.pill,
-    padding: 3,
-  },
-  periodBtn: {
-    width: 32,
-    height: 28,
-    borderRadius: radii.pill,
-    border: 'none',
-    background: 'transparent',
-    color: colors.textSecondary,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.black,
-    cursor: 'pointer',
-    letterSpacing: '0.04em',
-  },
-  periodBtnActive: {
-    background: colors.primary,
-    color: '#fff',
-  },
+// ── Styles ─────────────────────────────────────────────────────────────────
+const dashStyles: Record<string, React.CSSProperties> = {
   periodSummary: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-around',
     background: 'rgba(255,255,255,0.03)',
-    borderRadius: radii.md,
+    borderRadius: 10,
     padding: `${spacing.sm}px ${spacing.xs}px`,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
     border: '1px solid rgba(255,255,255,0.05)',
   },
   periodSumItem: {
@@ -627,229 +270,12 @@ const chartStyles: Record<string, React.CSSProperties> = {
     letterSpacing: '0.08em',
     marginTop: 2,
   },
-  periodSumDivider: {
+  divider: {
     width: 1,
     height: 32,
     background: 'rgba(255,255,255,0.07)',
   },
-  changeRow: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginBottom: spacing.xs,
-  },
-  changeBadge: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    padding: '3px 10px',
-    borderRadius: radii.pill,
-  },
-  yAxis: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'space-between',
-    height: 72,
-    width: 40,
-    flexShrink: 0,
-  },
-  yLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    textAlign: 'right' as const,
-  },
-  xLabels: {
-    display: 'flex',
-    justifyContent: 'space-around',
-    marginTop: 4,
-    paddingLeft: 48,
-  },
-  xLabel: {
-    fontSize: '0.55rem',
-    color: colors.textTertiary,
-    textAlign: 'center' as const,
-    flex: 1,
-    letterSpacing: '0.02em',
-  },
-  noData: {
-    color: colors.textTertiary,
-    fontSize: typography.sizes.sm,
-    textAlign: 'center' as const,
-    padding: `${spacing.lg}px 0`,
-    margin: 0,
-  },
-};
-
-const prStyles: Record<string, React.CSSProperties> = {
-  filterRow: {
-    display: 'flex',
-    gap: 6,
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-    overflowX: 'auto',
-    paddingBottom: 4,
-  },
-  filterBtn: {
-    padding: `6px ${spacing.md}px`,
-    borderRadius: radii.pill,
-    border: `1px solid ${colors.surfaceHover}`,
-    background: colors.surface,
-    color: colors.textSecondary,
-    cursor: 'pointer',
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    whiteSpace: 'nowrap',
-  },
-  filterBtnActive: {
-    background: colors.primarySurface,
-    border: `1px solid ${colors.primaryBorder}`,
-    color: colors.text,
-  },
-  globalSection: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    background: 'rgba(255,149,0,0.06)',
-    border: '1px solid rgba(255,149,0,0.15)',
-  },
-  globalTitle: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.black,
-    color: colors.warning,
-    letterSpacing: '0.08em',
-    marginBottom: spacing.sm,
-  },
-  globalGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: spacing.sm,
-  },
-  globalItem: {
-    textAlign: 'center' as const,
-    padding: spacing.sm,
-  },
-  globalLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    fontWeight: typography.weights.bold,
-    marginBottom: 2,
-  },
-  globalValue: {
-    fontSize: typography.sizes['5xl'],
-    fontWeight: typography.weights.black,
-    color: colors.warning,
-  },
-  globalDate: {
-    fontSize: typography.sizes.xs,
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-  exerciseList: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: spacing.sm,
-  },
-  exerciseCard: {
-    padding: spacing.md,
-    background: colors.surface,
-    border: `1px solid rgba(255,255,255,0.05)`,
-    borderRadius: radii.lg,
-    cursor: 'pointer',
-  },
-  exerciseHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  exerciseName: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  newBadge: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.black,
-    color: colors.primary,
-    padding: '2px 8px',
-    borderRadius: radii.sm,
-    background: colors.primarySurface,
-    border: `1px solid ${colors.primaryBorder}`,
-    letterSpacing: '0.05em',
-  },
-  prEntries: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: 4,
-  },
-  prRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: typography.sizes.md,
-    lineHeight: 1.5,
-  },
-  prRowIcon: {
-    fontSize: typography.sizes.base,
-    width: 16,
-    flexShrink: 0,
-  },
-  prRowLabel: {
-    color: colors.textSecondary,
-    fontWeight: typography.weights.medium,
-    flexShrink: 0,
-  },
-  prRowValue: {
-    fontWeight: typography.weights.black,
-    color: colors.text,
-  },
-  prRowDate: {
-    color: colors.textTertiary,
-    fontSize: typography.sizes.sm,
-    marginLeft: 'auto',
-    flexShrink: 0,
-  },
-  prRowNew: {
-    fontSize: '0.5rem',
-    fontWeight: typography.weights.black,
-    color: colors.primary,
-    padding: '1px 4px',
-    borderRadius: 3,
-    background: colors.primarySurface,
-    marginLeft: 4,
-    flexShrink: 0,
-  },
-};
-
-const measureTabStyles: Record<string, React.CSSProperties> = {
-  tabRow: {
-    display: 'flex',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  tab: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    padding: `${spacing.sm + 2}px ${spacing.md}px`,
-    borderRadius: radii.pill,
-    border: `1px solid ${colors.surfaceHover}`,
-    background: colors.surface,
-    color: colors.textSecondary,
-    cursor: 'pointer',
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    whiteSpace: 'nowrap' as const,
-  },
-  tabActive: {
-    background: colors.primarySurface,
-    border: `1px solid ${colors.primaryBorder}`,
-    color: colors.text,
-  },
-};
-
-const lockedCardStyles: Record<string, React.CSSProperties> = {
-  card: {
+  lockedCard: {
     padding: spacing.xl,
     borderRadius: 18,
     background: colors.surface,
@@ -857,26 +283,25 @@ const lockedCardStyles: Record<string, React.CSSProperties> = {
     marginBottom: spacing.md,
     textAlign: 'center' as const,
   },
-  icon: { fontSize: 32, marginBottom: spacing.sm },
-  title: {
+  lockedTitle: {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.black,
     color: colors.text,
     marginBottom: spacing.xs,
   },
-  desc: {
+  lockedDesc: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
     lineHeight: 1.4,
     marginBottom: spacing.md,
   },
-  price: {
+  lockedPrice: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
     color: colors.primary,
     padding: `${spacing.sm}px ${spacing.lg}px`,
     background: colors.primarySurface,
-    borderRadius: radii.pill,
+    borderRadius: 20,
     display: 'inline-block',
     border: `1px solid ${colors.primaryBorder}`,
   },

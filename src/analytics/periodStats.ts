@@ -3,7 +3,8 @@
  * Pure functions — no React, no localStorage, easy to test.
  */
 
-import type { WorkoutLog, PersonalRecords } from '@/shared/types';
+import type { WorkoutLog, PersonalRecords, ExerciseHistory } from '@/shared/types';
+import { calculate1RM } from '@/shared/utils';
 import { findExerciseByName } from '@/data/exercises';
 import { MUSCLE_FILTER_MAP } from '@/shared/types';
 
@@ -33,8 +34,24 @@ export interface MuscleGroupShare {
   color: string;
 }
 
+export interface PRTrendPoint {
+  label: string;
+  [exercise: string]: string | number;
+}
+
+export interface PRTrendsResult {
+  exercises: string[];
+  dataPoints: PRTrendPoint[];
+}
+
+export interface RPETrendPoint {
+  label: string;
+  avgRPE: number;
+  sessions: number;
+}
+
 // Muscle group display colors
-const MUSCLE_COLORS: Record<string, string> = {
+export const MUSCLE_COLORS: Record<string, string> = {
   Chest: '#ef4444',
   Back: '#3b82f6',
   Legs: '#22c55e',
@@ -274,4 +291,85 @@ export function getMuscleGroupDistribution(
       color: MUSCLE_COLORS[muscle] ?? MUSCLE_COLORS['Other'] ?? '#6b7280',
     }))
     .sort((a, b) => b.sets - a.sets);
+}
+
+/**
+ * Computes per-exercise estimated 1RM trends over period buckets.
+ * Selects top N exercises by highest recent 1RM.
+ */
+export function getPRTrends(
+  exerciseHistory: ExerciseHistory,
+  period: DashboardPeriod,
+  topN: number = 3,
+  now: Date = new Date(),
+): PRTrendsResult {
+  const { buckets } = periodWindow(period, now);
+  const entries = Object.entries(exerciseHistory);
+
+  if (entries.length === 0) return { exercises: [], dataPoints: [] };
+
+  // Find top N exercises by their best 1RM across all history
+  const exerciseBest = entries.map(([name, hist]) => {
+    const best = hist.reduce((max, e) => Math.max(max, e.estimated1RM || calculate1RM(e.weightKg, e.reps)), 0);
+    return { name, best };
+  });
+  exerciseBest.sort((a, b) => b.best - a.best);
+  const topExercises = exerciseBest.slice(0, topN).map(e => e.name);
+
+  // Build data points: for each bucket, find best 1RM per exercise
+  const dataPoints: PRTrendPoint[] = buckets.map(bucket => {
+    const point: PRTrendPoint = { label: bucket.label };
+    for (const exName of topExercises) {
+      const hist = exerciseHistory[exName] ?? [];
+      const inBucket = hist.filter(h => {
+        const d = parseDate(h.date);
+        return d >= bucket.start && d <= bucket.end;
+      });
+      const best1RM = inBucket.reduce(
+        (max, e) => Math.max(max, e.estimated1RM || calculate1RM(e.weightKg, e.reps)),
+        0,
+      );
+      point[exName] = best1RM;
+    }
+    return point;
+  });
+
+  return { exercises: topExercises, dataPoints };
+}
+
+/**
+ * Returns average RPE per period bucket for recovery/intensity trend.
+ */
+export function getAvgRPETrend(
+  history: WorkoutLog[],
+  period: DashboardPeriod,
+  now: Date = new Date(),
+): RPETrendPoint[] {
+  const { windowStart, windowEnd, buckets } = periodWindow(period, now);
+
+  const inWindow = history.filter(w => {
+    const d = parseDate(w.date);
+    return d >= windowStart && d <= windowEnd;
+  });
+
+  return buckets.map(bucket => {
+    const bucketed = inWindow.filter(w => {
+      const d = parseDate(w.date);
+      return d >= bucket.start && d <= bucket.end;
+    });
+
+    let totalRPE = 0;
+    let rpeCount = 0;
+    for (const w of bucketed) {
+      for (const s of w.sets) {
+        if (s.rpe) { totalRPE += s.rpe; rpeCount++; }
+      }
+    }
+
+    return {
+      label: bucket.label,
+      avgRPE: rpeCount > 0 ? Math.round((totalRPE / rpeCount) * 10) / 10 : 0,
+      sessions: bucketed.length,
+    };
+  });
 }

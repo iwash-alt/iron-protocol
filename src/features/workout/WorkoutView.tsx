@@ -372,6 +372,7 @@ export function WorkoutView({ profile }: WorkoutViewProps) {
       workoutStartedAt.current,
       workout.progress(),
       workout.workoutHistory,
+      workout.sessionPRs,
     );
 
     workout.endWorkout(force);

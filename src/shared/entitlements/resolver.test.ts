@@ -232,7 +232,7 @@ describe('resolveEntitlements', () => {
         ],
       });
 
-      const resolved = resolveEntitlements(store);
+      const resolved = resolveEntitlements(store, now);
 
       // From plan
       expect(resolved.hasFeature('analytics_advanced')).toBe(true);

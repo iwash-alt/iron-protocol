@@ -4,13 +4,15 @@
  * Displays duration, completion, per-exercise breakdown, and total stats.
  */
 
-import React from 'react';
-import type { PlanExercise, SetLog, WorkoutLog } from '@/shared/types';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { SetLog, WorkoutLog } from '@/shared/types';
 import { colors, spacing, radii, typography } from '@/shared/theme/tokens';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 import { formatVolume, formatVolumeDelta, formatPctChange, computeMuscleVolumeBreakdown } from '@/shared/utils';
 import type { MuscleVolumeEntry } from '@/shared/utils';
 import { findExerciseByName } from '@/data/exercises';
+import { useTier } from '@/hooks/useTier';
+import type { SessionPR } from './WorkoutContext';
 
 export interface WorkoutSummaryData {
   dayName: string;
@@ -29,6 +31,8 @@ export interface WorkoutSummaryData {
   previousDayLabel: string | null;
   /** Raw set logs for muscle breakdown computation */
   sets: SetLog[];
+  /** PRs achieved during this workout session */
+  sessionPRs: SessionPR[];
 }
 
 interface ExerciseSummary {
@@ -52,12 +56,13 @@ interface Props {
  */
 export function buildWorkoutSummary(
   dayName: string,
-  dayExercises: PlanExercise[],
+  dayExercises: { id: string; exercise: { name: string; isBodyweight?: boolean }; sets: number; weightKg: number; reps: number; repsMax: number; progressionKg: number }[],
   completedSets: Record<string, number>,
   currentLog: SetLog[],
   startedAt: number | null,
   completionPercent: number,
   workoutHistory: WorkoutLog[],
+  sessionPRs: SessionPR[] = [],
 ): WorkoutSummaryData {
   const now = Date.now();
   const durationSeconds = startedAt ? Math.round((now - startedAt) / 1000) : 0;
@@ -107,6 +112,7 @@ export function buildWorkoutSummary(
     previousVolumeKg: previousSession?.totalVolumeKg ?? null,
     previousDayLabel: previousSession ? `last ${previousSession.dayName}` : null,
     sets: currentLog,
+    sessionPRs,
   };
 }
 
@@ -119,8 +125,90 @@ function formatDuration(seconds: number): string {
   return `${hrs}h ${rem}m`;
 }
 
+// ── Confetti overlay for PR celebrations ─────────────────────────────────────
+const CONFETTI_COLORS = ['#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#007AFF', '#AF52DE', '#FF2D55'];
+const CONFETTI_COUNT = 40;
+
+function ConfettiOverlay() {
+  const [particles] = useState(() =>
+    Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 0.6,
+      duration: 1.2 + Math.random() * 0.8,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      rotation: Math.random() * 360,
+      size: 4 + Math.random() * 4,
+    }))
+  );
+
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div style={ss.confettiContainer} aria-hidden="true">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position: 'absolute' as const,
+            left: `${p.left}%`,
+            top: -10,
+            width: p.size,
+            height: p.size * 1.5,
+            background: p.color,
+            borderRadius: 1,
+            animation: `confettiBurst ${p.duration}s ${p.delay}s ease-out forwards`,
+            transform: `rotate(${p.rotation}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ── Share utility ────────────────────────────────────────────────────────────
+function generateShareText(
+  summary: WorkoutSummaryData,
+  muscleBreakdown: MuscleVolumeEntry[],
+): string {
+  const lines: string[] = [];
+  lines.push(`\u{1F3CB} Iron Protocol \u2014 ${summary.dayName}`);
+  lines.push(`\u{1F4C5} ${summary.date}`);
+
+  const duration = formatDuration(summary.durationSeconds);
+  lines.push(`\u23F1 ${duration} | ${summary.completionPercent}% complete`);
+
+  const vol = formatVolume(summary.totalVolumeKg);
+  lines.push(`\u{1F4AA} Volume: ${vol} | Sets: ${summary.setsCompleted}/${summary.setsPlanned} | RPE ${summary.avgRPE || '\u2014'}`);
+
+  if (muscleBreakdown.length > 0) {
+    const top = muscleBreakdown[0];
+    lines.push(`\u{1F3AF} Top: ${top.muscle} ${top.pct}%`);
+  }
+
+  if (summary.sessionPRs.length > 0) {
+    lines.push(`\u{1F525} ${summary.sessionPRs.length} New PR${summary.sessionPRs.length > 1 ? 's' : ''}!`);
+  }
+
+  return lines.join('\n');
+}
+
 export function WorkoutSummary({ summary, onDone }: Props) {
   const { photo: profilePhoto } = useProfilePhoto();
+  const { isFree } = useTier();
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+
+  const hasPRs = summary.sessionPRs.length > 0;
+  const prExerciseNames = React.useMemo(
+    () => new Set(summary.sessionPRs.map(pr => pr.exerciseName)),
+    [summary.sessionPRs],
+  );
 
   // Compute muscle volume breakdown
   const muscleBreakdown: MuscleVolumeEntry[] = React.useMemo(() => {
@@ -139,9 +227,27 @@ export function WorkoutSummary({ summary, onDone }: Props) {
     ? Math.max(summary.totalVolumeKg, summary.previousVolumeKg!)
     : summary.totalVolumeKg;
 
+  const handleShare = useCallback(async () => {
+    const text = generateShareText(summary, muscleBreakdown);
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ text });
+      } catch {
+        // User cancelled share — ignore
+      }
+    } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+      setShareStatus('copied');
+      setTimeout(() => setShareStatus('idle'), 2000);
+    }
+  }, [summary, muscleBreakdown]);
+
   return (
     <div style={ss.overlay}>
       <div style={ss.container}>
+        {/* Confetti burst on PRs */}
+        {hasPRs && <ConfettiOverlay />}
+
         {/* Header */}
         <div style={ss.header}>
           {profilePhoto && (
@@ -158,12 +264,32 @@ export function WorkoutSummary({ summary, onDone }: Props) {
               }}
             />
           )}
-          <div style={ss.icon}>{summary.endedEarly ? '🏁' : '🏆'}</div>
+          <div style={ss.icon}>{summary.endedEarly ? '\u{1F3C1}' : '\u{1F3C6}'}</div>
           <h2 style={ss.title}>
             {summary.endedEarly ? 'WORKOUT ENDED EARLY' : 'WORKOUT COMPLETE'}
           </h2>
-          <p style={ss.subtitle}>{summary.dayName} — {summary.date}</p>
+          <p style={ss.subtitle}>{summary.dayName} \u2014 {summary.date}</p>
         </div>
+
+        {/* PR celebration banner */}
+        {hasPRs && (
+          <div style={ss.prBanner}>
+            <div style={ss.prBannerIcon}>{'\u{1F525}'}</div>
+            <div>
+              <div style={ss.prBannerTitle}>
+                {summary.sessionPRs.length} NEW PR{summary.sessionPRs.length > 1 ? 'S' : ''}!
+              </div>
+              <div style={ss.prBannerList}>
+                {summary.sessionPRs.map((pr, i) => (
+                  <span key={i}>
+                    {pr.exerciseName} ({pr.category}: {pr.value})
+                    {i < summary.sessionPRs.length - 1 ? ' \u00B7 ' : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Duration + Completion */}
         <div style={ss.topStats}>
@@ -191,12 +317,18 @@ export function WorkoutSummary({ summary, onDone }: Props) {
               <div key={i} style={{
                 ...ss.exerciseRow,
                 opacity: ex.setsCompleted === 0 ? 0.4 : 1,
+                ...(prExerciseNames.has(ex.name) ? ss.exerciseRowPR : {}),
               }}>
                 <div style={ss.exerciseHeader}>
                   <span style={ss.exerciseName}>{ex.name}</span>
-                  {ex.isIncomplete && ex.setsCompleted > 0 && (
-                    <span style={ss.incompleteTag}>INCOMPLETE</span>
-                  )}
+                  <div style={{ display: 'flex', gap: spacing.xs }}>
+                    {prExerciseNames.has(ex.name) && (
+                      <span style={ss.prTag}>PR</span>
+                    )}
+                    {ex.isIncomplete && ex.setsCompleted > 0 && (
+                      <span style={ss.incompleteTag}>INCOMPLETE</span>
+                    )}
+                  </div>
                 </div>
                 <div style={ss.exerciseStats}>
                   {ex.setsCompleted > 0 ? (
@@ -246,7 +378,7 @@ export function WorkoutSummary({ summary, onDone }: Props) {
                 ...ss.statValue,
                 color: summary.avgRPE >= 9 ? colors.primary : summary.avgRPE >= 8 ? colors.warning : colors.success,
               }}>
-                {summary.avgRPE || '—'}
+                {summary.avgRPE || '\u2014'}
               </div>
             </div>
           </div>
@@ -316,7 +448,23 @@ export function WorkoutSummary({ summary, onDone }: Props) {
           </div>
         )}
 
-        {/* Done button */}
+        {/* Pro teaser for free users */}
+        {isFree && (
+          <div style={ss.proTeaser}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+              <span style={{ fontSize: 20 }}>{'\u{1F4CA}'}</span>
+              <div>
+                <div style={ss.proTeaserTitle}>Pro unlocks custom graphs</div>
+                <div style={ss.proTeaserDesc}>Track your progress with personalized charts and advanced analytics</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share + Done buttons */}
+        <button onClick={handleShare} style={ss.shareBtn}>
+          {shareStatus === 'copied' ? 'COPIED!' : 'SHARE WORKOUT'}
+        </button>
         <button onClick={onDone} style={ss.doneBtn}>DONE</button>
       </div>
     </div>
@@ -466,6 +614,85 @@ const ss: Record<string, React.CSSProperties> = {
     fontWeight: typography.weights.black,
     color: colors.text,
   },
+  confettiContainer: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    overflow: 'hidden' as const,
+    pointerEvents: 'none' as const,
+    zIndex: 10,
+  },
+  prBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    background: 'linear-gradient(135deg, rgba(255,59,48,0.15) 0%, rgba(255,149,0,0.15) 100%)',
+    border: `1px solid ${colors.primaryBorder}`,
+    marginBottom: spacing.xl,
+    animation: 'prBurst 0.6s ease-out',
+  },
+  prBannerIcon: {
+    fontSize: 32,
+    flexShrink: 0,
+  },
+  prBannerTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.black,
+    color: colors.primary,
+    letterSpacing: '0.03em',
+  },
+  prBannerList: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 1.4,
+  },
+  exerciseRowPR: {
+    border: `1px solid ${colors.primaryBorder}`,
+    background: 'rgba(255,59,48,0.05)',
+  },
+  prTag: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.black,
+    padding: `2px ${spacing.sm}px`,
+    borderRadius: radii.sm,
+    background: colors.primarySurface,
+    color: colors.primary,
+    letterSpacing: '0.05em',
+  },
+  proTeaser: {
+    padding: spacing.lg,
+    borderRadius: radii.xl,
+    background: colors.surface,
+    border: `1px dashed ${colors.surfaceBorder}`,
+    marginBottom: spacing.md,
+  },
+  proTeaserTitle: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+  },
+  proTeaserDesc: {
+    fontSize: typography.sizes.sm,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  shareBtn: {
+    width: '100%',
+    padding: '16px',
+    borderRadius: radii.xxl,
+    border: `1px solid ${colors.surfaceBorder}`,
+    background: colors.surface,
+    color: colors.text,
+    cursor: 'pointer',
+    fontWeight: typography.weights.black,
+    fontSize: typography.sizes.xl,
+    marginBottom: spacing.sm,
+  },
   doneBtn: {
     width: '100%',
     padding: '16px',
@@ -477,7 +704,6 @@ const ss: Record<string, React.CSSProperties> = {
     fontWeight: typography.weights.black,
     fontSize: typography.sizes.xl,
     boxShadow: `0 4px 15px ${colors.primaryGlow}`,
-    marginTop: spacing.sm,
   },
   barTrack: {
     height: 8,

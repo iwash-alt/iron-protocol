@@ -32,6 +32,13 @@ function emptyExercisePR(): ExercisePR {
   };
 }
 
+/** A PR achieved during the current workout session */
+export interface SessionPR {
+  exerciseName: string;
+  category: string;
+  value: string;
+}
+
 interface WorkoutContextValue {
   completedSets: Record<string, number>;
   currentLog: SetLog[];
@@ -43,6 +50,8 @@ interface WorkoutContextValue {
   globalPRs: GlobalPRs;
   weekCount: number;
   newPR: { name: string; category: string; value: string } | null;
+  /** All PRs achieved during the current workout session */
+  sessionPRs: SessionPR[];
   showDeloadAlert: boolean;
   progress: () => number;
   completeSet: (pe: PlanExercise, rpe: RPEValue) => void;
@@ -93,6 +102,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
   ));
   const [showDeloadAlert, setShowDeloadAlert] = useState(false);
   const [newPR, setNewPR] = useState<{ name: string; category: string; value: string } | null>(null);
+  const [sessionPRs, setSessionPRs] = useState<SessionPR[]>([]);
 
   useEffect(() => {
     if (demo.enabled) {
@@ -182,13 +192,26 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
         const allUpdated = { ...personalRecords, [name]: updated };
         persistPRs(allUpdated);
 
+        let prCategory: string;
+        let prValue: string;
         if (!current.bestEstimated1RM || e1rm > current.bestEstimated1RM.value) {
-          setNewPR({ name, category: 'Est 1RM', value: `${e1rm}kg` });
+          prCategory = 'Est 1RM';
+          prValue = `${e1rm}kg`;
         } else if (!current.heaviestWeight || pe.weightKg > current.heaviestWeight.weightKg) {
-          setNewPR({ name, category: 'Heavy', value: `${pe.weightKg}kg x ${pe.reps}` });
-        } else if (!current.bestSetVolume || setVolume > current.bestSetVolume.value) {
-          setNewPR({ name, category: 'Set Volume', value: `${setVolume}kg` });
+          prCategory = 'Heavy';
+          prValue = `${pe.weightKg}kg x ${pe.reps}`;
+        } else {
+          prCategory = 'Set Volume';
+          prValue = `${setVolume}kg`;
         }
+
+        setNewPR({ name, category: prCategory, value: prValue });
+        setSessionPRs(prev => {
+          // Avoid duplicate entries for the same exercise+category
+          const exists = prev.some(p => p.exerciseName === name && p.category === prCategory);
+          if (exists) return prev;
+          return [...prev, { exerciseName: name, category: prCategory, value: prValue }];
+        });
         setTimeout(() => setNewPR(null), TIMINGS.PR_DISPLAY_DURATION);
       }
 
@@ -366,6 +389,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
 
   const resetWorkoutState = useCallback(() => {
     dispatch({ type: 'RESET' });
+    setSessionPRs([]);
   }, []);
 
   const setRestTimerFor = useCallback((id: string | null) => {
@@ -398,6 +422,7 @@ export function WorkoutProvider({ children, dayExercises, currentDayName, onProg
       globalPRs,
       weekCount,
       newPR,
+      sessionPRs,
       showDeloadAlert,
       progress,
       completeSet,

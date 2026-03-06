@@ -31,3 +31,12 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+
+# Ruflo / Claude-Flow runtime artifacts (binary DB, HNSW index, generated logs)
+.swarm/
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/neural/
+.claude/memory.db
+.claude/settings.local.json

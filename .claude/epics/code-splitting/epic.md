@@ -1,8 +1,8 @@
 ---
 name: code-splitting
-status: backlog
+status: completed
 created: 2026-03-07T02:23:49Z
-progress: 0%
+progress: 100%
 prd: .claude/prds/code-splitting.md
 github: https://github.com/iwash-alt/iron-protocol/issues/81
 ---

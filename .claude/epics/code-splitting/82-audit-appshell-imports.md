@@ -1,8 +1,8 @@
 ---
 name: audit-appshell-imports
-status: open
+status: closed
 created: 2026-03-07T02:25:08Z
-updated: 2026-03-07T02:25:08Z
+updated: 2026-03-07T02:33:10Z
 epic: code-splitting
 agent: feature-engineer
 ---

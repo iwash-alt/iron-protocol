@@ -26,6 +26,10 @@ import {
   SummaryCards,
   ChartCarousel,
 } from './charts';
+import { VolumeChart as VolumeChartNew } from './VolumeChart';
+import { RPEHistogram } from './RPEHistogram';
+import { MuscleGroupChart } from './MuscleGroupChart';
+import type { VolumePoint, RPEDistribution, MuscleGroupVolume } from '@/shared/types';
 import { colors, spacing, typography } from '@/shared/theme/tokens';
 
 const ChartIllustration = (
@@ -100,6 +104,49 @@ export function Dashboard({
     );
   }, [isPro, workout.workoutHistory, workout.personalRecords, workout.exerciseHistory, profile.days]);
 
+  // ── Data for new recharts components ─────────────────────────────────────
+  const volumePoints = useMemo((): VolumePoint[] => {
+    if (!hasHistory) return [];
+    // Build one point per workout in the current period, grouped by date
+    const byDate: Map<string, { volume: number; sessionCount: number }> = new Map();
+    for (const w of workout.workoutHistory) {
+      const existing = byDate.get(w.date);
+      if (existing) {
+        existing.volume += w.totalVolumeKg ?? 0;
+        existing.sessionCount += 1;
+      } else {
+        byDate.set(w.date, { volume: w.totalVolumeKg ?? 0, sessionCount: 1 });
+      }
+    }
+    return Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-20)
+      .map(([date, vals]) => ({ date, ...vals }));
+  }, [hasHistory, workout.workoutHistory]);
+
+  const rpeDistribution = useMemo((): RPEDistribution[] => {
+    if (!hasHistory) return [];
+    const counts: Record<number, number> = {};
+    for (const w of workout.workoutHistory) {
+      for (const s of w.sets) {
+        if (s.rpe) {
+          counts[s.rpe] = (counts[s.rpe] ?? 0) + 1;
+        }
+      }
+    }
+    return Object.entries(counts)
+      .map(([rpe, count]) => ({ rpe: Number(rpe), count }))
+      .sort((a, b) => a.rpe - b.rpe);
+  }, [hasHistory, workout.workoutHistory]);
+
+  const muscleGroupVolume = useMemo((): MuscleGroupVolume[] => {
+    return muscleDistribution.map(d => ({
+      group: d.muscle,
+      sets: d.sets,
+      percentage: d.pct,
+    }));
+  }, [muscleDistribution]);
+
   // Derived display values
   const topMuscle = muscleDistribution.length > 0 ? muscleDistribution[0] : null;
 
@@ -155,6 +202,24 @@ export function Dashboard({
             />,
           ]}
         </ChartCarousel>
+      )}
+
+      {/* ── Trends Section ──────────────────────────────────────────── */}
+      {hasHistory && (
+        <div style={dashStyles.trendsSection}>
+          <h2 style={dashStyles.trendsHeading}>Trends</h2>
+          <div style={dashStyles.trendsCard}>
+            <VolumeChartNew data={volumePoints} height={180} />
+          </div>
+          <div style={dashStyles.trendsCard}>
+            <RPEHistogram data={rpeDistribution} />
+          </div>
+          {muscleGroupVolume.length > 0 && (
+            <div style={dashStyles.trendsCard}>
+              <MuscleGroupChart data={muscleGroupVolume} />
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Period Stats Summary Row ───────────────────────────────── */}
@@ -294,6 +359,22 @@ const dashStyles: Record<string, React.CSSProperties> = {
     color: colors.textSecondary,
     lineHeight: 1.4,
     marginBottom: spacing.md,
+  },
+  trendsSection: {
+    marginBottom: spacing.md,
+  },
+  trendsHeading: {
+    fontSize: typography.sizes['4xl'],
+    fontWeight: typography.weights.black,
+    color: colors.text,
+    margin: `0 0 ${spacing.sm}px`,
+  },
+  trendsCard: {
+    background: colors.surface,
+    border: `1px solid ${colors.surfaceBorder}`,
+    borderRadius: 14,
+    marginBottom: spacing.sm,
+    overflow: 'hidden' as const,
   },
   lockedPrice: {
     fontSize: typography.sizes.lg,

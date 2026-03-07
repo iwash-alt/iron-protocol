@@ -8,8 +8,6 @@ import { PlanProvider, usePlan } from '@/features/training-plan/PlanContext';
 import { WorkoutProvider } from '@/features/workout/WorkoutContext';
 import type { ProgressionResult } from '@/training/progression';
 import { ProgressProvider } from '@/features/progress/progress.context';
-import { Onboarding } from '@/features/onboarding/Onboarding';
-import { InstallBanner } from '@/features/pwa/InstallBanner';
 import { EntitlementProvider } from '@/features/entitlements/EntitlementContext';
 import { ProfilePhotoProvider } from '@/features/photos/ProfilePhotoContext';
 import { AppShell } from '@/app/AppShell';
@@ -17,6 +15,12 @@ import type { PlanState } from '@/features/training-plan/plan.reducer';
 
 // @ts-expect-error — JSX homepage component without type declarations
 const Homepage = React.lazy(() => import('@/ui/screens/Homepage'));
+const Onboarding = React.lazy(() =>
+  import('@/features/onboarding/Onboarding').then(m => ({ default: m.Onboarding }))
+);
+const InstallBanner = React.lazy(() =>
+  import('@/features/pwa/InstallBanner').then(m => ({ default: m.InstallBanner }))
+);
 runMigrations();
 
 function dismissSplash() {
@@ -69,7 +73,7 @@ export default function App() {
   if (hash === '#/' || hash === '' || hash === '#') {
     return <Suspense fallback={<LoadingSpinner />}><Homepage /></Suspense>;
   }
-  if (!profile) return <Onboarding onComplete={handleProfileComplete} />;
+  if (!profile) return <Suspense fallback={<LoadingSpinner />}><Onboarding onComplete={handleProfileComplete} /></Suspense>;
 
   return (
     <ErrorBoundary>
@@ -81,7 +85,7 @@ export default function App() {
               <WorkoutPlanBridge>
                 <ProgressProvider>
                   <AppShell profile={profile} onProfileUpdate={setProfile} />
-                  <InstallBanner />
+                  <Suspense fallback={null}><InstallBanner /></Suspense>
                 </ProgressProvider>
               </WorkoutPlanBridge>
             </PlanProvider>

@@ -35,6 +35,21 @@ export default defineConfig({
           if (id.includes('/src/features/onboarding')) {
             return 'feature-onboarding';
           }
+          if (id.includes('/src/features/nutrition')) {
+            return 'feature-nutrition';
+          }
+          if (id.includes('/src/features/readiness')) {
+            return 'feature-readiness';
+          }
+          if (id.includes('/src/features/training-plan')) {
+            return 'feature-training-plan';
+          }
+          if (id.includes('/src/training/') || id.includes('/src/analytics/')) {
+            return 'domain-core';
+          }
+          if (id.includes('/src/data/animations') || id.includes('/src/data/exercise-guides')) {
+            return 'data-guides';
+          }
         },
       },
     },

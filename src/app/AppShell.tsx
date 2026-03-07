@@ -7,12 +7,14 @@ import { getGreeting } from '@/shared/utils';
 import { useDemoMode } from '@/shared/demo/DemoModeContext';
 import { useWorkout } from '@/features/workout/WorkoutContext';
 import { useProgress } from '@/features/progress/progress.context';
-import { MeasurementsModal } from '@/features/progress/MeasurementsModal';
 import type { QuickTemplate } from '@/data/quick-templates';
 import { useProfilePhoto } from '@/features/photos/ProfilePhotoContext';
 import { TIMINGS } from '@/shared/constants/timings';
 import { usePRCelebration, usePullToRefresh, useWorkoutStreak } from '@/shared/hooks';
 
+const MeasurementsModal = lazy(() =>
+  import('@/features/progress/MeasurementsModal').then(m => ({ default: m.MeasurementsModal }))
+);
 const WorkoutView = lazy(() => import('@/features/workout/WorkoutView').then((m) => ({ default: m.WorkoutView })));
 const Dashboard = lazy(() => import('@/features/progress/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Profile = lazy(() => import('@/features/profile/Profile').then((m) => ({ default: m.Profile })));
@@ -146,7 +148,7 @@ export function AppShell({ profile, onProfileUpdate }: { profile: UserProfile; o
         </div>
       </main>
 
-      {showMeasurements && <MeasurementsModal currentWeight={profile.weight} onSave={(data) => { progress.saveMeasurement(data); setShowMeasurements(false); }} onClose={() => setShowMeasurements(false)} />}
+      {showMeasurements && <Suspense fallback={null}><MeasurementsModal currentWeight={profile.weight} onSave={(data) => { progress.saveMeasurement(data); setShowMeasurements(false); }} onClose={() => setShowMeasurements(false)} /></Suspense>}
       <BottomNav active={activeTab} onSelect={handleTabSwitch} />
       <style>{globalCss}</style>
     </div>

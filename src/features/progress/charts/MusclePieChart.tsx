@@ -47,10 +47,11 @@ export function MusclePieChart({ distribution }: MusclePieChartProps) {
               </Pie>
               <Tooltip
                 contentStyle={TOOLTIP_CONTENT_STYLE}
-                formatter={(value: number | undefined, name: string | undefined) => [
-                  `${value ?? 0} sets (${Math.round(((value ?? 0) / totalSets) * 100)}%)`,
-                  name ?? '',
-                ]}
+                formatter={(value: unknown, name: unknown) => {
+                  const v = typeof value === 'number' ? value : 0;
+                  const n = typeof name === 'string' ? name : '';
+                  return [`${v} sets (${Math.round((v / totalSets) * 100)}%)`, n];
+                }}
               />
             </PieChart>
           </ResponsiveContainer>

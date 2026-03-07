@@ -15,6 +15,8 @@ export type {
 
 export type { BodyMeasurement } from './measurements';
 
+export type { VolumePoint, RPEDistribution, MuscleGroupVolume, ProgressionPoint } from './charts';
+
 export type {
   Feature, PlanId, BillingInterval,
   SubscriptionState, TrialState, PromoUnlock,

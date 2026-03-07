@@ -66,7 +66,7 @@ export function VolumeChart({ dataPoints, volumeChangePct }: VolumeChartProps) {
           />
           <Tooltip
             contentStyle={TOOLTIP_CONTENT_STYLE}
-            formatter={(value: number | undefined) => [formatVolume(value ?? 0), 'Volume']}
+            formatter={(value) => [formatVolume(typeof value === 'number' ? value : 0), 'Volume']}
             labelStyle={{ color: colors.textSecondary, fontSize: 10 }}
           />
           <Area

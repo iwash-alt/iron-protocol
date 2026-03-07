@@ -128,3 +128,32 @@ export const quickCustomizationsSchema = z.record(
   z.string(),
   quickTemplateCustomizationSchema,
 );
+
+// ── Chart / dashboard graph schemas ─────────────────────────
+
+/** Weekly volume trend data point. */
+export const volumePointSchema = z.object({
+  date: z.string(),
+  volume: z.number().min(0),
+  sessionCount: z.number().int().min(0),
+});
+
+/** Histogram bucket for a single RPE value. */
+export const rpeDistributionSchema = z.object({
+  rpe: z.number().min(1).max(10),
+  count: z.number().int().min(0),
+});
+
+/** Per-muscle-group volume breakdown entry. */
+export const muscleGroupVolumeSchema = z.object({
+  group: z.string().min(1),
+  sets: z.number().int().min(0),
+  percentage: z.number().min(0).max(100),
+});
+
+/** Single exercise PR timeline point. */
+export const progressionPointSchema = z.object({
+  date: z.string(),
+  weight: z.number().min(0),
+  exercise: z.string().min(1),
+});

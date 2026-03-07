@@ -52,7 +52,10 @@ export function RecoveryTrendChart({ data }: RecoveryTrendChartProps) {
           />
           <Tooltip
             contentStyle={TOOLTIP_CONTENT_STYLE}
-            formatter={(value: number | undefined) => [value && value > 0 ? value.toFixed(1) : '\u2014', 'Avg RPE']}
+            formatter={(value: unknown) => {
+              const v = typeof value === 'number' ? value : 0;
+              return [v > 0 ? v.toFixed(1) : '\u2014', 'Avg RPE'];
+            }}
             labelStyle={{ color: colors.textSecondary, fontSize: 10 }}
           />
           <ReferenceLine

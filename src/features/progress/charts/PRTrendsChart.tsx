@@ -46,10 +46,11 @@ export function PRTrendsChart({ trends }: PRTrendsChartProps) {
           />
           <Tooltip
             contentStyle={TOOLTIP_CONTENT_STYLE}
-            formatter={(value: number | undefined, name: string | undefined) => [
-              value && value > 0 ? `${Math.round(value)}kg` : '\u2014',
-              shortName(name ?? ''),
-            ]}
+            formatter={(value: unknown, name: unknown) => {
+              const v = typeof value === 'number' ? value : 0;
+              const n = typeof name === 'string' ? name : '';
+              return [v > 0 ? `${Math.round(v)}kg` : '\u2014', shortName(n)];
+            }}
             labelStyle={{ color: colors.textSecondary, fontSize: 10 }}
           />
           <Legend

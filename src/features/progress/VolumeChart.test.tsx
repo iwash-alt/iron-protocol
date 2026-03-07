@@ -4,11 +4,12 @@ import { VolumeChart } from './VolumeChart';
 import type { VolumePoint } from '@/shared/types';
 
 // recharts uses ResizeObserver internally via ResponsiveContainer
-global.ResizeObserver = class ResizeObserver {
+class ResizeObserverStub {
   observe() {}
   unobserve() {}
   disconnect() {}
-};
+}
+window.ResizeObserver = ResizeObserverStub;
 
 describe('VolumeChart', () => {
   it('renders without crashing with empty data', () => {
